@@ -1,6 +1,18 @@
 "use client";
 
 import {
+  defaultKeymap,
+  history,
+  historyKeymap,
+  indentWithTab,
+  insertBlankLine,
+  copyLineDown
+} from "@codemirror/commands";
+import { python } from "@codemirror/lang-python";
+import { EditorSelection, Prec } from "@codemirror/state";
+import { EditorView, keymap, lineNumbers } from "@codemirror/view";
+import CodeMirror from "@uiw/react-codemirror";
+import {
   BookOpen,
   CheckCircle2,
   Code2,
@@ -13,7 +25,7 @@ import {
   Sparkles,
   X
 } from "lucide-react";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, KeyboardEvent, useMemo, useState } from "react";
 import { judgePythonSubmission } from "@/lib/judge";
 import { problemBooks, problems } from "@/lib/problems";
 import { runBeginnerPython } from "@/lib/practice-runner";
@@ -40,8 +52,14 @@ export default function Home() {
   const selectedProblem = problems.find((problem) => problem.id === selectedProblemId) ?? fallbackProblem;
   const [code, setCode] = useState(selectedProblem.starterCode);
   const [practiceCode, setPracticeCode] = useState("name = input()\nprint('안녕, ' + name)");
-  const [practiceInput, setPracticeInput] = useState("민수");
-  const [practiceOutput, setPracticeOutput] = useState("실행 버튼을 누르면 결과가 표시됩니다.");
+  const [consoleLines, setConsoleLines] = useState<string[]>([
+    "Shift + Enter로 실행하세요.",
+    "input()이 있으면 이 콘솔에서 값을 입력할 수 있어요."
+  ]);
+  const [consoleInput, setConsoleInput] = useState("");
+  const [pendingInputs, setPendingInputs] = useState<string[]>([]);
+  const [expectedInputCount, setExpectedInputCount] = useState(0);
+  const [runningCode, setRunningCode] = useState("");
   const [notice, setNotice] = useState("");
   const [result, setResult] = useState<ReturnType<typeof judgePythonSubmission> | null>(null);
   const [submissions, setSubmissions] = useState<any[]>([]);
@@ -103,8 +121,52 @@ export default function Home() {
   }
 
   function runPractice() {
-    const executed = runBeginnerPython(practiceCode, practiceInput);
-    setPracticeOutput(executed.error ? `${executed.output}\n\n${executed.error}`.trim() : executed.output);
+    const inputCount = countInputCalls(practiceCode);
+    setRunningCode(practiceCode);
+    setPendingInputs([]);
+    setExpectedInputCount(inputCount);
+    setConsoleInput("");
+
+    if (inputCount === 0) {
+      printPracticeResult(practiceCode, []);
+      return;
+    }
+
+    setConsoleLines([
+      "$ python main.py",
+      `input() 값을 입력하세요. 1/${inputCount}`
+    ]);
+  }
+
+  function submitConsoleInput(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key !== "Enter" || expectedInputCount === 0) return;
+    event.preventDefault();
+
+    const nextInputs = [...pendingInputs, consoleInput];
+    const nextIndex = nextInputs.length + 1;
+    setPendingInputs(nextInputs);
+    setConsoleInput("");
+
+    if (nextInputs.length >= expectedInputCount) {
+      printPracticeResult(runningCode, nextInputs);
+      setExpectedInputCount(0);
+      return;
+    }
+
+    setConsoleLines((lines) => [
+      ...lines,
+      `> ${consoleInput}`,
+      `input() 값을 입력하세요. ${nextIndex}/${expectedInputCount}`
+    ]);
+  }
+
+  function printPracticeResult(nextCode: string, inputs: string[]) {
+    const executed = runBeginnerPython(nextCode, inputs.join("\n"));
+    const lines = ["$ python main.py"];
+    for (const input of inputs) lines.push(`> ${input}`);
+    if (executed.output) lines.push(executed.output);
+    if (executed.error) lines.push(executed.error);
+    setConsoleLines(lines);
   }
 
   async function submitCode() {
@@ -172,31 +234,38 @@ export default function Home() {
               <div className="ideHeader">
                 <div>
                   <strong>파이썬 코드를 작성해보세요!</strong>
+                  <span>Ctrl+D, Ctrl+Enter, Ctrl+Shift+D 단축키를 사용할 수 있어요.</span>
                 </div>
                 <button className="primaryButton" onClick={runPractice}>
                   <Play size={17} />
                   실행
+                  <kbd>Shift + Enter</kbd>
                 </button>
               </div>
-              <textarea
-                className="codeEditor"
-                spellCheck={false}
+              <CodeEditor
                 value={practiceCode}
-                onChange={(event) => setPracticeCode(event.target.value)}
+                onChange={setPracticeCode}
+                onRun={runPractice}
               />
             </article>
-            <aside className="practiceSide">
-              <label>
-                입력
-                <textarea
-                  className="inputArea"
-                  value={practiceInput}
-                  onChange={(event) => setPracticeInput(event.target.value)}
-                />
-              </label>
-              <div className="outputBox">
-                <strong>실행 결과</strong>
-                <pre>{practiceOutput}</pre>
+            <aside className="consolePane">
+              <div className="consoleHeader">
+                <strong>콘솔</strong>
+                <span>{expectedInputCount > 0 ? "입력 대기 중" : "실행 결과"}</span>
+              </div>
+              <div className="terminal" aria-live="polite">
+                <pre>{consoleLines.join("\n")}</pre>
+                <div className="terminalInputRow">
+                  <span>&gt;</span>
+                  <input
+                    value={consoleInput}
+                    onChange={(event) => setConsoleInput(event.target.value)}
+                    onKeyDown={submitConsoleInput}
+                    disabled={expectedInputCount === 0}
+                    placeholder={expectedInputCount > 0 ? "값을 입력하고 Enter" : "실행 후 input() 값 입력"}
+                    aria-label="콘솔 입력"
+                  />
+                </div>
               </div>
             </aside>
           </div>
@@ -390,6 +459,117 @@ function HomeChoice({ onPractice, onSolve }: { onPractice: () => void; onSolve: 
       </div>
     </section>
   );
+}
+
+function CodeEditor({
+  value,
+  onChange,
+  onRun
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  onRun: () => void;
+}) {
+  const extensions = useMemo(
+    () => [
+      lineNumbers(),
+      history(),
+      python(),
+      EditorView.lineWrapping,
+      EditorView.theme({
+        "&": {
+          backgroundColor: "#111827",
+          color: "#e5e7eb",
+          height: "100%"
+        },
+        ".cm-content": {
+          caretColor: "#ffffff",
+          fontFamily: "Consolas, 'Courier New', monospace",
+          fontSize: "15px",
+          lineHeight: "1.6",
+          minHeight: "620px",
+          padding: "18px"
+        },
+        ".cm-gutters": {
+          backgroundColor: "#0b1220",
+          borderRight: "1px solid #1f2937",
+          color: "#64748b"
+        },
+        ".cm-activeLine": {
+          backgroundColor: "rgba(96, 165, 250, 0.12)"
+        },
+        ".cm-activeLineGutter": {
+          backgroundColor: "rgba(96, 165, 250, 0.12)"
+        },
+        ".cm-selectionBackground, &.cm-focused .cm-selectionBackground": {
+          backgroundColor: "rgba(59, 130, 246, 0.45)"
+        }
+      }),
+      Prec.highest(
+        keymap.of([
+          {
+            key: "Shift-Enter",
+            run: () => {
+              onRun();
+              return true;
+            }
+          },
+          { key: "Ctrl-Enter", mac: "Cmd-Enter", run: insertBlankLine },
+          { key: "Ctrl-Shift-d", mac: "Cmd-Shift-d", run: copyLineDown },
+          { key: "Ctrl-d", mac: "Cmd-d", run: selectNextWordOccurrence },
+          indentWithTab
+        ])
+      ),
+      keymap.of([...defaultKeymap, ...historyKeymap])
+    ],
+    [onRun]
+  );
+
+  return (
+    <CodeMirror
+      value={value}
+      height="100%"
+      basicSetup={false}
+      extensions={extensions}
+      onChange={onChange}
+    />
+  );
+}
+
+function selectNextWordOccurrence(view: EditorView) {
+  const { state } = view;
+  const main = state.selection.main;
+  let query = state.sliceDoc(main.from, main.to);
+  let from = main.to;
+
+  if (!query) {
+    const line = state.doc.lineAt(main.head);
+    const before = state.sliceDoc(line.from, main.head);
+    const after = state.sliceDoc(main.head, line.to);
+    const beforeMatch = before.match(/[A-Za-z_][A-Za-z0-9_]*$/);
+    const afterMatch = after.match(/^[A-Za-z0-9_]*/);
+    if (!beforeMatch && !afterMatch?.[0]) return false;
+    query = `${beforeMatch?.[0] ?? ""}${afterMatch?.[0] ?? ""}`;
+    from = line.from + before.length + (afterMatch?.[0]?.length ?? 0);
+  }
+
+  if (!query.trim()) return false;
+
+  const doc = state.doc.toString();
+  let next = doc.indexOf(query, from);
+  if (next === -1) next = doc.indexOf(query, 0);
+  if (next === -1) return false;
+
+  const range = EditorSelection.range(next, next + query.length);
+  view.dispatch({
+    selection: EditorSelection.create([...state.selection.ranges, range], state.selection.ranges.length),
+    scrollIntoView: true
+  });
+  return true;
+}
+
+function countInputCalls(code: string) {
+  return code.match(/\binput\s*\(/g)?.length ?? 0;
 }
 
 function ProblemPane({ selectedProblem }: { selectedProblem: (typeof problems)[number] }) {

@@ -159,6 +159,10 @@ button {
   max-width: 1180px;
 }
 
+.practiceView {
+  max-width: 1440px;
+}
+
 .choiceView {
   display: grid;
   min-height: calc(100vh - 140px);
@@ -227,13 +231,98 @@ button {
 .practiceGrid {
   display: grid;
   gap: 18px;
-  grid-template-columns: minmax(420px, 1fr) 320px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  min-height: 720px;
 }
 
-.practiceSide {
+.practiceSide,
+.consolePane {
   display: grid;
   gap: 14px;
   align-content: start;
+}
+
+.consolePane {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.consoleHeader {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  min-height: 70px;
+  padding: 14px;
+}
+
+.consoleHeader strong,
+.consoleHeader span {
+  display: block;
+}
+
+.consoleHeader span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.terminal {
+  background: #0b1220;
+  color: #e5e7eb;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  min-height: 650px;
+  padding: 18px;
+}
+
+.terminal pre {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font-family:
+    Consolas,
+    "Courier New",
+    monospace;
+  font-size: 15px;
+  line-height: 1.6;
+  min-height: 0;
+  padding: 0;
+}
+
+.terminalInputRow {
+  align-items: center;
+  border-top: 1px solid #1f2937;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: auto 1fr;
+  padding-top: 12px;
+}
+
+.terminalInputRow span {
+  color: #60a5fa;
+  font-family:
+    Consolas,
+    "Courier New",
+    monospace;
+  font-weight: 800;
+}
+
+.terminalInputRow input {
+  background: transparent;
+  border: 0;
+  color: #f8fafc;
+  height: 38px;
+  padding: 0;
+}
+
+.terminalInputRow input:disabled {
+  color: #64748b;
+}
+
+.terminalInputRow input:focus {
+  outline: 0;
 }
 
 .inputArea {
@@ -568,6 +657,26 @@ pre {
   padding: 18px;
   resize: vertical;
   width: 100%;
+}
+
+.cm-editor {
+  min-height: 620px;
+}
+
+.cm-scroller {
+  font-family:
+    Consolas,
+    "Courier New",
+    monospace;
+}
+
+kbd {
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 6px;
 }
 
 .result {
