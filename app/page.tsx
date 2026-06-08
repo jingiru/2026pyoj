@@ -165,14 +165,13 @@ export default function Home() {
         <section className="practiceView">
           <div className="practiceIntro">
             <span className="pill">코딩 연습</span>
-            <h1>로그인 없이 파이썬을 가볍게 실행해보세요.</h1>
+            <h1>파이썬 연습을 위한 통합 개발 환경(IDE)</h1>
           </div>
           <div className="practiceGrid">
             <article className="idePane">
               <div className="ideHeader">
                 <div>
-                  <strong>자유 실습 IDE</strong>
-                  <span>print, input, 변수, int(), +, * 연습에 적합합니다.</span>
+                  <strong>파이썬 코드를 작성해보세요!</strong>
                 </div>
                 <button className="primaryButton" onClick={runPractice}>
                   <Play size={17} />
@@ -348,8 +347,8 @@ function Header({
           <Code2 size={24} />
         </div>
         <div>
-          <strong>PyOJ Classroom</strong>
-          <span>{student ? `${student.student_no} ${student.name}` : "파이썬 첫걸음을 위한 수업형 Online Judge"}</span>
+          <strong>Jingiru Python Beginner Lab</strong>
+          <span>{student ? `${student.student_no} ${student.name}` : "초보자를 위한 파이썬 첫걸음 by 진기루T"}</span>
         </div>
       </button>
       <div className="modeSwitch" aria-label="화면 선택">
@@ -374,7 +373,7 @@ function HomeChoice({ onPractice, onSolve }: { onPractice: () => void; onSolve: 
   return (
     <section className="choiceView">
       <div className="choiceHeader">
-        <span className="pill">Python Beginner Lab</span>
+        <span className="pill">Jingiru Python Beginner Lab</span>
         <h1>오늘은 어떻게 시작할까요?</h1>
       </div>
       <div className="choiceGrid">
