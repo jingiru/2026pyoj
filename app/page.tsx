@@ -66,10 +66,11 @@ export default function Home() {
     "input()이 있으면 IDLE처럼 프롬프트 옆에 입력할 수 있어요."
   ]);
   const [consoleInput, setConsoleInput] = useState("");
-  const [pendingPrompt, setPendingPrompt] = useState("");
+  const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
   const [isPracticeRunning, setIsPracticeRunning] = useState(false);
   const inputResolverRef = useRef<((value: string) => void) | null>(null);
-  const consoleInputRef = useRef<HTMLInputElement | null>(null);
+  const queuedConsoleInputsRef = useRef<string[]>([]);
+  const consoleInputRef = useRef<HTMLTextAreaElement | null>(null);
   const [notice, setNotice] = useState("");
   const [result, setResult] = useState<ReturnType<typeof judgePythonSubmission> | null>(null);
   const [submissions, setSubmissions] = useState<any[]>([]);
@@ -84,7 +85,7 @@ export default function Home() {
   }, [submissions]);
 
   useEffect(() => {
-    if (pendingPrompt) consoleInputRef.current?.focus();
+    if (pendingPrompt !== null) consoleInputRef.current?.focus();
   }, [pendingPrompt]);
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
@@ -137,37 +138,54 @@ export default function Home() {
   async function runPractice() {
     if (isPracticeRunning) return;
     setIsPracticeRunning(true);
-    setPendingPrompt("");
+    setPendingPrompt(null);
     setConsoleInput("");
-    setConsoleLines(["$ python main.py"]);
+    queuedConsoleInputsRef.current = [];
+    setConsoleLines(["$ python main.py", ""]);
 
-    await runPythonWithSkulpt(practiceCode, {
-      output: (text) => {
-        setConsoleLines((lines) => appendConsoleText(lines, text));
-      },
-      error: (text) => {
-        setConsoleLines((lines) => [...lines, text]);
-      },
-      input: (prompt) =>
-        new Promise((resolve) => {
-          inputResolverRef.current = resolve;
-          setPendingPrompt(prompt);
-        })
-    });
-
-    setPendingPrompt("");
-    setIsPracticeRunning(false);
+    try {
+      await runPythonWithSkulpt(practiceCode, {
+        output: (text) => {
+          setConsoleLines((lines) => appendConsoleText(lines, text));
+        },
+        error: (text) => {
+          setConsoleLines((lines) => [...lines, text]);
+        },
+        input: requestConsoleInput
+      });
+    } finally {
+      inputResolverRef.current = null;
+      setPendingPrompt(null);
+      setIsPracticeRunning(false);
+    }
   }
 
-  function submitConsoleInput(event: KeyboardEvent<HTMLInputElement>) {
+  function requestConsoleInput(prompt: string) {
+    const queuedValue = queuedConsoleInputsRef.current.shift();
+    if (queuedValue !== undefined) {
+      setConsoleLines((lines) => [...lines, `${prompt}${queuedValue}`]);
+      return Promise.resolve(queuedValue);
+    }
+
+    return new Promise<string>((resolve) => {
+      inputResolverRef.current = resolve;
+      setPendingPrompt(prompt);
+    });
+  }
+
+  function submitConsoleInput(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key !== "Enter" || !inputResolverRef.current) return;
+    if (event.shiftKey) return;
     event.preventDefault();
     const resolver = inputResolverRef.current;
     inputResolverRef.current = null;
-    setConsoleLines((lines) => [...lines, `${pendingPrompt}${consoleInput}`]);
-    setPendingPrompt("");
+    const normalized = consoleInput.replace(/\r\n/g, "\n");
+    const [currentValue, ...queuedValues] = normalized.split("\n");
+    queuedConsoleInputsRef.current.push(...queuedValues);
+    setConsoleLines((lines) => [...lines, `${pendingPrompt ?? ""}${currentValue}`]);
+    setPendingPrompt(null);
     setConsoleInput("");
-    resolver(consoleInput);
+    resolver(currentValue);
   }
 
   async function submitCode() {
@@ -255,22 +273,27 @@ export default function Home() {
             <aside className="consolePane">
               <div className="consoleHeader">
                 <strong>콘솔</strong>
-                <span>{pendingPrompt ? "입력 대기 중" : isPracticeRunning ? "실행 중" : "실행 결과"}</span>
+                <span>{pendingPrompt !== null ? "입력 대기 중" : isPracticeRunning ? "실행 중" : "실행 결과"}</span>
               </div>
               <div className="terminal" aria-live="polite">
-                <pre>{consoleLines.join("\n")}</pre>
-                <div className={pendingPrompt ? "terminalInputRow active" : "terminalInputRow"}>
-                  <span>{pendingPrompt}</span>
-                  <input
-                    value={consoleInput}
-                    ref={consoleInputRef}
-                    onChange={(event) => setConsoleInput(event.target.value)}
-                    onKeyDown={submitConsoleInput}
-                    disabled={!pendingPrompt}
-                    placeholder={pendingPrompt ? "" : "input() 실행 시 여기에 커서가 나타납니다"}
-                    aria-label="콘솔 입력"
-                    autoFocus={Boolean(pendingPrompt)}
-                  />
+                <div className="terminalScroll">
+                  <pre>{consoleLines.join("\n")}</pre>
+                  {pendingPrompt !== null ? (
+                    <div className="terminalInputRow active">
+                      <span>{pendingPrompt}</span>
+                      <textarea
+                        value={consoleInput}
+                        ref={consoleInputRef}
+                        onChange={(event) => setConsoleInput(event.target.value)}
+                        onKeyDown={submitConsoleInput}
+                        placeholder="값을 입력하고 Enter"
+                        aria-label="콘솔 입력"
+                        rows={1}
+                      />
+                    </div>
+                  ) : (
+                    <div className="terminalHint">실행 중 input()을 만나면 이 위치에 커서가 나타납니다.</div>
+                  )}
                 </div>
               </div>
             </aside>

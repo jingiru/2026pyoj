@@ -49,22 +49,23 @@ button {
 
 .shell {
   background: var(--bg);
+  color: var(--ink);
   min-height: 100vh;
   padding: 22px;
 }
 
 .shell.darkMode {
-  --bg: #111827;
-  --ink: #e5e7eb;
-  --muted: #9ca3af;
-  --line: #374151;
-  --panel: #1f2937;
+  --bg: #0f172a;
+  --ink: #f8fafc;
+  --muted: #cbd5e1;
+  --line: #334155;
+  --panel: #182235;
   --primary: #60a5fa;
   --primary-dark: #3b82f6;
-  --code: #0b1220;
-  --code-ink: #e5e7eb;
-  --console: #050b16;
-  --console-ink: #e5e7eb;
+  --code: #0b1120;
+  --code-ink: #f8fafc;
+  --console: #050816;
+  --console-ink: #f8fafc;
 }
 
 .shell.lightMode {
@@ -124,7 +125,7 @@ button {
 }
 
 .modeSwitch {
-  background: #e8edf7;
+  background: color-mix(in srgb, var(--panel) 86%, var(--bg));
   border: 1px solid var(--line);
   border-radius: 8px;
   display: flex;
@@ -151,7 +152,7 @@ button {
 }
 
 .modeSwitch button.active {
-  background: white;
+  background: var(--panel);
   color: var(--ink);
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
 }
@@ -170,7 +171,7 @@ button {
 }
 
 .ghostButton {
-  background: #eef2f7;
+  background: color-mix(in srgb, var(--panel) 80%, var(--bg));
   color: var(--ink);
 }
 
@@ -222,7 +223,7 @@ button {
 
 .choiceButton {
   align-items: flex-start;
-  background: white;
+  background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 8px;
   color: var(--ink);
@@ -253,7 +254,7 @@ button {
 }
 
 .choiceButton.solve {
-  background: #eff6ff;
+  background: color-mix(in srgb, var(--primary) 12%, var(--panel));
 }
 
 .practiceIntro {
@@ -303,10 +304,14 @@ button {
 .terminal {
   background: var(--console);
   color: var(--console-ink);
-  display: grid;
-  grid-template-rows: 1fr auto;
   min-height: 340px;
   padding: 18px;
+}
+
+.terminalScroll {
+  max-height: 340px;
+  min-height: 304px;
+  overflow: auto;
 }
 
 .terminal pre {
@@ -325,11 +330,9 @@ button {
 
 .terminalInputRow {
   align-items: center;
-  border-top: 1px solid #1f2937;
-  display: grid;
+  display: flex;
   gap: 8px;
-  grid-template-columns: auto minmax(120px, 1fr);
-  padding-top: 12px;
+  min-height: 28px;
 }
 
 .terminalInputRow span {
@@ -342,20 +345,28 @@ button {
   white-space: pre-wrap;
 }
 
-.terminalInputRow input {
+.terminalInputRow textarea {
   background: transparent;
   border: 0;
   color: var(--console-ink);
-  height: 38px;
+  flex: 1;
+  line-height: 1.6;
+  min-height: 28px;
+  overflow: hidden;
   padding: 0;
+  resize: none;
 }
 
-.terminalInputRow input:disabled {
-  color: #64748b;
-}
-
-.terminalInputRow input:focus {
+.terminalInputRow textarea:focus {
   outline: 0;
+}
+
+.terminalHint {
+  border-top: 1px solid color-mix(in srgb, var(--console-ink) 14%, transparent);
+  color: color-mix(in srgb, var(--console-ink) 58%, transparent);
+  font-size: 14px;
+  margin-top: 12px;
+  padding-top: 12px;
 }
 
 .inputArea {
@@ -428,6 +439,7 @@ label {
 }
 
 input {
+  background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 7px;
   color: var(--ink);
