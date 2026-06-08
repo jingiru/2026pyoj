@@ -1,5 +1,6 @@
 export type Problem = {
   id: string;
+  bookId: string;
   order: number;
   title: string;
   unit: string;

@@ -36,6 +36,14 @@ button {
   cursor: pointer;
 }
 
+.brandButton {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  padding: 0;
+  text-align: left;
+}
+
 .shell {
   min-height: 100vh;
   padding: 22px;
@@ -144,12 +152,118 @@ button {
   padding: 12px 14px;
 }
 
-.studentGrid {
+.choiceView,
+.practiceView,
+.teacherView {
+  margin: 0 auto;
+  max-width: 1180px;
+}
+
+.choiceView {
+  display: grid;
+  min-height: calc(100vh - 140px);
+  place-items: center;
+}
+
+.choiceHeader {
+  text-align: center;
+}
+
+.choiceHeader h1,
+.practiceIntro h1 {
+  font-size: 38px;
+  letter-spacing: 0;
+  line-height: 1.2;
+  margin: 12px 0 0;
+}
+
+.choiceGrid {
   display: grid;
   gap: 18px;
-  grid-template-columns: 300px 1fr;
+  grid-template-columns: repeat(2, minmax(260px, 420px));
+  margin-top: 28px;
+}
+
+.choiceButton {
+  align-items: flex-start;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  display: grid;
+  gap: 12px;
+  min-height: 220px;
+  padding: 28px;
+  text-align: left;
+}
+
+.choiceButton:hover {
+  border-color: #93c5fd;
+  box-shadow: 0 14px 36px rgba(37, 99, 235, 0.14);
+  transform: translateY(-1px);
+}
+
+.choiceButton svg {
+  color: var(--primary);
+}
+
+.choiceButton strong {
+  font-size: 28px;
+}
+
+.choiceButton span {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.choiceButton.solve {
+  background: #eff6ff;
+}
+
+.practiceIntro {
+  margin-bottom: 18px;
+}
+
+.practiceGrid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(420px, 1fr) 320px;
+}
+
+.practiceSide {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+
+.inputArea {
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--ink);
+  min-height: 180px;
+  padding: 12px;
+  resize: vertical;
+}
+
+.outputBox {
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.outputBox strong {
+  display: block;
+  margin-bottom: 10px;
+}
+
+.solveGrid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: 260px 220px 1fr;
   margin: 0 auto;
-  max-width: 1440px;
+  max-width: 1540px;
 }
 
 .sidebar {
@@ -160,6 +274,7 @@ button {
 
 .loginPanel,
 .problemList,
+.bookSidebar,
 .problemPane,
 .idePane,
 .panel {
@@ -169,7 +284,8 @@ button {
 }
 
 .loginPanel,
-.problemList {
+.problemList,
+.bookSidebar {
   padding: 16px;
 }
 
@@ -213,6 +329,44 @@ textarea:focus {
 .problemList {
   display: grid;
   gap: 8px;
+  align-content: start;
+}
+
+.bookSidebar {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  max-height: calc(100vh - 110px);
+  overflow: auto;
+}
+
+.bookItem {
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--ink);
+  display: grid;
+  gap: 2px;
+  grid-template-columns: 34px 1fr;
+  padding: 12px;
+  text-align: left;
+}
+
+.bookItem span {
+  color: var(--primary);
+  font-weight: 800;
+  grid-row: span 2;
+}
+
+.bookItem em {
+  color: var(--muted);
+  font-size: 12px;
+  font-style: normal;
+}
+
+.bookItem.active {
+  background: #eff6ff;
+  border-color: #93c5fd;
 }
 
 .problemItem {
@@ -454,11 +608,6 @@ pre {
   color: var(--primary);
 }
 
-.teacherView {
-  margin: 0 auto;
-  max-width: 1180px;
-}
-
 .dashboardHeader {
   align-items: flex-end;
   display: flex;
@@ -559,15 +708,59 @@ pre {
   margin-top: 14px;
 }
 
+.modalBackdrop {
+  align-items: center;
+  background: rgba(15, 23, 42, 0.48);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 18px;
+  position: fixed;
+  z-index: 20;
+}
+
+.loginModal {
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.28);
+  max-width: 380px;
+  padding: 22px;
+  position: relative;
+  width: 100%;
+}
+
+.iconButton {
+  align-items: center;
+  background: #eef2f7;
+  border: 0;
+  border-radius: 7px;
+  display: inline-flex;
+  height: 36px;
+  justify-content: center;
+  width: 36px;
+}
+
+.closeButton {
+  position: absolute;
+  right: 14px;
+  top: 14px;
+}
+
+.wideButton {
+  width: 100%;
+}
+
 @media (max-width: 1120px) {
-  .studentGrid,
+  .solveGrid,
   .workspace,
-  .teacherGrid {
+  .teacherGrid,
+  .practiceGrid {
     grid-template-columns: 1fr;
   }
 
-  .sidebar {
-    grid-template-columns: 1fr 1fr;
+  .bookSidebar {
+    max-height: none;
   }
 }
 
@@ -590,7 +783,7 @@ pre {
     width: 100%;
   }
 
-  .sidebar,
+  .choiceGrid,
   .ioGrid,
   .metrics,
   .roadmap {

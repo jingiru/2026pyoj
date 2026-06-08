@@ -3,36 +3,45 @@
 import {
   BookOpen,
   CheckCircle2,
-  CircleUserRound,
   Code2,
   GraduationCap,
   LayoutDashboard,
   Lightbulb,
+  LogIn,
   Play,
   Send,
-  Sparkles
+  Sparkles,
+  X
 } from "lucide-react";
 import { FormEvent, useMemo, useState } from "react";
 import { judgePythonSubmission } from "@/lib/judge";
-import { problems } from "@/lib/problems";
+import { problemBooks, problems } from "@/lib/problems";
+import { runBeginnerPython } from "@/lib/practice-runner";
 import {
   findOrCreateStudent,
   isSupabaseConfigured,
   listSubmissions,
   saveSubmission
 } from "@/lib/supabase";
-import type { Student, Submission } from "@/lib/types";
+import type { Student } from "@/lib/types";
 
-type View = "student" | "teacher";
+type Screen = "home" | "practice" | "solve" | "teacher";
 
 export default function Home() {
-  const [view, setView] = useState<View>("student");
+  const [screen, setScreen] = useState<Screen>("home");
+  const [loginOpen, setLoginOpen] = useState(false);
   const [student, setStudent] = useState<Student | null>(null);
   const [studentNo, setStudentNo] = useState("");
   const [name, setName] = useState("");
-  const [selectedProblemId, setSelectedProblemId] = useState(problems[0].id);
-  const selectedProblem = problems.find((problem) => problem.id === selectedProblemId) ?? problems[0];
+  const [selectedBookId, setSelectedBookId] = useState(problemBooks[0].id);
+  const selectedProblems = problems.filter((problem) => problem.bookId === selectedBookId);
+  const fallbackProblem = selectedProblems[0] ?? problems[0];
+  const [selectedProblemId, setSelectedProblemId] = useState(fallbackProblem.id);
+  const selectedProblem = problems.find((problem) => problem.id === selectedProblemId) ?? fallbackProblem;
   const [code, setCode] = useState(selectedProblem.starterCode);
+  const [practiceCode, setPracticeCode] = useState("name = input()\nprint('안녕, ' + name)");
+  const [practiceInput, setPracticeInput] = useState("민수");
+  const [practiceOutput, setPracticeOutput] = useState("실행 버튼을 누르면 결과가 표시됩니다.");
   const [notice, setNotice] = useState("");
   const [result, setResult] = useState<ReturnType<typeof judgePythonSubmission> | null>(null);
   const [submissions, setSubmissions] = useState<any[]>([]);
@@ -61,7 +70,9 @@ export default function Home() {
     try {
       const signedIn = await findOrCreateStudent(studentNo, name);
       setStudent(signedIn);
-      setNotice(`${signedIn.name}님, 오늘도 한 문제씩 차근차근 가볼까요?`);
+      setLoginOpen(false);
+      setScreen("solve");
+      setNotice(`${signedIn.name}님, 문제 풀이를 시작해볼까요?`);
     } catch {
       setNotice("로그인 중 문제가 생겼어요. Supabase 설정과 테이블을 확인해주세요.");
     } finally {
@@ -69,16 +80,36 @@ export default function Home() {
     }
   }
 
+  function enterSolveMode() {
+    if (student) {
+      setScreen("solve");
+      return;
+    }
+    setLoginOpen(true);
+  }
+
+  function changeBook(bookId: string) {
+    const nextProblem = problems.find((problem) => problem.bookId === bookId);
+    setSelectedBookId(bookId);
+    if (nextProblem) changeProblem(nextProblem.id);
+  }
+
   function changeProblem(problemId: string) {
     const problem = problems.find((item) => item.id === problemId) ?? problems[0];
     setSelectedProblemId(problem.id);
+    setSelectedBookId(problem.bookId);
     setCode(problem.starterCode);
     setResult(null);
   }
 
+  function runPractice() {
+    const executed = runBeginnerPython(practiceCode, practiceInput);
+    setPracticeOutput(executed.error ? `${executed.output}\n\n${executed.error}`.trim() : executed.output);
+  }
+
   async function submitCode() {
     if (!student) {
-      setNotice("먼저 학번과 이름으로 로그인해주세요.");
+      setLoginOpen(true);
       return;
     }
 
@@ -114,77 +145,94 @@ export default function Home() {
 
   return (
     <main className="shell">
-      <header className="topbar">
-        <div className="brand">
-          <div className="brandMark">
-            <Code2 size={24} />
-          </div>
-          <div>
-            <strong>PyOJ Classroom</strong>
-            <span>파이썬 첫걸음을 위한 수업형 Online Judge</span>
-          </div>
-        </div>
-        <div className="modeSwitch" aria-label="화면 선택">
-          <button className={view === "student" ? "active" : ""} onClick={() => setView("student")}>
-            <GraduationCap size={18} />
-            학생
-          </button>
-          <button
-            className={view === "teacher" ? "active" : ""}
-            onClick={() => {
-              setView("teacher");
-              void refreshDashboard();
-            }}
-          >
-            <LayoutDashboard size={18} />
-            교사
-          </button>
-        </div>
-      </header>
+      <Header
+        screen={screen}
+        student={student}
+        onHome={() => setScreen("home")}
+        onPractice={() => setScreen("practice")}
+        onSolve={enterSolveMode}
+        onTeacher={() => {
+          setScreen("teacher");
+          void refreshDashboard();
+        }}
+      />
 
       {notice && <div className="notice">{notice}</div>}
 
-      {view === "student" ? (
-        <section className="studentGrid">
-          <aside className="sidebar">
-            <form className="loginPanel" onSubmit={handleLogin}>
-              <div className="sectionTitle">
-                <CircleUserRound size={18} />
-                로그인
-              </div>
-              <label>
-                학번
-                <input
-                  inputMode="numeric"
-                  maxLength={4}
-                  placeholder="예: 1203"
-                  value={studentNo}
-                  onChange={(event) => setStudentNo(event.target.value.replace(/\D/g, ""))}
-                />
-              </label>
-              <label>
-                이름
-                <input
-                  placeholder="예: 민수"
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                />
-              </label>
-              <button className="primaryButton" disabled={loading}>
-                <CheckCircle2 size={18} />
-                {student ? "다시 확인" : "시작하기"}
-              </button>
-              <p className="helperText">
-                최초 로그인 시 자동 등록되고, 다음부터 같은 학번과 이름으로 이어서 사용할 수 있어요.
-              </p>
-            </form>
+      {screen === "home" && <HomeChoice onPractice={() => setScreen("practice")} onSolve={enterSolveMode} />}
 
-            <div className="problemList">
-              <div className="sectionTitle">
-                <BookOpen size={18} />
-                오늘의 문제
+      {screen === "practice" && (
+        <section className="practiceView">
+          <div className="practiceIntro">
+            <span className="pill">코딩 연습</span>
+            <h1>로그인 없이 파이썬을 가볍게 실행해보세요.</h1>
+          </div>
+          <div className="practiceGrid">
+            <article className="idePane">
+              <div className="ideHeader">
+                <div>
+                  <strong>자유 실습 IDE</strong>
+                  <span>print, input, 변수, int(), +, * 연습에 적합합니다.</span>
+                </div>
+                <button className="primaryButton" onClick={runPractice}>
+                  <Play size={17} />
+                  실행
+                </button>
               </div>
-              {problems.map((problem) => (
+              <textarea
+                className="codeEditor"
+                spellCheck={false}
+                value={practiceCode}
+                onChange={(event) => setPracticeCode(event.target.value)}
+              />
+            </article>
+            <aside className="practiceSide">
+              <label>
+                입력
+                <textarea
+                  className="inputArea"
+                  value={practiceInput}
+                  onChange={(event) => setPracticeInput(event.target.value)}
+                />
+              </label>
+              <div className="outputBox">
+                <strong>실행 결과</strong>
+                <pre>{practiceOutput}</pre>
+              </div>
+            </aside>
+          </div>
+        </section>
+      )}
+
+      {screen === "solve" && (
+        <section className="solveGrid">
+          <aside className="bookSidebar">
+            <div className="sectionTitle">
+              <BookOpen size={18} />
+              문제집
+            </div>
+            {problemBooks.map((book) => {
+              const count = problems.filter((problem) => problem.bookId === book.id).length;
+              return (
+                <button
+                  key={book.id}
+                  className={book.id === selectedBookId ? "bookItem active" : "bookItem"}
+                  onClick={() => changeBook(book.id)}
+                >
+                  <span>{String(book.order).padStart(2, "0")}</span>
+                  <strong>{book.title}</strong>
+                  <em>{count > 0 ? `${count}문제` : "준비 중"}</em>
+                </button>
+              );
+            })}
+          </aside>
+
+          <aside className="problemList">
+            <div className="sectionTitle">문항</div>
+            {selectedProblems.length === 0 ? (
+              <p className="empty">이 문제집의 문항은 곧 추가됩니다.</p>
+            ) : (
+              selectedProblems.map((problem) => (
                 <button
                   key={problem.id}
                   className={problem.id === selectedProblem.id ? "problemItem active" : "problemItem"}
@@ -194,54 +242,16 @@ export default function Home() {
                   <strong>{problem.title}</strong>
                   <em>{problem.unit}</em>
                 </button>
-              ))}
-            </div>
+              ))
+            )}
           </aside>
 
           <section className="workspace">
-            <article className="problemPane">
-              <div className="problemHeader">
-                <div>
-                  <span className="pill">{selectedProblem.unit}</span>
-                  <h1>{selectedProblem.title}</h1>
-                </div>
-                <span className={`level ${selectedProblem.level}`}>
-                  {selectedProblem.level === "start"
-                    ? "입문"
-                    : selectedProblem.level === "practice"
-                      ? "연습"
-                      : "도전"}
-                </span>
-              </div>
-
-              <ProblemBlock title="문제" body={selectedProblem.statement} />
-              <ProblemBlock title="입력" body={selectedProblem.inputDescription} />
-              <ProblemBlock title="출력" body={selectedProblem.outputDescription} />
-
-              <div className="exampleBox">
-                <h2>예시</h2>
-                <div className="ioGrid">
-                  <div>
-                    <strong>입력</strong>
-                    <pre>{selectedProblem.examples[0].input || "입력 없음"}</pre>
-                  </div>
-                  <div>
-                    <strong>출력</strong>
-                    <pre>{selectedProblem.examples[0].output}</pre>
-                  </div>
-                </div>
-              </div>
-
-              <div className="hint">
-                <Lightbulb size={18} />
-                {selectedProblem.hint}
-              </div>
-            </article>
-
+            <ProblemPane selectedProblem={selectedProblem} />
             <article className="idePane">
               <div className="ideHeader">
                 <div>
-                  <strong>파이썬 IDE</strong>
+                  <strong>문제 풀이 IDE</strong>
                   <span>{student ? `${student.student_no} ${student.name}` : "로그인 후 제출 가능"}</span>
                 </div>
                 <div className="ideActions">
@@ -261,88 +271,237 @@ export default function Home() {
                 value={code}
                 onChange={(event) => setCode(event.target.value)}
               />
-
-              <div className={result?.status === "accepted" ? "result accepted" : "result"}>
-                <strong>{result ? result.feedback : "코드를 제출하면 결과가 여기에 표시됩니다."}</strong>
-                {result && (
-                  <div className="caseList">
-                    {result.cases.map((testCase, index) => (
-                      <div key={`${testCase.input}-${index}`} className="caseRow">
-                        <span>{index + 1}</span>
-                        <code>{testCase.input || "입력 없음"}</code>
-                        <code>{testCase.actual || "출력 없음"}</code>
-                        <b>{testCase.passed ? "통과" : "확인"}</b>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <ResultPanel result={result} />
             </article>
           </section>
         </section>
-      ) : (
-        <section className="teacherView">
-          <div className="dashboardHeader">
-            <div>
-              <span className="pill">교사 수업 지원</span>
-              <h1>학급 대시보드</h1>
-            </div>
-            <button className="primaryButton" onClick={refreshDashboard} disabled={loading}>
-              <Sparkles size={18} />
-              새로고침
+      )}
+
+      {screen === "teacher" && (
+        <TeacherDashboard
+          dashboard={dashboard}
+          loading={loading}
+          submissions={submissions}
+          onRefresh={refreshDashboard}
+        />
+      )}
+
+      {loginOpen && (
+        <div className="modalBackdrop" role="presentation">
+          <div className="loginModal" role="dialog" aria-modal="true" aria-labelledby="login-title">
+            <button className="iconButton closeButton" onClick={() => setLoginOpen(false)} aria-label="닫기">
+              <X size={18} />
             </button>
+            <div className="sectionTitle" id="login-title">
+              <LogIn size={18} />
+              문제 풀이 로그인
+            </div>
+            <form onSubmit={handleLogin}>
+              <label>
+                학번
+                <input
+                  inputMode="numeric"
+                  maxLength={4}
+                  placeholder="예: 1203"
+                  value={studentNo}
+                  onChange={(event) => setStudentNo(event.target.value.replace(/\D/g, ""))}
+                />
+              </label>
+              <label>
+                이름
+                <input placeholder="예: 민수" value={name} onChange={(event) => setName(event.target.value)} />
+              </label>
+              <button className="primaryButton wideButton" disabled={loading}>
+                <CheckCircle2 size={18} />
+                시작하기
+              </button>
+            </form>
+            <p className="helperText">
+              처음이면 자동 등록되고, 다음부터 같은 학번과 이름으로 이어서 풀 수 있어요.
+            </p>
           </div>
-
-          <div className="metrics">
-            <Metric label="총 제출" value={`${dashboard.total}`} />
-            <Metric label="정답 제출" value={`${dashboard.accepted}`} />
-            <Metric label="정답률" value={`${dashboard.rate}%`} />
-            <Metric label="참여 학생" value={`${dashboard.triedStudents}`} />
-          </div>
-
-          <div className="teacherGrid">
-            <section className="panel">
-              <h2>문제 생성 흐름</h2>
-              <div className="roadmap">
-                <span>문제 설명</span>
-                <span>예제 입출력</span>
-                <span>테스트케이스</span>
-                <span>학급 배정</span>
-              </div>
-              <p>
-                초급 수업에서는 문제, 입력, 출력, 예시를 한 화면에서 작성하고 테스트케이스는 표처럼
-                추가하는 방식이 가장 덜 부담스럽습니다.
-              </p>
-            </section>
-
-            <section className="panel">
-              <h2>최근 제출 기록</h2>
-              <div className="submissionTable">
-                {submissions.length === 0 ? (
-                  <p className="empty">아직 제출 기록이 없습니다.</p>
-                ) : (
-                  submissions.slice(0, 8).map((submission) => (
-                    <div key={submission.id} className="submissionRow">
-                      <strong>
-                        {submission.students?.student_no ?? "----"} {submission.students?.name ?? "학생"}
-                      </strong>
-                      <span>{problemTitle(submission.problem_id)}</span>
-                      <b className={submission.status === "accepted" ? "ok" : "wait"}>
-                        {submission.passed_count}/{submission.total_count}
-                      </b>
-                    </div>
-                  ))
-                )}
-              </div>
-            </section>
-          </div>
-
-          <div className="supabaseNote">
-            Supabase 상태: {isSupabaseConfigured ? "연결 환경변수 감지됨" : "미설정, 현재 브라우저 저장소로 데모 동작 중"}
-          </div>
-        </section>
+        </div>
       )}
     </main>
+  );
+}
+
+function Header({
+  screen,
+  student,
+  onHome,
+  onPractice,
+  onSolve,
+  onTeacher
+}: {
+  screen: Screen;
+  student: Student | null;
+  onHome: () => void;
+  onPractice: () => void;
+  onSolve: () => void;
+  onTeacher: () => void;
+}) {
+  return (
+    <header className="topbar">
+      <button className="brand brandButton" onClick={onHome}>
+        <div className="brandMark">
+          <Code2 size={24} />
+        </div>
+        <div>
+          <strong>PyOJ Classroom</strong>
+          <span>{student ? `${student.student_no} ${student.name}` : "파이썬 첫걸음을 위한 수업형 Online Judge"}</span>
+        </div>
+      </button>
+      <div className="modeSwitch" aria-label="화면 선택">
+        <button className={screen === "practice" ? "active" : ""} onClick={onPractice}>
+          <Code2 size={18} />
+          연습
+        </button>
+        <button className={screen === "solve" ? "active" : ""} onClick={onSolve}>
+          <GraduationCap size={18} />
+          문제
+        </button>
+        <button className={screen === "teacher" ? "active" : ""} onClick={onTeacher}>
+          <LayoutDashboard size={18} />
+          교사
+        </button>
+      </div>
+    </header>
+  );
+}
+
+function HomeChoice({ onPractice, onSolve }: { onPractice: () => void; onSolve: () => void }) {
+  return (
+    <section className="choiceView">
+      <div className="choiceHeader">
+        <span className="pill">Python Beginner Lab</span>
+        <h1>오늘은 어떻게 시작할까요?</h1>
+      </div>
+      <div className="choiceGrid">
+        <button className="choiceButton" onClick={onPractice}>
+          <Code2 size={34} />
+          <strong>코딩 연습</strong>
+          <span>로그인 없이 코드를 써보고 바로 실행 결과를 확인합니다.</span>
+        </button>
+        <button className="choiceButton solve" onClick={onSolve}>
+          <GraduationCap size={34} />
+          <strong>문제 풀기</strong>
+          <span>학번과 이름으로 로그인하고 문제집을 차근차근 풉니다.</span>
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function ProblemPane({ selectedProblem }: { selectedProblem: (typeof problems)[number] }) {
+  return (
+    <article className="problemPane">
+      <div className="problemHeader">
+        <div>
+          <span className="pill">{selectedProblem.unit}</span>
+          <h1>{selectedProblem.title}</h1>
+        </div>
+        <span className={`level ${selectedProblem.level}`}>
+          {selectedProblem.level === "start" ? "입문" : selectedProblem.level === "practice" ? "연습" : "도전"}
+        </span>
+      </div>
+      <ProblemBlock title="문제" body={selectedProblem.statement} />
+      <ProblemBlock title="입력" body={selectedProblem.inputDescription} />
+      <ProblemBlock title="출력" body={selectedProblem.outputDescription} />
+      <div className="exampleBox">
+        <h2>예시</h2>
+        <div className="ioGrid">
+          <div>
+            <strong>입력</strong>
+            <pre>{selectedProblem.examples[0].input || "입력 없음"}</pre>
+          </div>
+          <div>
+            <strong>출력</strong>
+            <pre>{selectedProblem.examples[0].output}</pre>
+          </div>
+        </div>
+      </div>
+      <div className="hint">
+        <Lightbulb size={18} />
+        {selectedProblem.hint}
+      </div>
+    </article>
+  );
+}
+
+function ResultPanel({ result }: { result: ReturnType<typeof judgePythonSubmission> | null }) {
+  return (
+    <div className={result?.status === "accepted" ? "result accepted" : "result"}>
+      <strong>{result ? result.feedback : "코드를 제출하면 결과가 여기에 표시됩니다."}</strong>
+      {result && (
+        <div className="caseList">
+          {result.cases.map((testCase, index) => (
+            <div key={`${testCase.input}-${index}`} className="caseRow">
+              <span>{index + 1}</span>
+              <code>{testCase.input || "입력 없음"}</code>
+              <code>{testCase.actual || "출력 없음"}</code>
+              <b>{testCase.passed ? "통과" : "확인"}</b>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TeacherDashboard({
+  dashboard,
+  loading,
+  submissions,
+  onRefresh
+}: {
+  dashboard: { accepted: number; total: number; rate: number; triedStudents: number };
+  loading: boolean;
+  submissions: any[];
+  onRefresh: () => void;
+}) {
+  return (
+    <section className="teacherView">
+      <div className="dashboardHeader">
+        <div>
+          <span className="pill">교사 수업 지원</span>
+          <h1>학급 대시보드</h1>
+        </div>
+        <button className="primaryButton" onClick={onRefresh} disabled={loading}>
+          <Sparkles size={18} />
+          새로고침
+        </button>
+      </div>
+      <div className="metrics">
+        <Metric label="총 제출" value={`${dashboard.total}`} />
+        <Metric label="정답 제출" value={`${dashboard.accepted}`} />
+        <Metric label="정답률" value={`${dashboard.rate}%`} />
+        <Metric label="참여 학생" value={`${dashboard.triedStudents}`} />
+      </div>
+      <section className="panel">
+        <h2>최근 제출 기록</h2>
+        <div className="submissionTable">
+          {submissions.length === 0 ? (
+            <p className="empty">아직 제출 기록이 없습니다.</p>
+          ) : (
+            submissions.slice(0, 10).map((submission) => (
+              <div key={submission.id} className="submissionRow">
+                <strong>
+                  {submission.students?.student_no ?? "----"} {submission.students?.name ?? "학생"}
+                </strong>
+                <span>{problemTitle(submission.problem_id)}</span>
+                <b className={submission.status === "accepted" ? "ok" : "wait"}>
+                  {submission.passed_count}/{submission.total_count}
+                </b>
+              </div>
+            ))
+          )}
+        </div>
+      </section>
+      <div className="supabaseNote">
+        Supabase 상태: {isSupabaseConfigured ? "연결 환경변수 감지됨" : "미설정, 현재 브라우저 저장소로 데모 동작 중"}
+      </div>
+    </section>
   );
 }
 

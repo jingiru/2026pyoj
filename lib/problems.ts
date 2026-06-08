@@ -1,8 +1,22 @@
 import type { Problem } from "./types";
 
+export const problemBooks = [
+  { id: "print-basic", order: 1, title: "출력 함수 기초" },
+  { id: "print-advanced", order: 2, title: "출력 함수 응용" },
+  { id: "input-basic", order: 3, title: "변수와 입력 기초" },
+  { id: "sequence", order: 4, title: "순차 구조" },
+  { id: "condition", order: 5, title: "선택 구조" },
+  { id: "loop", order: 6, title: "반복 구조" },
+  { id: "list-index", order: 7, title: "리스트 인덱싱" },
+  { id: "string-index", order: 8, title: "문자열 인덱싱" },
+  { id: "slicing", order: 9, title: "슬라이싱" },
+  { id: "list-analysis", order: 10, title: "리스트 데이터 분석" }
+];
+
 export const problems: Problem[] = [
   {
     id: "print-int-01",
+    bookId: "print-basic",
     order: 1,
     title: "정수 출력 01",
     unit: "출력",
@@ -17,6 +31,7 @@ export const problems: Problem[] = [
   },
   {
     id: "repeat-char-02",
+    bookId: "input-basic",
     order: 2,
     title: "변수와 입력 02",
     unit: "입력과 변수",
@@ -38,6 +53,7 @@ export const problems: Problem[] = [
   },
   {
     id: "sum-two-03",
+    bookId: "sequence",
     order: 3,
     title: "덧셈 연습 03",
     unit: "자료형",
@@ -57,6 +73,7 @@ export const problems: Problem[] = [
   },
   {
     id: "even-odd-04",
+    bookId: "condition",
     order: 4,
     title: "짝수 홀수 04",
     unit: "조건문",
