@@ -66,6 +66,7 @@ export default function Home() {
     "input()이 있으면 IDLE처럼 프롬프트 옆에 입력할 수 있어요."
   ]);
   const [consoleInput, setConsoleInput] = useState("");
+  const [inputHistory, setInputHistory] = useState<string[]>([]);
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
   const [isPracticeRunning, setIsPracticeRunning] = useState(false);
   const inputResolverRef = useRef<((value: string) => void) | null>(null);
@@ -140,6 +141,7 @@ export default function Home() {
     setIsPracticeRunning(true);
     setPendingPrompt(null);
     setConsoleInput("");
+    setInputHistory([]);
     queuedConsoleInputsRef.current = [];
     setConsoleLines(["$ python main.py", ""]);
 
@@ -163,7 +165,7 @@ export default function Home() {
   function requestConsoleInput(prompt: string) {
     const queuedValue = queuedConsoleInputsRef.current.shift();
     if (queuedValue !== undefined) {
-      setConsoleLines((lines) => [...lines, `${prompt}${queuedValue}`]);
+      setInputHistory((items) => [...items, queuedValue]);
       return Promise.resolve(queuedValue);
     }
 
@@ -182,7 +184,7 @@ export default function Home() {
     const normalized = consoleInput.replace(/\r\n/g, "\n");
     const [currentValue, ...queuedValues] = normalized.split("\n");
     queuedConsoleInputsRef.current.push(...queuedValues);
-    setConsoleLines((lines) => [...lines, `${pendingPrompt ?? ""}${currentValue}`]);
+    setInputHistory((items) => [...items, currentValue]);
     setPendingPrompt(null);
     setConsoleInput("");
     resolver(currentValue);
@@ -292,7 +294,18 @@ export default function Home() {
                       />
                     </div>
                   ) : (
-                    <div className="terminalHint">실행 중 input()을 만나면 이 위치에 커서가 나타납니다.</div>
+                    <div className="terminalHint">
+                      <strong>입력값</strong>
+                      {inputHistory.length === 0 ? (
+                        <span>아직 입력한 값이 없습니다.</span>
+                      ) : (
+                        inputHistory.map((item, index) => (
+                          <code key={`${item}-${index}`}>
+                            {index + 1}. {item || "(빈 값)"}
+                          </code>
+                        ))
+                      )}
+                    </div>
                   )}
                 </div>
               </div>

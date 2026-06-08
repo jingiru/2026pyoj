@@ -364,9 +364,29 @@ button {
 .terminalHint {
   border-top: 1px solid color-mix(in srgb, var(--console-ink) 14%, transparent);
   color: color-mix(in srgb, var(--console-ink) 58%, transparent);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   font-size: 14px;
   margin-top: 12px;
   padding-top: 12px;
+}
+
+.terminalHint strong {
+  color: var(--console-ink);
+  flex-basis: 100%;
+}
+
+.terminalHint span {
+  flex-basis: 100%;
+}
+
+.terminalHint code {
+  background: color-mix(in srgb, var(--console-ink) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--console-ink) 16%, transparent);
+  border-radius: 6px;
+  color: var(--console-ink);
+  padding: 5px 8px;
 }
 
 .inputArea {
