@@ -10,6 +10,9 @@
   --amber: #f59e0b;
   --rose: #f43f5e;
   --code: #111827;
+  --code-ink: #e5e7eb;
+  --console: #0b1220;
+  --console-ink: #e5e7eb;
 }
 
 * {
@@ -45,8 +48,37 @@ button {
 }
 
 .shell {
+  background: var(--bg);
   min-height: 100vh;
   padding: 22px;
+}
+
+.shell.darkMode {
+  --bg: #111827;
+  --ink: #e5e7eb;
+  --muted: #9ca3af;
+  --line: #374151;
+  --panel: #1f2937;
+  --primary: #60a5fa;
+  --primary-dark: #3b82f6;
+  --code: #0b1220;
+  --code-ink: #e5e7eb;
+  --console: #050b16;
+  --console-ink: #e5e7eb;
+}
+
+.shell.lightMode {
+  --bg: #f6f7fb;
+  --ink: #263238;
+  --muted: #667085;
+  --line: #d9dee8;
+  --panel: #ffffff;
+  --primary: #2563eb;
+  --primary-dark: #1d4ed8;
+  --code: #ffffff;
+  --code-ink: #1f2937;
+  --console: #111827;
+  --console-ink: #e5e7eb;
 }
 
 .topbar {
@@ -232,7 +264,7 @@ button {
   display: grid;
   gap: 18px;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  min-height: 720px;
+  min-height: 380px;
 }
 
 .practiceSide,
@@ -269,11 +301,11 @@ button {
 }
 
 .terminal {
-  background: #0b1220;
-  color: #e5e7eb;
+  background: var(--console);
+  color: var(--console-ink);
   display: grid;
   grid-template-rows: 1fr auto;
-  min-height: 650px;
+  min-height: 340px;
   padding: 18px;
 }
 
@@ -296,7 +328,7 @@ button {
   border-top: 1px solid #1f2937;
   display: grid;
   gap: 8px;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto minmax(120px, 1fr);
   padding-top: 12px;
 }
 
@@ -307,12 +339,13 @@ button {
     "Courier New",
     monospace;
   font-weight: 800;
+  white-space: pre-wrap;
 }
 
 .terminalInputRow input {
   background: transparent;
   border: 0;
-  color: #f8fafc;
+  color: var(--console-ink);
   height: 38px;
   padding: 0;
 }
@@ -660,10 +693,13 @@ pre {
 }
 
 .cm-editor {
-  min-height: 620px;
+  background: var(--code) !important;
+  color: var(--code-ink);
+  min-height: 340px;
 }
 
 .cm-scroller {
+  background: var(--code) !important;
   font-family:
     Consolas,
     "Courier New",

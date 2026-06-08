@@ -1,6 +1,13 @@
 "use client";
 
 import {
+  autocompletion,
+  closeBrackets,
+  closeBracketsKeymap,
+  completionKeymap,
+  type CompletionContext
+} from "@codemirror/autocomplete";
+import {
   defaultKeymap,
   history,
   historyKeymap,
@@ -8,7 +15,7 @@ import {
   insertBlankLine,
   copyLineDown
 } from "@codemirror/commands";
-import { python } from "@codemirror/lang-python";
+import { python, pythonLanguage } from "@codemirror/lang-python";
 import { EditorSelection, Prec } from "@codemirror/state";
 import { EditorView, keymap, lineNumbers } from "@codemirror/view";
 import CodeMirror from "@uiw/react-codemirror";
@@ -25,10 +32,10 @@ import {
   Sparkles,
   X
 } from "lucide-react";
-import { FormEvent, KeyboardEvent, useMemo, useState } from "react";
+import { FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import { judgePythonSubmission } from "@/lib/judge";
 import { problemBooks, problems } from "@/lib/problems";
-import { runBeginnerPython } from "@/lib/practice-runner";
+import { runPythonWithSkulpt } from "@/lib/skulpt-runner";
 import {
   findOrCreateStudent,
   isSupabaseConfigured,
@@ -38,9 +45,11 @@ import {
 import type { Student } from "@/lib/types";
 
 type Screen = "home" | "practice" | "solve" | "teacher";
+type ColorMode = "light" | "dark";
 
 export default function Home() {
   const [screen, setScreen] = useState<Screen>("home");
+  const [colorMode, setColorMode] = useState<ColorMode>("dark");
   const [loginOpen, setLoginOpen] = useState(false);
   const [student, setStudent] = useState<Student | null>(null);
   const [studentNo, setStudentNo] = useState("");
@@ -54,12 +63,13 @@ export default function Home() {
   const [practiceCode, setPracticeCode] = useState("name = input()\nprint('안녕, ' + name)");
   const [consoleLines, setConsoleLines] = useState<string[]>([
     "Shift + Enter로 실행하세요.",
-    "input()이 있으면 이 콘솔에서 값을 입력할 수 있어요."
+    "input()이 있으면 IDLE처럼 프롬프트 옆에 입력할 수 있어요."
   ]);
   const [consoleInput, setConsoleInput] = useState("");
-  const [pendingInputs, setPendingInputs] = useState<string[]>([]);
-  const [expectedInputCount, setExpectedInputCount] = useState(0);
-  const [runningCode, setRunningCode] = useState("");
+  const [pendingPrompt, setPendingPrompt] = useState("");
+  const [isPracticeRunning, setIsPracticeRunning] = useState(false);
+  const inputResolverRef = useRef<((value: string) => void) | null>(null);
+  const consoleInputRef = useRef<HTMLInputElement | null>(null);
   const [notice, setNotice] = useState("");
   const [result, setResult] = useState<ReturnType<typeof judgePythonSubmission> | null>(null);
   const [submissions, setSubmissions] = useState<any[]>([]);
@@ -72,6 +82,10 @@ export default function Home() {
     const rate = total === 0 ? 0 : Math.round((accepted / total) * 100);
     return { accepted, total, rate, triedStudents };
   }, [submissions]);
+
+  useEffect(() => {
+    if (pendingPrompt) consoleInputRef.current?.focus();
+  }, [pendingPrompt]);
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -120,53 +134,40 @@ export default function Home() {
     setResult(null);
   }
 
-  function runPractice() {
-    const inputCount = countInputCalls(practiceCode);
-    setRunningCode(practiceCode);
-    setPendingInputs([]);
-    setExpectedInputCount(inputCount);
+  async function runPractice() {
+    if (isPracticeRunning) return;
+    setIsPracticeRunning(true);
+    setPendingPrompt("");
     setConsoleInput("");
+    setConsoleLines(["$ python main.py"]);
 
-    if (inputCount === 0) {
-      printPracticeResult(practiceCode, []);
-      return;
-    }
+    await runPythonWithSkulpt(practiceCode, {
+      output: (text) => {
+        setConsoleLines((lines) => appendConsoleText(lines, text));
+      },
+      error: (text) => {
+        setConsoleLines((lines) => [...lines, text]);
+      },
+      input: (prompt) =>
+        new Promise((resolve) => {
+          inputResolverRef.current = resolve;
+          setPendingPrompt(prompt);
+        })
+    });
 
-    setConsoleLines([
-      "$ python main.py",
-      `input() 값을 입력하세요. 1/${inputCount}`
-    ]);
+    setPendingPrompt("");
+    setIsPracticeRunning(false);
   }
 
   function submitConsoleInput(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.key !== "Enter" || expectedInputCount === 0) return;
+    if (event.key !== "Enter" || !inputResolverRef.current) return;
     event.preventDefault();
-
-    const nextInputs = [...pendingInputs, consoleInput];
-    const nextIndex = nextInputs.length + 1;
-    setPendingInputs(nextInputs);
+    const resolver = inputResolverRef.current;
+    inputResolverRef.current = null;
+    setConsoleLines((lines) => [...lines, `${pendingPrompt}${consoleInput}`]);
+    setPendingPrompt("");
     setConsoleInput("");
-
-    if (nextInputs.length >= expectedInputCount) {
-      printPracticeResult(runningCode, nextInputs);
-      setExpectedInputCount(0);
-      return;
-    }
-
-    setConsoleLines((lines) => [
-      ...lines,
-      `> ${consoleInput}`,
-      `input() 값을 입력하세요. ${nextIndex}/${expectedInputCount}`
-    ]);
-  }
-
-  function printPracticeResult(nextCode: string, inputs: string[]) {
-    const executed = runBeginnerPython(nextCode, inputs.join("\n"));
-    const lines = ["$ python main.py"];
-    for (const input of inputs) lines.push(`> ${input}`);
-    if (executed.output) lines.push(executed.output);
-    if (executed.error) lines.push(executed.error);
-    setConsoleLines(lines);
+    resolver(consoleInput);
   }
 
   async function submitCode() {
@@ -206,10 +207,11 @@ export default function Home() {
   }
 
   return (
-    <main className="shell">
+    <main className={`shell ${colorMode}Mode`}>
       <Header
         screen={screen}
         student={student}
+        colorMode={colorMode}
         onHome={() => setScreen("home")}
         onPractice={() => setScreen("practice")}
         onSolve={enterSolveMode}
@@ -217,6 +219,7 @@ export default function Home() {
           setScreen("teacher");
           void refreshDashboard();
         }}
+        onToggleColorMode={() => setColorMode((mode) => (mode === "dark" ? "light" : "dark"))}
       />
 
       {notice && <div className="notice">{notice}</div>}
@@ -246,24 +249,27 @@ export default function Home() {
                 value={practiceCode}
                 onChange={setPracticeCode}
                 onRun={runPractice}
+                colorMode={colorMode}
               />
             </article>
             <aside className="consolePane">
               <div className="consoleHeader">
                 <strong>콘솔</strong>
-                <span>{expectedInputCount > 0 ? "입력 대기 중" : "실행 결과"}</span>
+                <span>{pendingPrompt ? "입력 대기 중" : isPracticeRunning ? "실행 중" : "실행 결과"}</span>
               </div>
               <div className="terminal" aria-live="polite">
                 <pre>{consoleLines.join("\n")}</pre>
-                <div className="terminalInputRow">
-                  <span>&gt;</span>
+                <div className={pendingPrompt ? "terminalInputRow active" : "terminalInputRow"}>
+                  <span>{pendingPrompt}</span>
                   <input
                     value={consoleInput}
+                    ref={consoleInputRef}
                     onChange={(event) => setConsoleInput(event.target.value)}
                     onKeyDown={submitConsoleInput}
-                    disabled={expectedInputCount === 0}
-                    placeholder={expectedInputCount > 0 ? "값을 입력하고 Enter" : "실행 후 input() 값 입력"}
+                    disabled={!pendingPrompt}
+                    placeholder={pendingPrompt ? "" : "input() 실행 시 여기에 커서가 나타납니다"}
                     aria-label="콘솔 입력"
+                    autoFocus={Boolean(pendingPrompt)}
                   />
                 </div>
               </div>
@@ -397,17 +403,21 @@ export default function Home() {
 function Header({
   screen,
   student,
+  colorMode,
   onHome,
   onPractice,
   onSolve,
-  onTeacher
+  onTeacher,
+  onToggleColorMode
 }: {
   screen: Screen;
   student: Student | null;
+  colorMode: ColorMode;
   onHome: () => void;
   onPractice: () => void;
   onSolve: () => void;
   onTeacher: () => void;
+  onToggleColorMode: () => void;
 }) {
   return (
     <header className="topbar">
@@ -432,6 +442,9 @@ function Header({
         <button className={screen === "teacher" ? "active" : ""} onClick={onTeacher}>
           <LayoutDashboard size={18} />
           교사
+        </button>
+        <button onClick={onToggleColorMode}>
+          {colorMode === "dark" ? "화이트" : "다크"}
         </button>
       </div>
     </header>
@@ -464,45 +477,60 @@ function HomeChoice({ onPractice, onSolve }: { onPractice: () => void; onSolve: 
 function CodeEditor({
   value,
   onChange,
-  onRun
+  onRun,
+  colorMode
 }: {
   value: string;
   onChange: (value: string) => void;
   onRun: () => void;
+  colorMode: ColorMode;
 }) {
   const extensions = useMemo(
     () => [
       lineNumbers(),
       history(),
       python(),
+      pythonLanguage.data.of({ autocomplete: pythonCompletionSource }),
+      autocompletion(),
+      closeBrackets(),
       EditorView.lineWrapping,
       EditorView.theme({
         "&": {
-          backgroundColor: "#111827",
-          color: "#e5e7eb",
+          backgroundColor: colorMode === "dark" ? "#111827" : "#ffffff",
+          color: colorMode === "dark" ? "#e5e7eb" : "#1f2937",
           height: "100%"
         },
+        ".cm-editor": {
+          backgroundColor: colorMode === "dark" ? "#111827" : "#ffffff"
+        },
+        ".cm-scroller": {
+          backgroundColor: colorMode === "dark" ? "#111827" : "#ffffff"
+        },
         ".cm-content": {
-          caretColor: "#ffffff",
+          caretColor: colorMode === "dark" ? "#ffffff" : "#111827",
           fontFamily: "Consolas, 'Courier New', monospace",
           fontSize: "15px",
           lineHeight: "1.6",
-          minHeight: "620px",
+          minHeight: "340px",
           padding: "18px"
         },
         ".cm-gutters": {
-          backgroundColor: "#0b1220",
-          borderRight: "1px solid #1f2937",
-          color: "#64748b"
+          backgroundColor: colorMode === "dark" ? "#0b1220" : "#f1f5f9",
+          borderRight: `1px solid ${colorMode === "dark" ? "#1f2937" : "#d9dee8"}`,
+          color: colorMode === "dark" ? "#64748b" : "#667085"
         },
         ".cm-activeLine": {
-          backgroundColor: "rgba(96, 165, 250, 0.12)"
+          backgroundColor: colorMode === "dark" ? "rgba(96, 165, 250, 0.12)" : "rgba(37, 99, 235, 0.08)"
         },
         ".cm-activeLineGutter": {
-          backgroundColor: "rgba(96, 165, 250, 0.12)"
+          backgroundColor: colorMode === "dark" ? "rgba(96, 165, 250, 0.12)" : "rgba(37, 99, 235, 0.08)"
         },
         ".cm-selectionBackground, &.cm-focused .cm-selectionBackground": {
           backgroundColor: "rgba(59, 130, 246, 0.45)"
+        },
+        ".cm-tooltip": {
+          borderRadius: "7px",
+          overflow: "hidden"
         }
       }),
       Prec.highest(
@@ -517,12 +545,14 @@ function CodeEditor({
           { key: "Ctrl-Enter", mac: "Cmd-Enter", run: insertBlankLine },
           { key: "Ctrl-Shift-d", mac: "Cmd-Shift-d", run: copyLineDown },
           { key: "Ctrl-d", mac: "Cmd-d", run: selectNextWordOccurrence },
-          indentWithTab
+          indentWithTab,
+          ...closeBracketsKeymap,
+          ...completionKeymap
         ])
       ),
       keymap.of([...defaultKeymap, ...historyKeymap])
     ],
-    [onRun]
+    [colorMode, onRun]
   );
 
   return (
@@ -532,8 +562,35 @@ function CodeEditor({
       basicSetup={false}
       extensions={extensions}
       onChange={onChange}
+      theme={colorMode}
     />
   );
+}
+
+function pythonCompletionSource(context: CompletionContext) {
+  const word = context.matchBefore(/[A-Za-z_][A-Za-z0-9_]*/);
+  if (!word || (word.from === word.to && !context.explicit)) return null;
+  return {
+    from: word.from,
+    options: [
+      { label: "print", type: "function", apply: "print()" },
+      { label: "input", type: "function", apply: "input()" },
+      { label: "int", type: "function", apply: "int()" },
+      { label: "str", type: "function", apply: "str()" },
+      { label: "len", type: "function", apply: "len()" },
+      { label: "range", type: "function", apply: "range()" },
+      { label: "list", type: "function", apply: "list()" },
+      { label: "append", type: "method", apply: "append()" },
+      { label: "if", type: "keyword", apply: "if :\n    " },
+      { label: "else", type: "keyword", apply: "else:\n    " },
+      { label: "elif", type: "keyword", apply: "elif :\n    " },
+      { label: "for", type: "keyword", apply: "for i in range():\n    " },
+      { label: "while", type: "keyword", apply: "while :\n    " },
+      { label: "def", type: "keyword", apply: "def name():\n    " },
+      { label: "True", type: "constant" },
+      { label: "False", type: "constant" }
+    ]
+  };
 }
 
 function selectNextWordOccurrence(view: EditorView) {
@@ -568,8 +625,22 @@ function selectNextWordOccurrence(view: EditorView) {
   return true;
 }
 
-function countInputCalls(code: string) {
-  return code.match(/\binput\s*\(/g)?.length ?? 0;
+function appendConsoleText(lines: string[], text: string) {
+  const chunks = text.replace(/\r\n/g, "\n").split("\n");
+  const next = [...lines];
+
+  for (let index = 0; index < chunks.length; index += 1) {
+    const chunk = chunks[index];
+    if (chunk === "" && chunks.length === 1) continue;
+    if (next.length === 0) {
+      next.push(chunk);
+    } else {
+      next[next.length - 1] = `${next[next.length - 1]}${chunk}`;
+    }
+    if (index !== chunks.length - 1) next.push("");
+  }
+
+  return next;
 }
 
 function ProblemPane({ selectedProblem }: { selectedProblem: (typeof problems)[number] }) {

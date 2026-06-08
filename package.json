@@ -9,8 +9,10 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@codemirror/autocomplete": "^6.20.3",
     "@codemirror/commands": "^6.10.3",
     "@codemirror/lang-python": "^6.2.1",
+    "@codemirror/language": "^6.12.3",
     "@codemirror/state": "^6.6.0",
     "@codemirror/view": "^6.43.0",
     "@supabase/supabase-js": "^2.45.4",
@@ -18,7 +20,8 @@
     "lucide-react": "^0.468.0",
     "next": "^15.0.3",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "skulpt": "^1.2.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
