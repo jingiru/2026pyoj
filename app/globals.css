@@ -897,21 +897,32 @@ kbd {
 }
 
 .loginModal {
-  background: white;
+  background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 8px;
   box-shadow: 0 24px 80px rgba(15, 23, 42, 0.28);
+  color: var(--ink);
   max-width: 380px;
   padding: 22px;
   position: relative;
   width: 100%;
 }
 
+.loginModal input {
+  background: color-mix(in srgb, var(--panel) 86%, var(--bg));
+  color: var(--ink);
+}
+
+.loginModal input::placeholder {
+  color: var(--muted);
+}
+
 .iconButton {
   align-items: center;
-  background: #eef2f7;
+  background: color-mix(in srgb, var(--panel) 78%, var(--bg));
   border: 0;
   border-radius: 7px;
+  color: var(--ink);
   display: inline-flex;
   height: 36px;
   justify-content: center;
