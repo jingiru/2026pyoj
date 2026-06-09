@@ -61,7 +61,7 @@ export default function Home() {
   const [selectedProblemId, setSelectedProblemId] = useState(fallbackProblem.id);
   const selectedProblem = problems.find((problem) => problem.id === selectedProblemId) ?? fallbackProblem;
   const [code, setCode] = useState(selectedProblem.starterCode);
-  const [practiceCode, setPracticeCode] = useState("name = input()\nprint('안녕, ' + name)");
+  const [practiceCode, setPracticeCode] = useState("print()");
   const [consoleLines, setConsoleLines] = useState<string[]>([
     "Shift + Enter로 실행하세요.",
     "input()이 있으면 IDLE처럼 프롬프트 옆에 입력할 수 있어요."
