@@ -38,11 +38,12 @@ import { problemBooks, problems } from "@/lib/problems";
 import { runPythonWithSkulpt } from "@/lib/skulpt-runner";
 import {
   findOrCreateStudent,
+  getDataErrorMessage,
   isSupabaseConfigured,
   listSubmissions,
   saveSubmission
 } from "@/lib/supabase";
-import type { Student } from "@/lib/types";
+import type { Student, SubmissionWithStudent } from "@/lib/types";
 
 type Screen = "home" | "practice" | "solve" | "teacher";
 type ColorMode = "light" | "dark";
@@ -74,7 +75,7 @@ export default function Home() {
   const consoleInputRef = useRef<HTMLTextAreaElement | null>(null);
   const [notice, setNotice] = useState("");
   const [result, setResult] = useState<ReturnType<typeof judgePythonSubmission> | null>(null);
-  const [submissions, setSubmissions] = useState<any[]>([]);
+  const [submissions, setSubmissions] = useState<SubmissionWithStudent[]>([]);
   const [loading, setLoading] = useState(false);
 
   const dashboard = useMemo(() => {
@@ -91,7 +92,7 @@ export default function Home() {
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!/^\d{4}$/.test(studentNo)) {
+    if (!/^\d{4}$/.test(studentNo.trim())) {
       setNotice("학번은 4자리 숫자로 입력해주세요.");
       return;
     }
@@ -107,8 +108,8 @@ export default function Home() {
       setLoginOpen(false);
       setScreen("solve");
       setNotice(`${signedIn.name}님, 문제 풀이를 시작해볼까요?`);
-    } catch {
-      setNotice("로그인 중 문제가 생겼어요. Supabase 설정과 테이블을 확인해주세요.");
+    } catch (error) {
+      setNotice(getDataErrorMessage(error, "로그인 중 문제가 생겼어요. Supabase 연결을 확인해주세요."));
     } finally {
       setLoading(false);
     }
@@ -210,8 +211,8 @@ export default function Home() {
         feedback: judged.feedback
       });
       setNotice("제출 기록이 저장됐어요.");
-    } catch {
-      setNotice("채점은 완료됐지만 제출 기록 저장에 실패했어요.");
+    } catch (error) {
+      setNotice(getDataErrorMessage(error, "채점은 완료됐지만 제출 기록 저장에 실패했어요."));
     }
   }
 
@@ -219,8 +220,8 @@ export default function Home() {
     setLoading(true);
     try {
       setSubmissions(await listSubmissions());
-    } catch {
-      setNotice("대시보드를 불러오지 못했어요. Supabase 연결을 확인해주세요.");
+    } catch (error) {
+      setNotice(getDataErrorMessage(error, "대시보드를 불러오지 못했어요. Supabase 연결을 확인해주세요."));
     } finally {
       setLoading(false);
     }
@@ -743,7 +744,7 @@ function TeacherDashboard({
 }: {
   dashboard: { accepted: number; total: number; rate: number; triedStudents: number };
   loading: boolean;
-  submissions: any[];
+  submissions: SubmissionWithStudent[];
   onRefresh: () => void;
 }) {
   return (

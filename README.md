@@ -32,6 +32,13 @@ NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 ```
 
+최신 Supabase 프로젝트에서 publishable key를 제공하는 경우
+`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`를 대신 사용할 수 있습니다. 환경변수를 변경한 뒤에는
+Vercel에서 새로 배포해야 클라이언트 번들에 값이 반영됩니다.
+
+로그인 오류에 `42P01`, `42501`, `42703` 같은 코드가 표시되면 각각 테이블 없음, RLS/권한
+문제, 컬럼 불일치를 뜻합니다. 브라우저 개발자 도구 콘솔에는 Supabase의 상세 오류도 기록됩니다.
+
 ## 중요한 설계 메모
 
 Vercel 서버리스 함수에서 학생의 임의 파이썬 코드를 직접 실행하지 않습니다. 실제 운영 채점기는 Judge0, Piston, Docker 기반 샌드박스, 별도 채점 서버 중 하나로 분리하는 것이 안전합니다. 현재 구현은 초급 예시 문제를 체험할 수 있는 교체형 판정 모듈을 사용합니다.

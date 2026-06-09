@@ -37,3 +37,7 @@ export type Submission = {
   feedback: string;
   created_at?: string;
 };
+
+export type SubmissionWithStudent = Submission & {
+  students?: Pick<Student, "student_no" | "name"> | null;
+};

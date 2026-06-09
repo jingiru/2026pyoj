@@ -48,6 +48,11 @@ create index if not exists submissions_student_idx on public.submissions(student
 create index if not exists submissions_problem_idx on public.submissions(problem_id);
 create index if not exists submissions_created_at_idx on public.submissions(created_at desc);
 
+grant usage on schema public to anon, authenticated;
+grant select, insert on public.students to anon, authenticated;
+grant select on public.problems, public.test_cases to anon, authenticated;
+grant select, insert on public.submissions to anon, authenticated;
+
 alter table public.students enable row level security;
 alter table public.problems enable row level security;
 alter table public.test_cases enable row level security;
@@ -56,84 +61,82 @@ alter table public.submissions enable row level security;
 drop policy if exists "students can self register" on public.students;
 create policy "students can self register"
 on public.students for insert
-to anon
+to anon, authenticated
 with check (true);
 
 drop policy if exists "students can find own login" on public.students;
 create policy "students can find own login"
 on public.students for select
-to anon
+to anon, authenticated
 using (true);
 
 drop policy if exists "public can read problems" on public.problems;
 create policy "public can read problems"
 on public.problems for select
-to anon
+to anon, authenticated
 using (true);
 
 drop policy if exists "public can read test cases" on public.test_cases;
 create policy "public can read test cases"
 on public.test_cases for select
-to anon
+to anon, authenticated
 using (true);
 
 drop policy if exists "students can create submissions" on public.submissions;
 create policy "students can create submissions"
 on public.submissions for insert
-to anon
+to anon, authenticated
 with check (true);
 
 drop policy if exists "class dashboard can read submissions" on public.submissions;
 create policy "class dashboard can read submissions"
 on public.submissions for select
-to anon
+to anon, authenticated
 using (true);
 
 insert into public.problems (
-  id,
-  title,
-  unit,
-  level,
-  statement,
-  input_description,
-  output_description,
-  starter_code,
-  hint,
-  sort_order
+  id, title, unit, level, statement, input_description, output_description,
+  starter_code, hint, sort_order
 ) values
   (
-    'print-int-01',
-    '정수 출력 01',
-    '출력',
-    'start',
-    '1을 출력하세요.',
-    '입력은 없습니다.',
-    '1을 출력합니다.',
-    'print(1)',
-    'print() 안에 출력하고 싶은 값을 넣으면 됩니다.',
-    1
+    'print-int-01', '정수 출력 01', '출력', 'start', '1을 출력하세요.',
+    '입력은 없습니다.', '1을 출력합니다.', 'print(1)',
+    'print() 안에 출력하고 싶은 값을 넣으면 됩니다.', 1
   ),
   (
-    'repeat-char-02',
-    '변수와 입력 02',
-    '입력과 변수',
-    'practice',
+    'repeat-char-02', '변수와 입력 02', '입력과 변수', 'practice',
     '사용자로부터 어떤 문자를 입력 받아 10번 반복하여 출력하는 프로그램을 작성하세요.',
-    '1개의 문자가 주어집니다.',
-    '문자를 10번 반복하여 출력합니다.',
-    'ch = input()
-print(ch * 10)',
-    '문자열도 곱셈을 사용할 수 있어요. 예: ''a'' * 3',
-    2
+    '1개의 문자가 주어집니다.', '문자를 10번 반복하여 출력합니다.',
+    'ch = input()\nprint(ch * 10)',
+    '문자열도 곱셈을 사용할 수 있어요. 예: ''a'' * 3', 2
   )
-on conflict (id) do nothing;
+on conflict (id) do update set
+  title = excluded.title,
+  unit = excluded.unit,
+  level = excluded.level,
+  statement = excluded.statement,
+  input_description = excluded.input_description,
+  output_description = excluded.output_description,
+  starter_code = excluded.starter_code,
+  hint = excluded.hint,
+  sort_order = excluded.sort_order;
 
-insert into public.test_cases (problem_id, input, output, is_sample, sort_order) values
-  ('print-int-01', '', '1', true, 1),
-  ('repeat-char-02', 'a', 'aaaaaaaaaa', true, 1),
-  ('repeat-char-02', 'b', 'bbbbbbbbbb', false, 2),
-  ('repeat-char-02', '1', '1111111111', false, 3),
-  ('repeat-char-02', '*', '**********', false, 4),
-  ('repeat-char-02', '가', '가가가가가가가가가가', false, 5),
-  ('repeat-char-02', 'x', 'xxxxxxxxxx', false, 6)
-on conflict do nothing;
+insert into public.test_cases (problem_id, input, output, is_sample, sort_order)
+select values_to_insert.*
+from (
+  values
+    ('print-int-01', '', '1', true, 1),
+    ('repeat-char-02', 'a', 'aaaaaaaaaa', true, 1),
+    ('repeat-char-02', 'b', 'bbbbbbbbbb', false, 2),
+    ('repeat-char-02', '1', '1111111111', false, 3),
+    ('repeat-char-02', '*', '**********', false, 4),
+    ('repeat-char-02', '가', '가가가가가가가가가가', false, 5),
+    ('repeat-char-02', 'x', 'xxxxxxxxxx', false, 6)
+) as values_to_insert(problem_id, input, output, is_sample, sort_order)
+where not exists (
+  select 1
+  from public.test_cases existing
+  where existing.problem_id = values_to_insert.problem_id
+    and existing.input = values_to_insert.input
+    and existing.output = values_to_insert.output
+);
