@@ -341,6 +341,12 @@ button {
   opacity: 0.35;
 }
 
+.fontSizeControl .fontSizeStepButton {
+  font-size: 12px;
+  font-weight: 700;
+  width: 40px;
+}
+
 .fontSizeControl span,
 .consoleHeader .fontSizeControl span {
   border-left: 1px solid var(--line);

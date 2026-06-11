@@ -268,8 +268,10 @@ export default function Home() {
                   <FontSizeControl
                     label="코드 글자 크기"
                     value={codeFontSize}
+                    onDecreaseLarge={() => setCodeFontSize((size) => Math.max(12, size - 10))}
                     onDecrease={() => setCodeFontSize((size) => Math.max(12, size - 1))}
                     onIncrease={() => setCodeFontSize((size) => Math.min(60, size + 1))}
+                    onIncreaseLarge={() => setCodeFontSize((size) => Math.min(60, size + 10))}
                   />
                   <button className="primaryButton" onClick={runPractice}>
                     <Play size={17} />
@@ -293,8 +295,10 @@ export default function Home() {
                   <FontSizeControl
                     label="콘솔 글자 크기"
                     value={consoleFontSize}
+                    onDecreaseLarge={() => setConsoleFontSize((size) => Math.max(12, size - 10))}
                     onDecrease={() => setConsoleFontSize((size) => Math.max(12, size - 1))}
                     onIncrease={() => setConsoleFontSize((size) => Math.min(60, size + 1))}
+                    onIncreaseLarge={() => setConsoleFontSize((size) => Math.min(60, size + 10))}
                   />
                   <span>{pendingPrompt !== null ? "입력 대기 중" : isPracticeRunning ? "실행 중" : "실행 결과"}</span>
                 </div>
@@ -535,16 +539,30 @@ function HomeChoice({ onPractice, onSolve }: { onPractice: () => void; onSolve: 
 function FontSizeControl({
   label,
   value,
+  onDecreaseLarge,
   onDecrease,
-  onIncrease
+  onIncrease,
+  onIncreaseLarge
 }: {
   label: string;
   value: number;
+  onDecreaseLarge: () => void;
   onDecrease: () => void;
   onIncrease: () => void;
+  onIncreaseLarge: () => void;
 }) {
   return (
     <div className="fontSizeControl" aria-label={label}>
+      <button
+        type="button"
+        className="fontSizeStepButton"
+        onClick={onDecreaseLarge}
+        disabled={value <= 12}
+        aria-label={`${label} 10 줄이기`}
+        title={`${label} 10px 줄이기`}
+      >
+        -10
+      </button>
       <button
         type="button"
         onClick={onDecrease}
@@ -563,6 +581,16 @@ function FontSizeControl({
         title={`${label} 키우기`}
       >
         <Plus size={15} />
+      </button>
+      <button
+        type="button"
+        className="fontSizeStepButton"
+        onClick={onIncreaseLarge}
+        disabled={value >= 60}
+        aria-label={`${label} 10 키우기`}
+        title={`${label} 10px 키우기`}
+      >
+        +10
       </button>
     </div>
   );
