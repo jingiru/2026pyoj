@@ -16,8 +16,10 @@ import {
   copyLineDown
 } from "@codemirror/commands";
 import { python, pythonLanguage } from "@codemirror/lang-python";
+import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { EditorSelection, Prec } from "@codemirror/state";
 import { EditorView, keymap, lineNumbers } from "@codemirror/view";
+import { tags } from "@lezer/highlight";
 import CodeMirror from "@uiw/react-codemirror";
 import {
   BookOpen,
@@ -47,6 +49,34 @@ import type { Student, SubmissionWithStudent } from "@/lib/types";
 
 type Screen = "home" | "practice" | "solve" | "teacher";
 type ColorMode = "light" | "dark";
+
+const sublimeDarkHighlight = HighlightStyle.define([
+  { tag: tags.comment, color: "#75715e", fontStyle: "italic" },
+  { tag: [tags.keyword, tags.controlKeyword, tags.operatorKeyword], color: "#f92672" },
+  { tag: [tags.bool, tags.null], color: "#ae81ff" },
+  { tag: [tags.number, tags.integer, tags.float], color: "#ae81ff" },
+  { tag: [tags.string, tags.special(tags.string)], color: "#e6db74" },
+  { tag: [tags.function(tags.variableName), tags.labelName], color: "#a6e22e" },
+  { tag: [tags.className, tags.typeName], color: "#a6e22e", fontStyle: "italic" },
+  { tag: [tags.definition(tags.variableName), tags.variableName], color: "#f8f8f2" },
+  { tag: [tags.propertyName, tags.attributeName], color: "#66d9ef" },
+  { tag: [tags.operator, tags.punctuation], color: "#f8f8f2" },
+  { tag: tags.meta, color: "#66d9ef" }
+]);
+
+const sublimeLightHighlight = HighlightStyle.define([
+  { tag: tags.comment, color: "#6a737d", fontStyle: "italic" },
+  { tag: [tags.keyword, tags.controlKeyword, tags.operatorKeyword], color: "#d73a49" },
+  { tag: [tags.bool, tags.null], color: "#6f42c1" },
+  { tag: [tags.number, tags.integer, tags.float], color: "#6f42c1" },
+  { tag: [tags.string, tags.special(tags.string)], color: "#8a6d00" },
+  { tag: [tags.function(tags.variableName), tags.labelName], color: "#5a7d00" },
+  { tag: [tags.className, tags.typeName], color: "#5a7d00", fontStyle: "italic" },
+  { tag: [tags.definition(tags.variableName), tags.variableName], color: "#24292f" },
+  { tag: [tags.propertyName, tags.attributeName], color: "#007a8a" },
+  { tag: [tags.operator, tags.punctuation], color: "#24292f" },
+  { tag: tags.meta, color: "#007a8a" }
+]);
 
 export default function Home() {
   const [screen, setScreen] = useState<Screen>("home");
@@ -617,6 +647,7 @@ function CodeEditor({
       autocompletion(),
       closeBrackets(),
       EditorView.lineWrapping,
+      syntaxHighlighting(colorMode === "dark" ? sublimeDarkHighlight : sublimeLightHighlight),
       EditorView.theme({
         "&": {
           backgroundColor: colorMode === "dark" ? "#111827" : "#ffffff",
