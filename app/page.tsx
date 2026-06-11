@@ -135,6 +135,22 @@ export default function Home() {
   }, [pendingPrompt]);
 
   useEffect(() => {
+    if (!loginOpen && !teacherLoginOpen) return;
+
+    function closeModalWithEscape(event: globalThis.KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      if (teacherLoginOpen) {
+        closeTeacherLogin();
+      } else {
+        setLoginOpen(false);
+      }
+    }
+
+    window.addEventListener("keydown", closeModalWithEscape);
+    return () => window.removeEventListener("keydown", closeModalWithEscape);
+  }, [loginOpen, teacherLoginOpen]);
+
+  useEffect(() => {
     let cancelled = false;
 
     async function restoreScreen() {
