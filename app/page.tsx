@@ -27,9 +27,7 @@ import {
   LayoutDashboard,
   Lightbulb,
   LogIn,
-  Minus,
   Play,
-  Plus,
   Send,
   Sparkles,
   X
@@ -564,22 +562,24 @@ function FontSizeControl({
       </button>
       <button
         type="button"
+        className="fontSizeFineButton"
         onClick={onDecrease}
         disabled={value <= 12}
-        aria-label={`${label} 줄이기`}
-        title={`${label} 줄이기`}
+        aria-label={`${label} 1 줄이기`}
+        title={`${label} 1px 줄이기`}
       >
-        <Minus size={15} />
+        -1
       </button>
       <span aria-live="polite">{value}px</span>
       <button
         type="button"
+        className="fontSizeFineButton"
         onClick={onIncrease}
         disabled={value >= 60}
-        aria-label={`${label} 키우기`}
-        title={`${label} 키우기`}
+        aria-label={`${label} 1 키우기`}
+        title={`${label} 1px 키우기`}
       >
-        <Plus size={15} />
+        +1
       </button>
       <button
         type="button"
