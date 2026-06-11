@@ -169,6 +169,30 @@ button {
   background: var(--primary-dark);
 }
 
+.resetCodeButton {
+  align-items: center;
+  background: color-mix(in srgb, #f43f5e 12%, var(--panel));
+  border: 1px solid color-mix(in srgb, #f43f5e 38%, var(--line));
+  border-radius: 7px;
+  color: #e11d48;
+  display: inline-flex;
+  font-weight: 700;
+  gap: 7px;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 14px;
+  white-space: nowrap;
+}
+
+.resetCodeButton:hover {
+  background: color-mix(in srgb, #f43f5e 20%, var(--panel));
+  border-color: #fb7185;
+}
+
+.darkMode .resetCodeButton {
+  color: #fda4af;
+}
+
 .primaryButton:disabled {
   opacity: 0.65;
 }
@@ -355,8 +379,6 @@ button {
 
 .fontSizeControl span,
 .consoleHeader .fontSizeControl span {
-  border-left: 1px solid var(--line);
-  border-right: 1px solid var(--line);
   color: var(--muted);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
@@ -1054,7 +1076,8 @@ kbd {
   }
 
   .ideActions .primaryButton,
-  .ideActions .ghostButton {
+  .ideActions .ghostButton,
+  .ideActions .resetCodeButton {
     flex: 1;
   }
 

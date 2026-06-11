@@ -360,7 +360,7 @@ export default function Home() {
                     onIncrease={() => setCodeFontSize((size) => Math.min(60, size + 1))}
                     onIncreaseLarge={() => setCodeFontSize((size) => Math.min(60, size + 10))}
                   />
-                  <button className="ghostButton" onClick={resetPracticeCode}>
+                  <button className="resetCodeButton" onClick={resetPracticeCode}>
                     <Trash2 size={17} />
                     코드 초기화
                   </button>
