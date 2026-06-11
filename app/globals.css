@@ -917,6 +917,14 @@ kbd {
   margin-bottom: 18px;
 }
 
+.dashboardActions,
+.modalActions {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 .metrics {
   display: grid;
   gap: 12px;
@@ -1044,6 +1052,22 @@ kbd {
   color: var(--muted);
 }
 
+.modalError {
+  background: color-mix(in srgb, var(--rose) 10%, var(--panel));
+  border: 1px solid color-mix(in srgb, var(--rose) 34%, var(--line));
+  border-radius: 7px;
+  color: var(--rose);
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 4px 0 14px;
+  padding: 10px 12px;
+}
+
+.modalActions .primaryButton,
+.modalActions .ghostButton {
+  min-width: 96px;
+}
+
 .iconButton {
   align-items: center;
   background: color-mix(in srgb, var(--panel) 78%, var(--bg));
@@ -1088,6 +1112,14 @@ kbd {
   .dashboardHeader {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .dashboardActions {
+    width: 100%;
+  }
+
+  .dashboardActions button {
+    flex: 1;
   }
 
   .modeSwitch,

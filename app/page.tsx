@@ -29,6 +29,7 @@ import {
   LayoutDashboard,
   Lightbulb,
   LogIn,
+  LogOut,
   Play,
   Send,
   Sparkles,
@@ -54,6 +55,7 @@ type ColorMode = "light" | "dark";
 const PRACTICE_CODE_STORAGE_KEY = "pyoj:practice-code";
 const SELECTED_PROBLEM_STORAGE_KEY = "pyoj:selected-problem";
 const PROBLEM_CODE_STORAGE_PREFIX = "pyoj:problem-code:";
+const TEACHER_AUTH_STORAGE_KEY = "teacherAuthenticated";
 const DEFAULT_PROBLEM = problems.find((problem) => problem.bookId === problemBooks[0].id) ?? problems[0];
 
 const sublimeDarkHighlight = HighlightStyle.define([
@@ -88,6 +90,12 @@ export default function Home() {
   const [screen, setScreen] = useState<Screen>("home");
   const [colorMode, setColorMode] = useState<ColorMode>("light");
   const [loginOpen, setLoginOpen] = useState(false);
+  const [teacherLoginOpen, setTeacherLoginOpen] = useState(false);
+  const [teacherPassword, setTeacherPassword] = useState("");
+  const [teacherLoginError, setTeacherLoginError] = useState("");
+  const [isTeacherAuthenticated, setIsTeacherAuthenticated] = useState(false);
+  const [teacherAuthReady, setTeacherAuthReady] = useState(false);
+  const [teacherLoginLoading, setTeacherLoginLoading] = useState(false);
   const [student, setStudent] = useState<Student | null>(null);
   const [studentNo, setStudentNo] = useState("");
   const [name, setName] = useState("");
@@ -130,8 +138,20 @@ export default function Home() {
   }, [pendingPrompt]);
 
   useEffect(() => {
+    const authenticated = getTeacherAuthentication();
+    setIsTeacherAuthenticated(authenticated);
+    setTeacherAuthReady(true);
+
     function syncScreenFromUrl() {
-      setScreen(getScreenFromUrl());
+      const nextScreen = getScreenFromUrl();
+      if (nextScreen === "teacher" && !getTeacherAuthentication()) {
+        setScreen("home");
+        setTeacherLoginOpen(true);
+        return;
+      }
+
+      setScreen(nextScreen);
+      if (nextScreen === "teacher") void refreshDashboard();
     }
 
     syncScreenFromUrl();
@@ -208,6 +228,63 @@ export default function Home() {
       return;
     }
     setLoginOpen(true);
+  }
+
+  function enterTeacherMode() {
+    if (isTeacherAuthenticated) {
+      navigateTo("teacher");
+      void refreshDashboard();
+      return;
+    }
+
+    setTeacherPassword("");
+    setTeacherLoginError("");
+    setTeacherLoginOpen(true);
+  }
+
+  async function handleTeacherLogin(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setTeacherLoginError("");
+    setTeacherLoginLoading(true);
+
+    try {
+      const response = await fetch("/api/teacher-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: teacherPassword })
+      });
+      const data = (await response.json()) as { ok?: boolean; message?: string };
+
+      if (!response.ok || !data.ok) {
+        setTeacherLoginError(data.message ?? "교사 로그인에 실패했습니다.");
+        return;
+      }
+
+      sessionStorage.setItem(TEACHER_AUTH_STORAGE_KEY, "true");
+      setIsTeacherAuthenticated(true);
+      setTeacherPassword("");
+      setTeacherLoginOpen(false);
+      navigateTo("teacher");
+      void refreshDashboard();
+    } catch {
+      setTeacherLoginError("교사 로그인 요청을 처리하지 못했습니다.");
+    } finally {
+      setTeacherLoginLoading(false);
+    }
+  }
+
+  function closeTeacherLogin() {
+    setTeacherLoginOpen(false);
+    setTeacherPassword("");
+    setTeacherLoginError("");
+    if (getScreenFromUrl() === "teacher" && !isTeacherAuthenticated) navigateTo("home");
+  }
+
+  function logoutTeacher() {
+    sessionStorage.removeItem(TEACHER_AUTH_STORAGE_KEY);
+    setIsTeacherAuthenticated(false);
+    setSubmissions([]);
+    navigateTo("home");
   }
 
   function changeBook(bookId: string) {
@@ -334,10 +411,7 @@ export default function Home() {
         onHome={() => navigateTo("home")}
         onPractice={() => navigateTo("practice")}
         onSolve={enterSolveMode}
-        onTeacher={() => {
-          navigateTo("teacher");
-          void refreshDashboard();
-        }}
+        onTeacher={enterTeacherMode}
         onToggleColorMode={() => setColorMode((mode) => (mode === "dark" ? "light" : "dark"))}
       />
 
@@ -514,12 +588,13 @@ export default function Home() {
         </section>
       )}
 
-      {screen === "teacher" && (
+      {teacherAuthReady && screen === "teacher" && isTeacherAuthenticated && (
         <TeacherDashboard
           dashboard={dashboard}
           loading={loading}
           submissions={submissions}
           onRefresh={refreshDashboard}
+          onLogout={logoutTeacher}
         />
       )}
 
@@ -556,6 +631,46 @@ export default function Home() {
             <p className="helperText">
               처음이면 자동 등록되고, 다음부터 같은 학번과 이름으로 이어서 풀 수 있어요.
             </p>
+          </div>
+        </div>
+      )}
+
+      {teacherLoginOpen && (
+        <div className="modalBackdrop" role="presentation">
+          <div className="loginModal" role="dialog" aria-modal="true" aria-labelledby="teacher-login-title">
+            <button className="iconButton closeButton" onClick={closeTeacherLogin} aria-label="닫기">
+              <X size={18} />
+            </button>
+            <div className="sectionTitle" id="teacher-login-title">
+              <LogIn size={18} />
+              교사 모드 로그인
+            </div>
+            <form onSubmit={handleTeacherLogin}>
+              <label>
+                비밀번호
+                <input
+                  autoFocus
+                  type="password"
+                  autoComplete="current-password"
+                  value={teacherPassword}
+                  onChange={(event) => setTeacherPassword(event.target.value)}
+                />
+              </label>
+              {teacherLoginError && (
+                <p className="modalError" role="alert">
+                  {teacherLoginError}
+                </p>
+              )}
+              <div className="modalActions">
+                <button type="button" className="ghostButton" onClick={closeTeacherLogin}>
+                  취소
+                </button>
+                <button className="primaryButton" disabled={teacherLoginLoading || !teacherPassword}>
+                  <LogIn size={18} />
+                  로그인
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -951,12 +1066,14 @@ function TeacherDashboard({
   dashboard,
   loading,
   submissions,
-  onRefresh
+  onRefresh,
+  onLogout
 }: {
   dashboard: { accepted: number; total: number; rate: number; triedStudents: number };
   loading: boolean;
   submissions: SubmissionWithStudent[];
   onRefresh: () => void;
+  onLogout: () => void;
 }) {
   return (
     <section className="teacherView">
@@ -965,10 +1082,16 @@ function TeacherDashboard({
           <span className="pill">교사 수업 지원</span>
           <h1>학급 대시보드</h1>
         </div>
-        <button className="primaryButton" onClick={onRefresh} disabled={loading}>
-          <Sparkles size={18} />
-          새로고침
-        </button>
+        <div className="dashboardActions">
+          <button className="ghostButton" onClick={onLogout}>
+            <LogOut size={18} />
+            로그아웃
+          </button>
+          <button className="primaryButton" onClick={onRefresh} disabled={loading}>
+            <Sparkles size={18} />
+            새로고침
+          </button>
+        </div>
       </div>
       <div className="metrics">
         <Metric label="총 제출" value={`${dashboard.total}`} />
@@ -1028,6 +1151,14 @@ function problemTitle(problemId: string) {
 function getScreenFromUrl(): Screen {
   const screen = new URL(window.location.href).searchParams.get("screen");
   return screen === "practice" || screen === "solve" || screen === "teacher" ? screen : "home";
+}
+
+function getTeacherAuthentication() {
+  try {
+    return sessionStorage.getItem(TEACHER_AUTH_STORAGE_KEY) === "true";
+  } catch {
+    return false;
+  }
 }
 
 function getSavedProblemCode(problemId: string) {
