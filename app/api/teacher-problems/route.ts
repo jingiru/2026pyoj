@@ -1,0 +1,131 @@
+import { type NextRequest, NextResponse } from "next/server";
+import { loadCurriculum } from "@/lib/curriculum-server";
+import { createSupabaseAdmin } from "@/lib/supabase-admin";
+import { isTeacherRequestAuthenticated } from "@/lib/teacher-auth";
+import type { Problem } from "@/lib/types";
+
+type ProblemPayload = Omit<Problem, "examples" | "testCases"> & {
+  testCases: Array<{ input: string; output: string; isSample?: boolean }>;
+};
+
+export async function GET(request: NextRequest) {
+  const authError = authenticate(request);
+  if (authError) return authError;
+  const supabase = createSupabaseAdmin()!;
+
+  try {
+    const curriculum = await loadCurriculum(supabase, false);
+    return NextResponse.json({ ok: true, ...curriculum });
+  } catch (error) {
+    console.error("[Teacher problems]", error);
+    return NextResponse.json(
+      { ok: false, message: "문제 관리 데이터를 불러오지 못했습니다." },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request: NextRequest) {
+  const authError = authenticate(request);
+  if (authError) return authError;
+  const payload = await readPayload(request);
+  if (!payload.ok) return payload.response;
+  return saveProblem(payload.problem, false);
+}
+
+export async function PUT(request: NextRequest) {
+  const authError = authenticate(request);
+  if (authError) return authError;
+  const payload = await readPayload(request);
+  if (!payload.ok) return payload.response;
+  return saveProblem(payload.problem, true);
+}
+
+export async function DELETE(request: NextRequest) {
+  const authError = authenticate(request);
+  if (authError) return authError;
+  const problemId = new URL(request.url).searchParams.get("id");
+  if (!problemId) {
+    return NextResponse.json({ ok: false, message: "삭제할 문제 ID가 없습니다." }, { status: 400 });
+  }
+
+  const supabase = createSupabaseAdmin()!;
+  const { error } = await supabase.from("problems").delete().eq("id", problemId);
+  if (error) return databaseError(error, "문제를 삭제하지 못했습니다.");
+  return NextResponse.json({ ok: true });
+}
+
+async function saveProblem(problem: ProblemPayload, updating: boolean) {
+  const supabase = createSupabaseAdmin()!;
+  const problemRow = {
+    id: problem.id,
+    book_id: problem.bookId,
+    title: problem.title,
+    unit: problem.unit,
+    level: problem.level,
+    statement: problem.statement,
+    input_description: problem.inputDescription,
+    output_description: problem.outputDescription,
+    starter_code: problem.starterCode,
+    hint: problem.hint,
+    sort_order: problem.order,
+    is_published: problem.isPublished ?? true,
+    updated_at: new Date().toISOString()
+  };
+  const query = updating
+    ? supabase.from("problems").update(problemRow).eq("id", problem.id)
+    : supabase.from("problems").insert(problemRow);
+  const { error: problemError } = await query;
+  if (problemError) return databaseError(problemError, "문제를 저장하지 못했습니다.");
+
+  const { error: deleteError } = await supabase.from("test_cases").delete().eq("problem_id", problem.id);
+  if (deleteError) return databaseError(deleteError, "기존 테스트케이스를 정리하지 못했습니다.");
+
+  const testCases = problem.testCases.map((testCase, index) => ({
+    problem_id: problem.id,
+    input: testCase.input,
+    expected_output: testCase.output,
+    is_sample: testCase.isSample ?? index === 0,
+    score: 1,
+    sort_order: index + 1
+  }));
+  if (testCases.length > 0) {
+    const { error: testError } = await supabase.from("test_cases").insert(testCases);
+    if (testError) return databaseError(testError, "테스트케이스를 저장하지 못했습니다.");
+  }
+
+  return NextResponse.json({ ok: true });
+}
+
+async function readPayload(request: NextRequest) {
+  const problem = (await request.json().catch(() => null)) as ProblemPayload | null;
+  if (
+    !problem ||
+    !/^[a-z0-9][a-z0-9-]*$/.test(problem.id) ||
+    !problem.bookId ||
+    !problem.title.trim() ||
+    !problem.statement.trim() ||
+    !["start", "practice", "challenge"].includes(problem.level) ||
+    !Array.isArray(problem.testCases) ||
+    problem.testCases.length === 0
+  ) {
+    return {
+      ok: false as const,
+      response: NextResponse.json(
+        { ok: false, message: "문제 필수 항목과 테스트케이스를 확인해주세요." },
+        { status: 400 }
+      )
+    };
+  }
+  return { ok: true as const, problem };
+}
+
+function authenticate(request: NextRequest) {
+  if (isTeacherRequestAuthenticated(request)) return null;
+  return NextResponse.json({ ok: false, message: "교사 로그인이 필요합니다." }, { status: 401 });
+}
+
+function databaseError(error: { code?: string; message: string }, message: string) {
+  console.error("[Teacher problems]", error);
+  return NextResponse.json({ ok: false, message, code: error.code }, { status: 500 });
+}

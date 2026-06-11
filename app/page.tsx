@@ -30,32 +30,45 @@ import {
   Lightbulb,
   LogIn,
   LogOut,
+  Pencil,
   PanelLeftClose,
   PanelLeftOpen,
   Play,
+  Plus,
   Send,
   Sparkles,
   Trash2,
   X
 } from "lucide-react";
 import { FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
-import { judgePythonSubmission } from "@/lib/judge";
-import { problemBooks, problems } from "@/lib/problems";
+import {
+  problemBooks as fallbackProblemBooks,
+  problems as fallbackProblems
+} from "@/lib/problems";
 import { runPythonWithSkulpt } from "@/lib/skulpt-runner";
 import {
   findOrCreateStudent,
   getDataErrorMessage,
   saveSubmission
 } from "@/lib/supabase";
-import type { Student, SubmissionWithStudent } from "@/lib/types";
+import type { Problem, ProblemBook, Student, SubmissionWithStudent } from "@/lib/types";
 
 type Screen = "home" | "practice" | "solve" | "teacher";
 type ColorMode = "light" | "dark";
+type JudgeResult = {
+  status: "accepted" | "wrong_answer" | "runtime_error";
+  passedCount: number;
+  totalCount: number;
+  feedback: string;
+  cases: Array<{ input: string; output: string; actual: string; passed: boolean }>;
+};
 
 const PRACTICE_CODE_STORAGE_KEY = "pyoj:practice-code";
 const SELECTED_PROBLEM_STORAGE_KEY = "pyoj:selected-problem";
 const PROBLEM_CODE_STORAGE_PREFIX = "pyoj:problem-code:";
-const DEFAULT_PROBLEM = problems.find((problem) => problem.bookId === problemBooks[0].id) ?? problems[0];
+const DEFAULT_PROBLEM =
+  fallbackProblems.find((problem) => problem.bookId === fallbackProblemBooks[0].id) ??
+  fallbackProblems[0];
 
 const sublimeDarkHighlight = HighlightStyle.define([
   { tag: tags.comment, color: "#75715e", fontStyle: "italic" },
@@ -98,11 +111,14 @@ export default function Home() {
   const [student, setStudent] = useState<Student | null>(null);
   const [studentNo, setStudentNo] = useState("");
   const [name, setName] = useState("");
-  const [selectedBookId, setSelectedBookId] = useState(problemBooks[0].id);
-  const selectedProblems = problems.filter((problem) => problem.bookId === selectedBookId);
+  const [availableBooks, setAvailableBooks] = useState<ProblemBook[]>(fallbackProblemBooks);
+  const [availableProblems, setAvailableProblems] = useState<Problem[]>(fallbackProblems);
+  const [selectedBookId, setSelectedBookId] = useState(fallbackProblemBooks[0].id);
+  const selectedProblems = availableProblems.filter((problem) => problem.bookId === selectedBookId);
   const fallbackProblem = selectedProblems[0] ?? DEFAULT_PROBLEM;
   const [selectedProblemId, setSelectedProblemId] = useState(DEFAULT_PROBLEM.id);
-  const selectedProblem = problems.find((problem) => problem.id === selectedProblemId) ?? DEFAULT_PROBLEM;
+  const selectedProblem =
+    availableProblems.find((problem) => problem.id === selectedProblemId) ?? fallbackProblem;
   const [code, setCode] = useState(DEFAULT_PROBLEM.starterCode);
   const [practiceCode, setPracticeCode] = useState("print()");
   const [codeFontSize, setCodeFontSize] = useState(15);
@@ -119,7 +135,8 @@ export default function Home() {
   const queuedConsoleInputsRef = useRef<string[]>([]);
   const consoleInputRef = useRef<HTMLTextAreaElement | null>(null);
   const [notice, setNotice] = useState("");
-  const [result, setResult] = useState<ReturnType<typeof judgePythonSubmission> | null>(null);
+  const [result, setResult] = useState<JudgeResult | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [solveConsoleLines, setSolveConsoleLines] = useState<string[]>([
     "실행 버튼 또는 Shift + Enter로 실행하세요."
   ]);
@@ -248,11 +265,15 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    void refreshCurriculum();
+  }, []);
+
+  useEffect(() => {
     const savedPracticeCode = getStoredValue(PRACTICE_CODE_STORAGE_KEY);
     if (savedPracticeCode !== null) setPracticeCode(savedPracticeCode);
 
     const savedProblemId = getStoredValue(SELECTED_PROBLEM_STORAGE_KEY);
-    const savedProblem = problems.find((problem) => problem.id === savedProblemId);
+    const savedProblem = fallbackProblems.find((problem) => problem.id === savedProblemId);
     if (savedProblem) {
       setSelectedProblemId(savedProblem.id);
       setSelectedBookId(savedProblem.bookId);
@@ -379,18 +400,44 @@ export default function Home() {
   }
 
   function changeBook(bookId: string) {
-    const nextProblem = problems.find((problem) => problem.bookId === bookId);
+    const nextProblem = availableProblems.find((problem) => problem.bookId === bookId);
     setSelectedBookId(bookId);
     if (nextProblem) changeProblem(nextProblem.id);
   }
 
   function changeProblem(problemId: string) {
-    const problem = problems.find((item) => item.id === problemId) ?? problems[0];
+    const problem = availableProblems.find((item) => item.id === problemId) ?? availableProblems[0];
+    if (!problem) return;
     setSelectedProblemId(problem.id);
     setSelectedBookId(problem.bookId);
     setCode(getSavedProblemCode(problem.id) ?? problem.starterCode);
     setResult(null);
     resetSolveConsole();
+  }
+
+  async function refreshCurriculum() {
+    try {
+      const response = await fetch("/api/curriculum", { cache: "no-store" });
+      const data = (await response.json()) as {
+        ok?: boolean;
+        books?: ProblemBook[];
+        problems?: Problem[];
+      };
+      if (!response.ok || !data.ok || !data.books?.length || !data.problems?.length) return;
+
+      setAvailableBooks(data.books);
+      setAvailableProblems(data.problems);
+      const savedProblemId = getStoredValue(SELECTED_PROBLEM_STORAGE_KEY);
+      const nextProblem =
+        data.problems.find((problem) => problem.id === savedProblemId) ??
+        data.problems.find((problem) => problem.id === selectedProblemId) ??
+        data.problems[0];
+      setSelectedBookId(nextProblem.bookId);
+      setSelectedProblemId(nextProblem.id);
+      setCode(getSavedProblemCode(nextProblem.id) ?? nextProblem.starterCode);
+    } catch {
+      // Bundled curriculum remains available when the DB cannot be reached.
+    }
   }
 
   function resetPracticeCode() {
@@ -463,11 +510,12 @@ export default function Home() {
       setLoginOpen(true);
       return;
     }
+    if (isSubmitting) return;
 
-    const judged = judgePythonSubmission(selectedProblem, code);
-    setResult(judged);
-
+    setIsSubmitting(true);
     try {
+      const judged = await judgeProblemSubmission(selectedProblem, code);
+      setResult(judged);
       await saveSubmission({
         student_id: student.id,
         problem_id: selectedProblem.id,
@@ -479,7 +527,9 @@ export default function Home() {
       });
       setNotice("제출 기록이 저장됐어요.");
     } catch (error) {
-      setNotice(getDataErrorMessage(error, "채점은 완료됐지만 제출 기록 저장에 실패했어요."));
+      setNotice(getDataErrorMessage(error, "채점 또는 제출 기록 저장에 실패했어요."));
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -762,8 +812,8 @@ export default function Home() {
                   <PanelLeftClose size={18} />
                 </button>
               </div>
-            {problemBooks.map((book) => {
-              const count = problems.filter((problem) => problem.bookId === book.id).length;
+            {availableBooks.map((book) => {
+              const count = availableProblems.filter((problem) => problem.bookId === book.id).length;
               return (
                 <button
                   key={book.id}
@@ -850,9 +900,9 @@ export default function Home() {
                     <Play size={17} />
                     {isSolveRunning ? "실행 중" : "실행"}
                   </button>
-                  <button className="primaryButton" onClick={submitCode}>
+                  <button className="primaryButton" onClick={() => void submitCode()} disabled={isSubmitting}>
                     <Send size={17} />
-                    제출
+                    {isSubmitting ? "채점 중" : "제출"}
                   </button>
                 </div>
               </div>
@@ -947,7 +997,10 @@ export default function Home() {
           dashboard={dashboard}
           loading={loading}
           submissions={submissions}
+          books={availableBooks}
+          problems={availableProblems}
           onRefresh={refreshDashboard}
+          onCurriculumChanged={refreshCurriculum}
           onLogout={() => void logoutTeacher()}
         />
       )}
@@ -1360,7 +1413,7 @@ function appendConsoleText(lines: string[], text: string) {
   return next;
 }
 
-function ProblemPane({ selectedProblem }: { selectedProblem: (typeof problems)[number] }) {
+function ProblemPane({ selectedProblem }: { selectedProblem: Problem }) {
   return (
     <article className="problemPane">
       <div className="problemHeader">
@@ -1398,7 +1451,53 @@ function ProblemPane({ selectedProblem }: { selectedProblem: (typeof problems)[n
   );
 }
 
-function ResultPanel({ result }: { result: ReturnType<typeof judgePythonSubmission> | null }) {
+async function judgeProblemSubmission(problem: Problem, code: string): Promise<JudgeResult> {
+  const cases: JudgeResult["cases"] = [];
+  let hasRuntimeError = false;
+
+  for (const testCase of problem.testCases) {
+    const inputQueue = testCase.input.replace(/\r\n/g, "\n").split("\n");
+    const output: string[] = [];
+    const errors: string[] = [];
+
+    await runPythonWithSkulpt(code, {
+      output: (text) => output.push(text),
+      error: (text) => errors.push(text),
+      input: async () => inputQueue.shift() ?? ""
+    });
+
+    const actual = errors.length > 0 ? errors.join("\n") : output.join("");
+    const passed = errors.length === 0 && normalizeJudgeOutput(actual) === normalizeJudgeOutput(testCase.output);
+    hasRuntimeError ||= errors.length > 0;
+    cases.push({ ...testCase, actual, passed });
+  }
+
+  const passedCount = cases.filter((testCase) => testCase.passed).length;
+  const status: JudgeResult["status"] = hasRuntimeError
+    ? "runtime_error"
+    : passedCount === cases.length
+      ? "accepted"
+      : "wrong_answer";
+
+  return {
+    status,
+    passedCount,
+    totalCount: cases.length,
+    feedback:
+      status === "accepted"
+        ? "좋아요. 모든 테스트케이스를 통과했어요."
+        : status === "runtime_error"
+          ? "코드 실행 중 오류가 발생했어요. 실행 결과를 확인해주세요."
+          : "아직 맞지 않는 테스트케이스가 있어요. 입력을 바꿔도 같은 규칙으로 동작하는지 확인해보세요.",
+    cases
+  };
+}
+
+function normalizeJudgeOutput(value: string) {
+  return value.replace(/\r\n/g, "\n").trim();
+}
+
+function ResultPanel({ result }: { result: JudgeResult | null }) {
   return (
     <div className={result?.status === "accepted" ? "result accepted" : "result"}>
       <strong>{result ? result.feedback : "코드를 제출하면 결과가 여기에 표시됩니다."}</strong>
@@ -1422,13 +1521,19 @@ function TeacherDashboard({
   dashboard,
   loading,
   submissions,
+  books,
+  problems,
   onRefresh,
+  onCurriculumChanged,
   onLogout
 }: {
   dashboard: { accepted: number; total: number; rate: number; triedStudents: number };
   loading: boolean;
   submissions: SubmissionWithStudent[];
+  books: ProblemBook[];
+  problems: Problem[];
   onRefresh: () => void;
+  onCurriculumChanged: () => Promise<void>;
   onLogout: () => void;
 }) {
   return (
@@ -1466,7 +1571,7 @@ function TeacherDashboard({
                 <strong>
                   {submission.students?.student_no ?? "----"} {submission.students?.name ?? "학생"}
                 </strong>
-                <span>{problemTitle(submission.problem_id)}</span>
+                <span>{problemTitle(submission.problem_id, problems)}</span>
                 <b className={submission.status === "accepted" ? "ok" : "wait"}>
                   {submission.passed_count}/{submission.total_count}
                 </b>
@@ -1475,6 +1580,11 @@ function TeacherDashboard({
           )}
         </div>
       </section>
+      <TeacherProblemManager
+        books={books}
+        problems={problems}
+        onChanged={onCurriculumChanged}
+      />
       <div className="supabaseNote">교사 대시보드 데이터는 인증된 서버 API를 통해 조회됩니다.</div>
     </section>
   );
@@ -1498,7 +1608,335 @@ function Metric({ label, value }: { label: string; value: string }) {
   );
 }
 
-function problemTitle(problemId: string) {
+function TeacherProblemManager({
+  books,
+  problems,
+  onChanged
+}: {
+  books: ProblemBook[];
+  problems: Problem[];
+  onChanged: () => Promise<void>;
+}) {
+  const [managedBooks, setManagedBooks] = useState<ProblemBook[]>(books);
+  const [managedProblems, setManagedProblems] = useState<Problem[]>(problems);
+  const emptyProblem = (): Problem => ({
+    id: "",
+    bookId: managedBooks[0]?.id ?? "",
+    order: managedProblems.length + 1,
+    title: "",
+    unit: "",
+    level: "start",
+    statement: "",
+    inputDescription: "",
+    outputDescription: "",
+    starterCode: "",
+    hint: "",
+    examples: [{ input: "", output: "" }],
+    testCases: [{ input: "", output: "" }],
+    isPublished: true
+  });
+  const [editingProblem, setEditingProblem] = useState<Problem | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [managerError, setManagerError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    void loadManagedProblems();
+  }, []);
+
+  async function loadManagedProblems() {
+    try {
+      const response = await fetch("/api/teacher-problems", { cache: "no-store" });
+      const data = (await response.json()) as {
+        ok?: boolean;
+        message?: string;
+        books?: ProblemBook[];
+        problems?: Problem[];
+      };
+      if (!response.ok || !data.ok || !data.books || !data.problems) {
+        setManagerError(data.message ?? "문제 관리 데이터를 불러오지 못했습니다.");
+        return;
+      }
+      setManagedBooks(data.books);
+      setManagedProblems(data.problems);
+    } catch {
+      setManagerError("문제 관리 데이터를 불러오지 못했습니다.");
+    }
+  }
+
+  function openCreate() {
+    setEditingProblem(emptyProblem());
+    setIsCreating(true);
+    setManagerError("");
+  }
+
+  function openEdit(problem: Problem) {
+    setEditingProblem({
+      ...problem,
+      testCases: problem.testCases.length > 0 ? problem.testCases : [{ input: "", output: "" }]
+    });
+    setIsCreating(false);
+    setManagerError("");
+  }
+
+  async function saveProblem(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!editingProblem) return;
+    setSaving(true);
+    setManagerError("");
+    try {
+      const response = await fetch("/api/teacher-problems", {
+        method: isCreating ? "POST" : "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...editingProblem,
+          testCases: editingProblem.testCases.map((testCase, index) => ({
+            ...testCase,
+            isSample: index === 0
+          }))
+        })
+      });
+      const data = (await response.json()) as { ok?: boolean; message?: string; code?: string };
+      if (!response.ok || !data.ok) {
+        setManagerError(`${data.message ?? "문제를 저장하지 못했습니다."}${data.code ? ` (${data.code})` : ""}`);
+        return;
+      }
+      setEditingProblem(null);
+      await Promise.all([loadManagedProblems(), onChanged()]);
+    } catch {
+      setManagerError("문제 저장 요청을 처리하지 못했습니다.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function deleteProblem(problem: Problem) {
+    if (!window.confirm(`"${problem.title}" 문제를 삭제할까요? 제출 기록이 있으면 삭제가 제한될 수 있습니다.`)) {
+      return;
+    }
+    setManagerError("");
+    const response = await fetch(`/api/teacher-problems?id=${encodeURIComponent(problem.id)}`, {
+      method: "DELETE"
+    });
+    const data = (await response.json()) as { ok?: boolean; message?: string; code?: string };
+    if (!response.ok || !data.ok) {
+      setManagerError(`${data.message ?? "문제를 삭제하지 못했습니다."}${data.code ? ` (${data.code})` : ""}`);
+      return;
+    }
+    await Promise.all([loadManagedProblems(), onChanged()]);
+  }
+
+  function updateProblem<K extends keyof Problem>(key: K, value: Problem[K]) {
+    setEditingProblem((problem) => (problem ? { ...problem, [key]: value } : problem));
+  }
+
+  function updateTestCase(index: number, key: "input" | "output", value: string) {
+    setEditingProblem((problem) => {
+      if (!problem) return problem;
+      const testCases = problem.testCases.map((testCase, caseIndex) =>
+        caseIndex === index ? { ...testCase, [key]: value } : testCase
+      );
+      return { ...problem, testCases, examples: testCases.slice(0, 1) };
+    });
+  }
+
+  return (
+    <section className="panel problemManager">
+      <div className="problemManagerHeader">
+        <div>
+          <span className="pill">문제 관리</span>
+          <h2>문제 추가·수정·삭제</h2>
+        </div>
+        <button className="primaryButton" onClick={openCreate}>
+          <Plus size={18} />
+          문제 추가
+        </button>
+      </div>
+      {managerError && <p className="modalError">{managerError}</p>}
+      <div className="managedProblemList">
+        {managedProblems.map((problem) => (
+          <div className="managedProblemRow" key={problem.id}>
+            <div>
+              <strong>{problem.title}</strong>
+              <span>
+                {managedBooks.find((book) => book.id === problem.bookId)?.title ?? problem.bookId} · {problem.id}
+              </span>
+            </div>
+            <b>{problem.isPublished === false ? "비공개" : "공개"}</b>
+            <button className="ghostButton" onClick={() => openEdit(problem)}>
+              <Pencil size={16} />
+              수정
+            </button>
+            <button className="resetCodeButton" onClick={() => void deleteProblem(problem)}>
+              <Trash2 size={16} />
+              삭제
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {editingProblem && (
+        <div className="modalBackdrop" role="presentation">
+          <div className="problemEditorModal" role="dialog" aria-modal="true" aria-labelledby="problem-editor-title">
+            <button className="iconButton closeButton" onClick={() => setEditingProblem(null)} aria-label="닫기">
+              <X size={18} />
+            </button>
+            <h2 id="problem-editor-title">{isCreating ? "문제 추가" : "문제 수정"}</h2>
+            <form onSubmit={saveProblem}>
+              <div className="problemFormGrid">
+                <label>
+                  문제 ID
+                  <input
+                    value={editingProblem.id}
+                    disabled={!isCreating}
+                    placeholder="예: print-hello-01"
+                    onChange={(event) => updateProblem("id", event.target.value.toLowerCase())}
+                  />
+                </label>
+                <label>
+                  문제집
+                  <select
+                    value={editingProblem.bookId}
+                    onChange={(event) => updateProblem("bookId", event.target.value)}
+                  >
+                    {managedBooks.map((book) => (
+                      <option key={book.id} value={book.id}>
+                        {book.title}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  제목
+                  <input value={editingProblem.title} onChange={(event) => updateProblem("title", event.target.value)} />
+                </label>
+                <label>
+                  단원
+                  <input value={editingProblem.unit} onChange={(event) => updateProblem("unit", event.target.value)} />
+                </label>
+                <label>
+                  난이도
+                  <select
+                    value={editingProblem.level}
+                    onChange={(event) => updateProblem("level", event.target.value as Problem["level"])}
+                  >
+                    <option value="start">입문</option>
+                    <option value="practice">연습</option>
+                    <option value="challenge">도전</option>
+                  </select>
+                </label>
+                <label>
+                  정렬 순서
+                  <input
+                    type="number"
+                    min="0"
+                    value={editingProblem.order}
+                    onChange={(event) => updateProblem("order", Number(event.target.value))}
+                  />
+                </label>
+              </div>
+              <label>
+                문제 설명
+                <textarea value={editingProblem.statement} onChange={(event) => updateProblem("statement", event.target.value)} />
+              </label>
+              <div className="problemFormGrid">
+                <label>
+                  입력 설명
+                  <textarea
+                    value={editingProblem.inputDescription}
+                    onChange={(event) => updateProblem("inputDescription", event.target.value)}
+                  />
+                </label>
+                <label>
+                  출력 설명
+                  <textarea
+                    value={editingProblem.outputDescription}
+                    onChange={(event) => updateProblem("outputDescription", event.target.value)}
+                  />
+                </label>
+              </div>
+              <label>
+                초기 코드
+                <textarea
+                  className="problemCodeInput"
+                  value={editingProblem.starterCode}
+                  onChange={(event) => updateProblem("starterCode", event.target.value)}
+                />
+              </label>
+              <label>
+                힌트
+                <textarea value={editingProblem.hint} onChange={(event) => updateProblem("hint", event.target.value)} />
+              </label>
+              <label className="publishToggle">
+                <input
+                  type="checkbox"
+                  checked={editingProblem.isPublished !== false}
+                  onChange={(event) => updateProblem("isPublished", event.target.checked)}
+                />
+                학생에게 공개
+              </label>
+              <div className="testCaseEditor">
+                <div className="problemManagerHeader">
+                  <h3>테스트케이스</h3>
+                  <button
+                    type="button"
+                    className="ghostButton"
+                    onClick={() =>
+                      updateProblem("testCases", [...editingProblem.testCases, { input: "", output: "" }])
+                    }
+                  >
+                    <Plus size={16} />
+                    케이스 추가
+                  </button>
+                </div>
+                {editingProblem.testCases.map((testCase, index) => (
+                  <div className="testCaseRow" key={index}>
+                    <strong>{index === 0 ? "예시" : `숨김 ${index}`}</strong>
+                    <textarea
+                      placeholder="입력"
+                      value={testCase.input}
+                      onChange={(event) => updateTestCase(index, "input", event.target.value)}
+                    />
+                    <textarea
+                      placeholder="기대 출력"
+                      value={testCase.output}
+                      onChange={(event) => updateTestCase(index, "output", event.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className="iconButton"
+                      disabled={editingProblem.testCases.length === 1}
+                      onClick={() =>
+                        updateProblem(
+                          "testCases",
+                          editingProblem.testCases.filter((_, caseIndex) => caseIndex !== index)
+                        )
+                      }
+                      aria-label="테스트케이스 삭제"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              {managerError && <p className="modalError">{managerError}</p>}
+              <div className="modalActions">
+                <button type="button" className="ghostButton" onClick={() => setEditingProblem(null)}>
+                  취소
+                </button>
+                <button className="primaryButton" disabled={saving}>
+                  {saving ? "저장 중" : "저장"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function problemTitle(problemId: string, problems: Problem[]) {
   return problems.find((problem) => problem.id === problemId)?.title ?? problemId;
 }
 

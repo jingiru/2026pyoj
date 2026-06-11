@@ -12,6 +12,15 @@ export type Problem = {
   testCases: TestCase[];
   starterCode: string;
   hint: string;
+  isPublished?: boolean;
+};
+
+export type ProblemBook = {
+  id: string;
+  order: number;
+  title: string;
+  description?: string;
+  isPublished?: boolean;
 };
 
 export type TestCase = {
