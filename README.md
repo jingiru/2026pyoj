@@ -31,11 +31,17 @@ Supabase 환경변수가 없으면 브라우저 저장소를 사용해 데모 �
 NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 TEACHER_PASSWORD=...
+SUPABASE_SERVICE_ROLE_KEY=...
 ```
 
 최신 Supabase 프로젝트에서 publishable key를 제공하는 경우
 `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`를 대신 사용할 수 있습니다. 환경변수를 변경한 뒤에는
 Vercel에서 새로 배포해야 클라이언트 번들에 값이 반영됩니다.
+
+`TEACHER_PASSWORD`와 `SUPABASE_SERVICE_ROLE_KEY`는 서버 전용 값입니다. 두 값에는
+`NEXT_PUBLIC_` 접두사를 붙이지 마세요. 기존 Supabase 프로젝트는 SQL Editor에서
+`supabase/teacher_dashboard_security.sql`을 한 번 실행해 브라우저 anon 사용자의 제출 기록
+조회 권한을 제거합니다. 교사 대시보드는 인증된 서버 API가 service role로 조회합니다.
 
 로그인 오류에 `42P01`, `42501`, `42703` 같은 코드가 표시되면 각각 테이블 없음, RLS/권한
 문제, 컬럼 불일치를 뜻합니다. 브라우저 개발자 도구 콘솔에는 Supabase의 상세 오류도 기록됩니다.

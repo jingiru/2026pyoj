@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
+import {
+  getTeacherPassword,
+  isTeacherPasswordValid,
+  setTeacherSessionCookie
+} from "@/lib/teacher-auth";
 
 export async function POST(request: Request) {
-  const teacherPassword = process.env.TEACHER_PASSWORD;
+  const teacherPassword = getTeacherPassword();
   if (!teacherPassword) {
     return NextResponse.json(
       { ok: false, message: "교사 인증 설정이 없습니다." },
@@ -24,12 +29,14 @@ export async function POST(request: Request) {
       ? (body as { password?: unknown }).password
       : undefined;
 
-  if (typeof password !== "string" || password !== teacherPassword) {
+  if (typeof password !== "string" || !isTeacherPasswordValid(password, teacherPassword)) {
     return NextResponse.json(
       { ok: false, message: "비밀번호가 올바르지 않습니다." },
       { status: 401 }
     );
   }
 
-  return NextResponse.json({ ok: true });
+  const response = NextResponse.json({ ok: true });
+  setTeacherSessionCookie(response, teacherPassword);
+  return response;
 }

@@ -43,8 +43,6 @@ import { runPythonWithSkulpt } from "@/lib/skulpt-runner";
 import {
   findOrCreateStudent,
   getDataErrorMessage,
-  isSupabaseConfigured,
-  listSubmissions,
   saveSubmission
 } from "@/lib/supabase";
 import type { Student, SubmissionWithStudent } from "@/lib/types";
@@ -138,9 +136,59 @@ export default function Home() {
   }, [pendingPrompt]);
 
   useEffect(() => {
-    const authenticated = getTeacherAuthentication();
-    setIsTeacherAuthenticated(authenticated);
-    setTeacherAuthReady(true);
+    let cancelled = false;
+
+    async function restoreScreen() {
+      const nextScreen = getScreenFromUrl();
+      const hasStoredTeacherSession = getTeacherAuthentication();
+
+      if (!hasStoredTeacherSession) {
+        if (cancelled) return;
+        setTeacherAuthReady(true);
+        if (nextScreen !== "teacher") {
+          setScreen(nextScreen);
+          return;
+        }
+
+        setScreen("home");
+        setTeacherLoginOpen(true);
+        return;
+      }
+
+      try {
+        const response = await fetch("/api/teacher-session", { cache: "no-store" });
+        const data = (await response.json()) as { ok?: boolean; message?: string };
+        if (cancelled) return;
+
+        if (!response.ok || !data.ok) {
+          sessionStorage.removeItem(TEACHER_AUTH_STORAGE_KEY);
+          setIsTeacherAuthenticated(false);
+          if (nextScreen === "teacher") {
+            setScreen("home");
+            setTeacherLoginError(data.message ?? "");
+            setTeacherLoginOpen(true);
+          } else {
+            setScreen(nextScreen);
+          }
+          return;
+        }
+
+        setIsTeacherAuthenticated(true);
+        setScreen(nextScreen);
+        if (nextScreen === "teacher") void refreshDashboard();
+      } catch {
+        if (cancelled) return;
+        sessionStorage.removeItem(TEACHER_AUTH_STORAGE_KEY);
+        setIsTeacherAuthenticated(false);
+        setScreen(nextScreen === "teacher" ? "home" : nextScreen);
+        if (nextScreen === "teacher") {
+          setTeacherLoginError("교사 로그인 상태를 확인하지 못했습니다.");
+          setTeacherLoginOpen(true);
+        }
+      } finally {
+        if (!cancelled) setTeacherAuthReady(true);
+      }
+    }
 
     function syncScreenFromUrl() {
       const nextScreen = getScreenFromUrl();
@@ -154,9 +202,12 @@ export default function Home() {
       if (nextScreen === "teacher") void refreshDashboard();
     }
 
-    syncScreenFromUrl();
+    void restoreScreen();
     window.addEventListener("popstate", syncScreenFromUrl);
-    return () => window.removeEventListener("popstate", syncScreenFromUrl);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("popstate", syncScreenFromUrl);
+    };
   }, []);
 
   useEffect(() => {
@@ -280,11 +331,16 @@ export default function Home() {
     if (getScreenFromUrl() === "teacher" && !isTeacherAuthenticated) navigateTo("home");
   }
 
-  function logoutTeacher() {
-    sessionStorage.removeItem(TEACHER_AUTH_STORAGE_KEY);
-    setIsTeacherAuthenticated(false);
-    setSubmissions([]);
-    navigateTo("home");
+  async function logoutTeacher() {
+    try {
+      await fetch("/api/teacher-logout", { method: "POST" });
+    } finally {
+      sessionStorage.removeItem(TEACHER_AUTH_STORAGE_KEY);
+      setIsTeacherAuthenticated(false);
+      setSubmissions([]);
+      setNotice("");
+      navigateTo("home");
+    }
   }
 
   function changeBook(bookId: string) {
@@ -393,10 +449,35 @@ export default function Home() {
 
   async function refreshDashboard() {
     setLoading(true);
+    setNotice("");
     try {
-      setSubmissions(await listSubmissions());
-    } catch (error) {
-      setNotice(getDataErrorMessage(error, "대시보드를 불러오지 못했어요. Supabase 연결을 확인해주세요."));
+      const response = await fetch("/api/teacher-dashboard", { cache: "no-store" });
+      const data = (await response.json()) as {
+        ok?: boolean;
+        submissions?: SubmissionWithStudent[];
+        message?: string;
+        code?: string;
+      };
+
+      if (response.status === 401) {
+        sessionStorage.removeItem(TEACHER_AUTH_STORAGE_KEY);
+        setIsTeacherAuthenticated(false);
+        setSubmissions([]);
+        setTeacherLoginError("교사 로그인이 필요합니다.");
+        setTeacherLoginOpen(true);
+        navigateTo("home");
+        return;
+      }
+
+      if (!response.ok || !data.ok) {
+        const suffix = data.code ? ` (${data.code})` : "";
+        setNotice(`${data.message ?? "대시보드를 불러오지 못했습니다."}${suffix}`);
+        return;
+      }
+
+      setSubmissions(data.submissions ?? []);
+    } catch {
+      setNotice("대시보드 데이터를 불러오지 못했습니다.");
     } finally {
       setLoading(false);
     }
@@ -594,7 +675,7 @@ export default function Home() {
           loading={loading}
           submissions={submissions}
           onRefresh={refreshDashboard}
-          onLogout={logoutTeacher}
+          onLogout={() => void logoutTeacher()}
         />
       )}
 
@@ -1119,9 +1200,7 @@ function TeacherDashboard({
           )}
         </div>
       </section>
-      <div className="supabaseNote">
-        Supabase 상태: {isSupabaseConfigured ? "연결 환경변수 감지됨" : "미설정, 현재 브라우저 저장소로 데모 동작 중"}
-      </div>
+      <div className="supabaseNote">교사 대시보드 데이터는 인증된 서버 API를 통해 조회됩니다.</div>
     </section>
   );
 }

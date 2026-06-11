@@ -51,7 +51,8 @@ create index if not exists submissions_created_at_idx on public.submissions(crea
 grant usage on schema public to anon, authenticated;
 grant select, insert on public.students to anon, authenticated;
 grant select on public.problems, public.test_cases to anon, authenticated;
-grant select, insert on public.submissions to anon, authenticated;
+revoke select on public.submissions from anon, authenticated;
+grant insert on public.submissions to anon, authenticated;
 
 alter table public.students enable row level security;
 alter table public.problems enable row level security;
@@ -89,10 +90,6 @@ to anon, authenticated
 with check (true);
 
 drop policy if exists "class dashboard can read submissions" on public.submissions;
-create policy "class dashboard can read submissions"
-on public.submissions for select
-to anon, authenticated
-using (true);
 
 insert into public.problems (
   id, title, unit, level, statement, input_description, output_description,
