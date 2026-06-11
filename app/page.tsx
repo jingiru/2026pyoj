@@ -274,7 +274,7 @@ export default function Home() {
   }
 
   function enterSolveMode() {
-    if (student) {
+    if (student || isTeacherAuthenticated) {
       navigateTo("solve");
       return;
     }
