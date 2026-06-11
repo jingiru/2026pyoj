@@ -262,7 +262,6 @@ export default function Home() {
               <div className="ideHeader">
                 <div>
                   <strong>파이썬 코드를 작성해보세요!</strong>
-                  <span>Ctrl+D, Ctrl+Enter, Ctrl+Shift+D 단축키를 사용할 수 있어요.</span>
                 </div>
                 <div className="ideActions">
                   <FontSizeControl
