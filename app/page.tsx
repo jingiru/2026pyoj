@@ -53,7 +53,6 @@ type ColorMode = "light" | "dark";
 const PRACTICE_CODE_STORAGE_KEY = "pyoj:practice-code";
 const SELECTED_PROBLEM_STORAGE_KEY = "pyoj:selected-problem";
 const PROBLEM_CODE_STORAGE_PREFIX = "pyoj:problem-code:";
-const TEACHER_AUTH_STORAGE_KEY = "teacherAuthenticated";
 const DEFAULT_PROBLEM = problems.find((problem) => problem.bookId === problemBooks[0].id) ?? problems[0];
 
 const sublimeDarkHighlight = HighlightStyle.define([
@@ -140,20 +139,6 @@ export default function Home() {
 
     async function restoreScreen() {
       const nextScreen = getScreenFromUrl();
-      const hasStoredTeacherSession = getTeacherAuthentication();
-
-      if (!hasStoredTeacherSession) {
-        if (cancelled) return;
-        setTeacherAuthReady(true);
-        if (nextScreen !== "teacher") {
-          setScreen(nextScreen);
-          return;
-        }
-
-        setScreen("home");
-        setTeacherLoginOpen(true);
-        return;
-      }
 
       try {
         const response = await fetch("/api/teacher-session", { cache: "no-store" });
@@ -161,7 +146,6 @@ export default function Home() {
         if (cancelled) return;
 
         if (!response.ok || !data.ok) {
-          sessionStorage.removeItem(TEACHER_AUTH_STORAGE_KEY);
           setIsTeacherAuthenticated(false);
           if (nextScreen === "teacher") {
             setScreen("home");
@@ -178,7 +162,6 @@ export default function Home() {
         if (nextScreen === "teacher") void refreshDashboard();
       } catch {
         if (cancelled) return;
-        sessionStorage.removeItem(TEACHER_AUTH_STORAGE_KEY);
         setIsTeacherAuthenticated(false);
         setScreen(nextScreen === "teacher" ? "home" : nextScreen);
         if (nextScreen === "teacher") {
@@ -190,23 +173,40 @@ export default function Home() {
       }
     }
 
-    function syncScreenFromUrl() {
+    async function syncScreenFromUrl() {
       const nextScreen = getScreenFromUrl();
-      if (nextScreen === "teacher" && !getTeacherAuthentication()) {
-        setScreen("home");
-        setTeacherLoginOpen(true);
+      if (nextScreen !== "teacher") {
+        setScreen(nextScreen);
         return;
       }
 
-      setScreen(nextScreen);
-      if (nextScreen === "teacher") void refreshDashboard();
+      try {
+        const response = await fetch("/api/teacher-session", { cache: "no-store" });
+        const data = (await response.json()) as { ok?: boolean };
+        if (!response.ok || !data.ok) {
+          setIsTeacherAuthenticated(false);
+          setScreen("home");
+          setTeacherLoginOpen(true);
+          return;
+        }
+
+        setIsTeacherAuthenticated(true);
+        setScreen("teacher");
+        void refreshDashboard();
+      } catch {
+        setIsTeacherAuthenticated(false);
+        setScreen("home");
+        setTeacherLoginError("교사 로그인 상태를 확인하지 못했습니다.");
+        setTeacherLoginOpen(true);
+      }
     }
 
     void restoreScreen();
-    window.addEventListener("popstate", syncScreenFromUrl);
+    const handlePopState = () => void syncScreenFromUrl();
+    window.addEventListener("popstate", handlePopState);
     return () => {
       cancelled = true;
-      window.removeEventListener("popstate", syncScreenFromUrl);
+      window.removeEventListener("popstate", handlePopState);
     };
   }, []);
 
@@ -311,7 +311,6 @@ export default function Home() {
         return;
       }
 
-      sessionStorage.setItem(TEACHER_AUTH_STORAGE_KEY, "true");
       setIsTeacherAuthenticated(true);
       setTeacherPassword("");
       setTeacherLoginOpen(false);
@@ -335,7 +334,6 @@ export default function Home() {
     try {
       await fetch("/api/teacher-logout", { method: "POST" });
     } finally {
-      sessionStorage.removeItem(TEACHER_AUTH_STORAGE_KEY);
       setIsTeacherAuthenticated(false);
       setSubmissions([]);
       setNotice("");
@@ -460,7 +458,6 @@ export default function Home() {
       };
 
       if (response.status === 401) {
-        sessionStorage.removeItem(TEACHER_AUTH_STORAGE_KEY);
         setIsTeacherAuthenticated(false);
         setSubmissions([]);
         setTeacherLoginError("교사 로그인이 필요합니다.");
@@ -1230,14 +1227,6 @@ function problemTitle(problemId: string) {
 function getScreenFromUrl(): Screen {
   const screen = new URL(window.location.href).searchParams.get("screen");
   return screen === "practice" || screen === "solve" || screen === "teacher" ? screen : "home";
-}
-
-function getTeacherAuthentication() {
-  try {
-    return sessionStorage.getItem(TEACHER_AUTH_STORAGE_KEY) === "true";
-  } catch {
-    return false;
-  }
 }
 
 function getSavedProblemCode(problemId: string) {
