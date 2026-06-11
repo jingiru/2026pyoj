@@ -41,6 +41,26 @@ export async function PUT(request: NextRequest) {
   return saveProblem(payload.problem, true);
 }
 
+export async function PATCH(request: NextRequest) {
+  const authError = authenticate(request);
+  if (authError) return authError;
+  const payload = (await request.json().catch(() => null)) as {
+    id?: string;
+    isPublished?: boolean;
+  } | null;
+  if (!payload?.id || typeof payload.isPublished !== "boolean") {
+    return NextResponse.json({ ok: false, message: "공개 상태 변경값을 확인해주세요." }, { status: 400 });
+  }
+
+  const supabase = createSupabaseAdmin()!;
+  const { error } = await supabase
+    .from("problems")
+    .update({ is_published: payload.isPublished, updated_at: new Date().toISOString() })
+    .eq("id", payload.id);
+  if (error) return databaseError(error, "공개 상태를 변경하지 못했습니다.");
+  return NextResponse.json({ ok: true });
+}
+
 export async function DELETE(request: NextRequest) {
   const authError = authenticate(request);
   if (authError) return authError;

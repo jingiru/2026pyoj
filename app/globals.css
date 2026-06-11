@@ -1184,6 +1184,198 @@ kbd {
   color: #b45309;
 }
 
+.submissionOverviewHeader {
+  align-items: flex-end;
+  display: flex;
+  gap: 18px;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.submissionOverviewHeader h2 {
+  margin: 8px 0 0;
+}
+
+.dashboardFilters {
+  align-items: flex-end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.dashboardFilters label {
+  color: var(--muted);
+  display: grid;
+  font-size: 12px;
+  gap: 5px;
+}
+
+.dashboardFilters select {
+  background: color-mix(in srgb, var(--panel) 84%, var(--bg));
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--ink);
+  min-width: 130px;
+  padding: 9px 10px;
+}
+
+.submissionMatrixWrap {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  max-height: 620px;
+  overflow: auto;
+}
+
+.submissionMatrix {
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 100%;
+  width: max-content;
+}
+
+.submissionMatrix th,
+.submissionMatrix td {
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  color: var(--ink);
+  min-width: 132px;
+  padding: 11px 12px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.submissionMatrix thead th {
+  background: color-mix(in srgb, var(--panel) 74%, var(--bg));
+  font-size: 13px;
+  position: sticky;
+  top: 0;
+  z-index: 3;
+}
+
+.submissionMatrix th:nth-child(1),
+.submissionMatrix td:nth-child(1) {
+  left: 0;
+  min-width: 72px;
+  position: sticky;
+  z-index: 2;
+}
+
+.submissionMatrix th:nth-child(2),
+.submissionMatrix td:nth-child(2) {
+  left: 72px;
+  min-width: 170px;
+  position: sticky;
+  text-align: left;
+  z-index: 2;
+}
+
+.submissionMatrix thead th:nth-child(1),
+.submissionMatrix thead th:nth-child(2) {
+  z-index: 4;
+}
+
+.submissionMatrix tbody tr:last-child th,
+.submissionMatrix tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.rankCell {
+  align-items: center;
+  color: #b45309 !important;
+  display: flex;
+  gap: 5px;
+  justify-content: center;
+}
+
+.scoreBadge {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  display: inline-block;
+  font-size: 12px;
+  padding: 3px 9px;
+}
+
+.submissionStatus {
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  font-weight: 800;
+  padding: 6px 10px;
+}
+
+.submissionStatus.correct {
+  color: #087f5b;
+}
+
+.submissionStatus.incorrect {
+  color: var(--rose);
+}
+
+.submissionStatus:hover {
+  background: color-mix(in srgb, currentColor 9%, transparent);
+}
+
+.notSubmitted {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.submissionCodeModal {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.28);
+  color: var(--ink);
+  max-width: 760px;
+  padding: 24px;
+  position: relative;
+  width: 100%;
+}
+
+.submissionCodeModal h2 {
+  margin: 10px 40px 6px 0;
+}
+
+.submissionResultBadge {
+  border-radius: 999px;
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 5px 9px;
+}
+
+.submissionResultBadge.accepted {
+  background: color-mix(in srgb, #10b981 14%, var(--panel));
+  color: #087f5b;
+}
+
+.submissionResultBadge.wrong_answer,
+.submissionResultBadge.runtime_error {
+  background: color-mix(in srgb, var(--rose) 12%, var(--panel));
+  color: var(--rose);
+}
+
+.submissionCodeMeta {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.submittedCode {
+  background: #1f2430;
+  border-radius: 8px;
+  color: #f8f8f2;
+  font-family: Consolas, "Courier New", monospace;
+  line-height: 1.65;
+  margin: 18px 0 0;
+  max-height: 55vh;
+  overflow: auto;
+  padding: 18px;
+  white-space: pre-wrap;
+}
+
 .empty,
 .supabaseNote {
   color: var(--muted);
@@ -1313,6 +1505,40 @@ kbd {
 .managedProblemRow > b {
   color: var(--muted);
   font-size: 13px;
+}
+
+.managerActionButton {
+  align-items: center;
+  background: color-mix(in srgb, var(--panel) 78%, var(--bg));
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--ink);
+  display: inline-flex;
+  font-weight: 700;
+  gap: 6px;
+  justify-content: center;
+  min-height: 38px;
+  padding: 8px 11px;
+}
+
+.managerActionButton:hover {
+  border-color: color-mix(in srgb, var(--primary) 45%, var(--line));
+}
+
+.visibilityButton.published {
+  background: color-mix(in srgb, #10b981 10%, var(--panel));
+  border-color: color-mix(in srgb, #10b981 32%, var(--line));
+  color: #087f5b;
+}
+
+.visibilityButton.private {
+  color: var(--muted);
+}
+
+.editButton {
+  background: color-mix(in srgb, var(--primary) 9%, var(--panel));
+  border-color: color-mix(in srgb, var(--primary) 30%, var(--line));
+  color: var(--primary);
 }
 
 .problemEditorModal {
@@ -1446,6 +1672,21 @@ kbd {
 
   .dashboardActions button {
     flex: 1;
+  }
+
+  .submissionOverviewHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .dashboardFilters {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .dashboardFilters select {
+    min-width: 0;
+    width: 100%;
   }
 
   .modeSwitch,

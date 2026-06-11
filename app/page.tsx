@@ -25,6 +25,8 @@ import {
   BookOpen,
   CheckCircle2,
   Code2,
+  Eye,
+  EyeOff,
   GraduationCap,
   LayoutDashboard,
   Lightbulb,
@@ -37,6 +39,7 @@ import {
   Plus,
   Send,
   Sparkles,
+  Trophy,
   Trash2,
   X
 } from "lucide-react";
@@ -153,6 +156,7 @@ export default function Home() {
   const [bookSidebarOpen, setBookSidebarOpen] = useState(true);
   const [problemListOpen, setProblemListOpen] = useState(true);
   const [submissions, setSubmissions] = useState<SubmissionWithStudent[]>([]);
+  const [teacherStudents, setTeacherStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(false);
   const [editorStorageReady, setEditorStorageReady] = useState(false);
 
@@ -649,6 +653,7 @@ export default function Home() {
       const data = (await response.json()) as {
         ok?: boolean;
         submissions?: SubmissionWithStudent[];
+        students?: Student[];
         message?: string;
         code?: string;
       };
@@ -656,6 +661,7 @@ export default function Home() {
       if (response.status === 401) {
         setIsTeacherAuthenticated(false);
         setSubmissions([]);
+        setTeacherStudents([]);
         setTeacherLoginError("교사 로그인이 필요합니다.");
         setTeacherLoginOpen(true);
         navigateTo("home");
@@ -669,6 +675,7 @@ export default function Home() {
       }
 
       setSubmissions(data.submissions ?? []);
+      setTeacherStudents(data.students ?? []);
     } catch {
       setNotice("대시보드 데이터를 불러오지 못했습니다.");
     } finally {
@@ -865,7 +872,6 @@ export default function Home() {
                 >
                   <span>{String(problem.order).padStart(2, "0")}</span>
                   <strong>{problem.title}</strong>
-                  <em>{problem.unit}</em>
                 </button>
               ))
             )}
@@ -997,6 +1003,7 @@ export default function Home() {
           dashboard={dashboard}
           loading={loading}
           submissions={submissions}
+          students={teacherStudents}
           books={availableBooks}
           problems={availableProblems}
           onRefresh={refreshDashboard}
@@ -1417,13 +1424,7 @@ function ProblemPane({ selectedProblem }: { selectedProblem: Problem }) {
   return (
     <article className="problemPane">
       <div className="problemHeader">
-        <div>
-          <span className="pill">{selectedProblem.unit}</span>
-          <h1>{selectedProblem.title}</h1>
-        </div>
-        <span className={`level ${selectedProblem.level}`}>
-          {selectedProblem.level === "start" ? "입문" : selectedProblem.level === "practice" ? "연습" : "도전"}
-        </span>
+        <h1>{selectedProblem.title}</h1>
       </div>
       <ProblemBlock title="문제" body={selectedProblem.statement} />
       <div className="descriptionGrid">
@@ -1521,6 +1522,7 @@ function TeacherDashboard({
   dashboard,
   loading,
   submissions,
+  students,
   books,
   problems,
   onRefresh,
@@ -1530,12 +1532,90 @@ function TeacherDashboard({
   dashboard: { accepted: number; total: number; rate: number; triedStudents: number };
   loading: boolean;
   submissions: SubmissionWithStudent[];
+  students: Student[];
   books: ProblemBook[];
   problems: Problem[];
   onRefresh: () => void;
   onCurriculumChanged: () => Promise<void>;
   onLogout: () => void;
 }) {
+  const [selectedBookId, setSelectedBookId] = useState(books[0]?.id ?? "");
+  const [classFilter, setClassFilter] = useState("all");
+  const [studentFilter, setStudentFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("studentNo");
+  const [selectedSubmission, setSelectedSubmission] = useState<SubmissionWithStudent | null>(null);
+  const selectedBook = books.find((book) => book.id === selectedBookId) ?? books[0];
+  const bookProblems = problems
+    .filter((problem) => problem.bookId === selectedBook?.id)
+    .sort((left, right) => left.order - right.order);
+  const latestSubmissionByStudentProblem = useMemo(() => {
+    const latest = new Map<string, SubmissionWithStudent>();
+    for (const submission of submissions) {
+      const key = `${submission.student_id}:${submission.problem_id}`;
+      if (!latest.has(key)) latest.set(key, submission);
+    }
+    return latest;
+  }, [submissions]);
+  const classes = useMemo(
+    () =>
+      [...new Set(students.map((item) => item.student_no.charAt(1)).filter(Boolean))].sort((a, b) =>
+        a.localeCompare(b, "ko")
+      ),
+    [students]
+  );
+  const studentRows = useMemo(() => {
+    const rows = students.map((item) => {
+      const statuses = bookProblems.map((problem) =>
+        latestSubmissionByStudentProblem.get(`${item.id}:${problem.id}`)
+      );
+      const submitted = statuses.filter(Boolean).length;
+      const accepted = statuses.filter((submission) => submission?.status === "accepted").length;
+      const rate = submitted === 0 ? 0 : accepted / submitted;
+      const progress = bookProblems.length === 0 ? 0 : submitted / bookProblems.length;
+      return { student: item, statuses, submitted, accepted, rate, progress };
+    });
+    const filtered = rows.filter(({ student }) => {
+      const matchesClass = classFilter === "all" || student.student_no.charAt(1) === classFilter;
+      return matchesClass;
+    });
+    return filtered.sort((left, right) => {
+      if (sortBy === "name") return left.student.name.localeCompare(right.student.name, "ko");
+      if (sortBy === "submissions") return right.submitted - left.submitted;
+      if (sortBy === "accuracy") return right.rate - left.rate;
+      if (sortBy === "progress") return right.progress - left.progress;
+      return left.student.student_no.localeCompare(right.student.student_no, "ko", { numeric: true });
+    });
+  }, [
+    students,
+    bookProblems,
+    latestSubmissionByStudentProblem,
+    classFilter,
+    sortBy
+  ]);
+  const displayedStudentRows =
+    studentFilter === "all"
+      ? studentRows
+      : studentRows.filter(({ student }) => student.id === studentFilter);
+  const rankByStudent = useMemo(() => {
+    const ranked = [...studentRows].sort(
+      (left, right) =>
+        right.accepted - left.accepted ||
+        right.rate - left.rate ||
+        right.submitted - left.submitted ||
+        left.student.student_no.localeCompare(right.student.student_no, "ko", { numeric: true })
+    );
+    return new Map(ranked.map((row, index) => [row.student.id, index + 1]));
+  }, [studentRows]);
+
+  useEffect(() => {
+    if (!selectedSubmission) return;
+    const closeOnEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") setSelectedSubmission(null);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [selectedSubmission]);
+
   return (
     <section className="teacherView">
       <div className="dashboardHeader">
@@ -1561,22 +1641,114 @@ function TeacherDashboard({
         <Metric label="참여 학생" value={`${dashboard.triedStudents}`} />
       </div>
       <section className="panel">
-        <h2>최근 제출 기록</h2>
-        <div className="submissionTable">
-          {submissions.length === 0 ? (
-            <p className="empty">아직 제출 기록이 없습니다.</p>
+        <div className="submissionOverviewHeader">
+          <div>
+            <span className="pill">제출 현황</span>
+            <h2>{selectedBook ? formatBookTitle(selectedBook) : "문제집을 선택해주세요"}</h2>
+          </div>
+          <div className="dashboardFilters">
+            <label>
+              문제집
+              <select value={selectedBook?.id ?? ""} onChange={(event) => setSelectedBookId(event.target.value)}>
+                {books.map((book) => (
+                  <option key={book.id} value={book.id}>
+                    {formatBookTitle(book)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              학급
+              <select
+                value={classFilter}
+                onChange={(event) => {
+                  setClassFilter(event.target.value);
+                  setStudentFilter("all");
+                }}
+              >
+                <option value="all">전체 학급</option>
+                {classes.map((classNo) => (
+                  <option key={classNo} value={classNo}>
+                    {classNo}반
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              학생
+              <select value={studentFilter} onChange={(event) => setStudentFilter(event.target.value)}>
+                <option value="all">전체 학생</option>
+                {students
+                  .filter((item) => classFilter === "all" || item.student_no.charAt(1) === classFilter)
+                  .map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.student_no} {item.name}
+                    </option>
+                  ))}
+              </select>
+            </label>
+            <label>
+              정렬
+              <select value={sortBy} onChange={(event) => setSortBy(event.target.value)}>
+                <option value="studentNo">학번순</option>
+                <option value="name">가나다순</option>
+                <option value="submissions">제출개수순</option>
+                <option value="accuracy">정답률순</option>
+                <option value="progress">진행률순</option>
+              </select>
+            </label>
+          </div>
+        </div>
+        <div className="submissionMatrixWrap">
+          {displayedStudentRows.length === 0 ? (
+            <p className="empty">조건에 맞는 학생이 없습니다.</p>
           ) : (
-            submissions.slice(0, 10).map((submission) => (
-              <div key={submission.id} className="submissionRow">
-                <strong>
-                  {submission.students?.student_no ?? "----"} {submission.students?.name ?? "학생"}
-                </strong>
-                <span>{problemTitle(submission.problem_id, problems)}</span>
-                <b className={submission.status === "accepted" ? "ok" : "wait"}>
-                  {submission.passed_count}/{submission.total_count}
-                </b>
-              </div>
-            ))
+            <table className="submissionMatrix">
+              <thead>
+                <tr>
+                  <th>순위</th>
+                  <th>학번 / 이름</th>
+                  <th>점수</th>
+                  {bookProblems.map((problem) => (
+                    <th key={problem.id}>
+                      {String(problem.order).padStart(2, "0")} {problem.title}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {displayedStudentRows.map((row) => (
+                  <tr key={row.student.id}>
+                    <td className="rankCell">
+                      <Trophy size={15} />
+                      {rankByStudent.get(row.student.id)}
+                    </td>
+                    <th>
+                      {row.student.student_no} {row.student.name}
+                    </th>
+                    <td>
+                      <span className="scoreBadge">
+                        {row.accepted}/{bookProblems.length}
+                      </span>
+                    </td>
+                    {row.statuses.map((submission, index) => (
+                      <td key={bookProblems[index].id}>
+                        {submission ? (
+                          <button
+                            className={`submissionStatus ${submission.status === "accepted" ? "correct" : "incorrect"}`}
+                            onClick={() => setSelectedSubmission(submission)}
+                          >
+                            {submission.status === "accepted" ? "정답" : "오답"}
+                          </button>
+                        ) : (
+                          <span className="notSubmitted">미제출</span>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
         </div>
       </section>
@@ -1586,6 +1758,35 @@ function TeacherDashboard({
         onChanged={onCurriculumChanged}
       />
       <div className="supabaseNote">교사 대시보드 데이터는 인증된 서버 API를 통해 조회됩니다.</div>
+      {selectedSubmission && (
+        <div className="modalBackdrop" role="presentation" onMouseDown={() => setSelectedSubmission(null)}>
+          <div
+            className="submissionCodeModal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="submission-code-title"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <button className="iconButton closeButton" onClick={() => setSelectedSubmission(null)} aria-label="닫기">
+              <X size={18} />
+            </button>
+            <span className={`submissionResultBadge ${selectedSubmission.status}`}>
+              {selectedSubmission.status === "accepted" ? "정답" : "오답"}
+            </span>
+            <h2 id="submission-code-title">
+              {selectedSubmission.students?.student_no} {selectedSubmission.students?.name} ·{" "}
+              {problemTitle(selectedSubmission.problem_id, problems)}
+            </h2>
+            <p className="submissionCodeMeta">
+              통과 {selectedSubmission.passed_count}/{selectedSubmission.total_count}
+              {selectedSubmission.created_at
+                ? ` · ${new Date(selectedSubmission.created_at).toLocaleString("ko-KR")}`
+                : ""}
+            </p>
+            <pre className="submittedCode">{selectedSubmission.code}</pre>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
@@ -1643,6 +1844,15 @@ function TeacherProblemManager({
   useEffect(() => {
     void loadManagedProblems();
   }, []);
+
+  useEffect(() => {
+    if (!editingProblem) return;
+    const closeOnEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape" && !saving) setEditingProblem(null);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [editingProblem, saving]);
 
   async function loadManagedProblems() {
     try {
@@ -1726,6 +1936,31 @@ function TeacherProblemManager({
     await Promise.all([loadManagedProblems(), onChanged()]);
   }
 
+  async function toggleProblemVisibility(problem: Problem) {
+    const isPublished = problem.isPublished === false;
+    setManagerError("");
+    setManagedProblems((items) =>
+      items.map((item) => (item.id === problem.id ? { ...item, isPublished } : item))
+    );
+    try {
+      const response = await fetch("/api/teacher-problems", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: problem.id, isPublished })
+      });
+      const data = (await response.json()) as { ok?: boolean; message?: string; code?: string };
+      if (!response.ok || !data.ok) {
+        throw new Error(`${data.message ?? "공개 상태를 변경하지 못했습니다."}${data.code ? ` (${data.code})` : ""}`);
+      }
+      await onChanged();
+    } catch (error) {
+      setManagedProblems((items) =>
+        items.map((item) => (item.id === problem.id ? { ...item, isPublished: problem.isPublished } : item))
+      );
+      setManagerError(error instanceof Error ? error.message : "공개 상태를 변경하지 못했습니다.");
+    }
+  }
+
   function updateProblem<K extends keyof Problem>(key: K, value: Problem[K]) {
     setEditingProblem((problem) => (problem ? { ...problem, [key]: value } : problem));
   }
@@ -1759,11 +1994,21 @@ function TeacherProblemManager({
             <div>
               <strong>{problem.title}</strong>
               <span>
-                {managedBooks.find((book) => book.id === problem.bookId)?.title ?? problem.bookId} · {problem.id}
+                {managedBooks.find((book) => book.id === problem.bookId)
+                  ? formatBookTitle(managedBooks.find((book) => book.id === problem.bookId)!)
+                  : problem.bookId}{" "}
+                · {problem.id}
               </span>
             </div>
-            <b>{problem.isPublished === false ? "비공개" : "공개"}</b>
-            <button className="ghostButton" onClick={() => openEdit(problem)}>
+            <button
+              className={`managerActionButton visibilityButton ${problem.isPublished === false ? "private" : "published"}`}
+              onClick={() => void toggleProblemVisibility(problem)}
+              title={problem.isPublished === false ? "학생에게 공개" : "비공개로 전환"}
+            >
+              {problem.isPublished === false ? <EyeOff size={16} /> : <Eye size={16} />}
+              {problem.isPublished === false ? "비공개" : "공개"}
+            </button>
+            <button className="managerActionButton editButton" onClick={() => openEdit(problem)}>
               <Pencil size={16} />
               수정
             </button>
@@ -1776,8 +2021,14 @@ function TeacherProblemManager({
       </div>
 
       {editingProblem && (
-        <div className="modalBackdrop" role="presentation">
-          <div className="problemEditorModal" role="dialog" aria-modal="true" aria-labelledby="problem-editor-title">
+        <div className="modalBackdrop" role="presentation" onMouseDown={() => !saving && setEditingProblem(null)}>
+          <div
+            className="problemEditorModal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="problem-editor-title"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
             <button className="iconButton closeButton" onClick={() => setEditingProblem(null)} aria-label="닫기">
               <X size={18} />
             </button>
@@ -1801,7 +2052,7 @@ function TeacherProblemManager({
                   >
                     {managedBooks.map((book) => (
                       <option key={book.id} value={book.id}>
-                        {book.title}
+                        {formatBookTitle(book)}
                       </option>
                     ))}
                   </select>
@@ -1809,21 +2060,6 @@ function TeacherProblemManager({
                 <label>
                   제목
                   <input value={editingProblem.title} onChange={(event) => updateProblem("title", event.target.value)} />
-                </label>
-                <label>
-                  단원
-                  <input value={editingProblem.unit} onChange={(event) => updateProblem("unit", event.target.value)} />
-                </label>
-                <label>
-                  난이도
-                  <select
-                    value={editingProblem.level}
-                    onChange={(event) => updateProblem("level", event.target.value as Problem["level"])}
-                  >
-                    <option value="start">입문</option>
-                    <option value="practice">연습</option>
-                    <option value="challenge">도전</option>
-                  </select>
                 </label>
                 <label>
                   정렬 순서
@@ -1856,7 +2092,7 @@ function TeacherProblemManager({
                 </label>
               </div>
               <label>
-                초기 코드
+                스켈레톤 코드
                 <textarea
                   className="problemCodeInput"
                   value={editingProblem.starterCode}
@@ -1938,6 +2174,10 @@ function TeacherProblemManager({
 
 function problemTitle(problemId: string, problems: Problem[]) {
   return problems.find((problem) => problem.id === problemId)?.title ?? problemId;
+}
+
+function formatBookTitle(book: ProblemBook) {
+  return `${String(book.order).padStart(2, "0")} ${book.title}`;
 }
 
 function getScreenFromUrl(): Screen {

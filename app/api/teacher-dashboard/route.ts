@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { type NextRequest, NextResponse } from "next/server";
 import { isTeacherRequestAuthenticated } from "@/lib/teacher-auth";
-import type { SubmissionWithStudent } from "@/lib/types";
+import type { Student, SubmissionWithStudent } from "@/lib/types";
 
 export async function GET(request: NextRequest) {
   if (!isTeacherRequestAuthenticated(request)) {
@@ -27,12 +27,19 @@ export async function GET(request: NextRequest) {
       detectSessionInUrl: false
     }
   });
-  const { data, error } = await supabase
-    .from("submissions")
-    .select("*, students(student_no, name)")
-    .order("created_at", { ascending: false })
-    .limit(100);
+  const [
+    { data: submissionData, error: submissionError },
+    { data: studentData, error: studentError }
+  ] = await Promise.all([
+    supabase
+      .from("submissions")
+      .select("*, students(student_no, name)")
+      .order("created_at", { ascending: false })
+      .range(0, 4999),
+    supabase.from("students").select("id, student_no, name, created_at").order("student_no")
+  ]);
 
+  const error = submissionError ?? studentError;
   if (error) {
     console.error("[Teacher dashboard]", {
       code: error.code,
@@ -52,6 +59,7 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     ok: true,
-    submissions: (data ?? []) as SubmissionWithStudent[]
+    submissions: (submissionData ?? []) as SubmissionWithStudent[],
+    students: (studentData ?? []) as Student[]
   });
 }
