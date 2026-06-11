@@ -304,9 +304,62 @@ button {
   font-size: 12px;
 }
 
+.consoleActions {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+}
+
+.fontSizeControl {
+  align-items: center;
+  background: color-mix(in srgb, var(--panel) 78%, var(--bg));
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  display: inline-flex;
+  overflow: hidden;
+}
+
+.fontSizeControl button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: var(--ink);
+  display: inline-flex;
+  height: 32px;
+  justify-content: center;
+  padding: 0;
+  width: 34px;
+}
+
+.fontSizeControl button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--primary) 10%, var(--panel));
+  color: var(--primary);
+}
+
+.fontSizeControl button:disabled {
+  cursor: default;
+  opacity: 0.35;
+}
+
+.fontSizeControl span,
+.consoleHeader .fontSizeControl span {
+  border-left: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  min-width: 45px;
+  padding: 0 6px;
+  text-align: center;
+}
+
 .terminal {
   background: var(--console);
   color: var(--console-ink);
+  font-family:
+    Consolas,
+    "Courier New",
+    monospace;
   min-height: 340px;
   padding: 18px;
 }
@@ -325,7 +378,7 @@ button {
     Consolas,
     "Courier New",
     monospace;
-  font-size: 15px;
+  font-size: inherit;
   line-height: 1.6;
   min-height: 0;
   padding: 0;
@@ -353,6 +406,8 @@ button {
   border: 0;
   color: var(--console-ink);
   flex: 1;
+  font-family: inherit;
+  font-size: inherit;
   line-height: 1.6;
   min-height: 28px;
   overflow: hidden;
@@ -370,7 +425,7 @@ button {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  font-size: 14px;
+  font-size: inherit;
   margin-top: 12px;
   padding-top: 12px;
 }
@@ -707,6 +762,7 @@ pre {
 }
 
 .ideActions {
+  align-items: center;
   display: flex;
   gap: 8px;
 }
@@ -963,17 +1019,36 @@ kbd {
   }
 
   .topbar,
-  .dashboardHeader,
-  .ideHeader {
+  .dashboardHeader {
     align-items: stretch;
     flex-direction: column;
   }
 
   .modeSwitch,
   .modeSwitch button,
-  .ideActions,
-  .ideActions button {
+  .ideActions {
     width: 100%;
+  }
+
+  .ideHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ideActions {
+    justify-content: space-between;
+  }
+
+  .ideActions .primaryButton {
+    flex: 1;
+  }
+
+  .consoleHeader {
+    gap: 12px;
+  }
+
+  .consoleActions {
+    gap: 8px;
   }
 
   .choiceGrid,

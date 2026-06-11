@@ -27,7 +27,9 @@ import {
   LayoutDashboard,
   Lightbulb,
   LogIn,
+  Minus,
   Play,
+  Plus,
   Send,
   Sparkles,
   X
@@ -50,7 +52,7 @@ type ColorMode = "light" | "dark";
 
 export default function Home() {
   const [screen, setScreen] = useState<Screen>("home");
-  const [colorMode, setColorMode] = useState<ColorMode>("dark");
+  const [colorMode, setColorMode] = useState<ColorMode>("light");
   const [loginOpen, setLoginOpen] = useState(false);
   const [student, setStudent] = useState<Student | null>(null);
   const [studentNo, setStudentNo] = useState("");
@@ -62,6 +64,8 @@ export default function Home() {
   const selectedProblem = problems.find((problem) => problem.id === selectedProblemId) ?? fallbackProblem;
   const [code, setCode] = useState(selectedProblem.starterCode);
   const [practiceCode, setPracticeCode] = useState("print()");
+  const [codeFontSize, setCodeFontSize] = useState(15);
+  const [consoleFontSize, setConsoleFontSize] = useState(15);
   const [consoleLines, setConsoleLines] = useState<string[]>([
     "Shift + Enter로 실행하세요.",
     "input()이 있으면 IDLE처럼 프롬프트 옆에 입력할 수 있어요."
@@ -260,25 +264,42 @@ export default function Home() {
                   <strong>파이썬 코드를 작성해보세요!</strong>
                   <span>Ctrl+D, Ctrl+Enter, Ctrl+Shift+D 단축키를 사용할 수 있어요.</span>
                 </div>
-                <button className="primaryButton" onClick={runPractice}>
-                  <Play size={17} />
-                  실행
-                  <kbd>Shift + Enter</kbd>
-                </button>
+                <div className="ideActions">
+                  <FontSizeControl
+                    label="코드 글자 크기"
+                    value={codeFontSize}
+                    onDecrease={() => setCodeFontSize((size) => Math.max(12, size - 1))}
+                    onIncrease={() => setCodeFontSize((size) => Math.min(24, size + 1))}
+                  />
+                  <button className="primaryButton" onClick={runPractice}>
+                    <Play size={17} />
+                    실행
+                    <kbd>Shift + Enter</kbd>
+                  </button>
+                </div>
               </div>
               <CodeEditor
                 value={practiceCode}
                 onChange={setPracticeCode}
                 onRun={runPractice}
                 colorMode={colorMode}
+                fontSize={codeFontSize}
               />
             </article>
             <aside className="consolePane">
               <div className="consoleHeader">
                 <strong>콘솔</strong>
-                <span>{pendingPrompt !== null ? "입력 대기 중" : isPracticeRunning ? "실행 중" : "실행 결과"}</span>
+                <div className="consoleActions">
+                  <FontSizeControl
+                    label="콘솔 글자 크기"
+                    value={consoleFontSize}
+                    onDecrease={() => setConsoleFontSize((size) => Math.max(12, size - 1))}
+                    onIncrease={() => setConsoleFontSize((size) => Math.min(24, size + 1))}
+                  />
+                  <span>{pendingPrompt !== null ? "입력 대기 중" : isPracticeRunning ? "실행 중" : "실행 결과"}</span>
+                </div>
               </div>
-              <div className="terminal" aria-live="polite">
+              <div className="terminal" aria-live="polite" style={{ fontSize: `${consoleFontSize}px` }}>
                 <div className="terminalScroll">
                   <pre>{consoleLines.join("\n")}</pre>
                   {pendingPrompt !== null ? (
@@ -511,16 +532,54 @@ function HomeChoice({ onPractice, onSolve }: { onPractice: () => void; onSolve: 
   );
 }
 
+function FontSizeControl({
+  label,
+  value,
+  onDecrease,
+  onIncrease
+}: {
+  label: string;
+  value: number;
+  onDecrease: () => void;
+  onIncrease: () => void;
+}) {
+  return (
+    <div className="fontSizeControl" aria-label={label}>
+      <button
+        type="button"
+        onClick={onDecrease}
+        disabled={value <= 12}
+        aria-label={`${label} 줄이기`}
+        title={`${label} 줄이기`}
+      >
+        <Minus size={15} />
+      </button>
+      <span aria-live="polite">{value}px</span>
+      <button
+        type="button"
+        onClick={onIncrease}
+        disabled={value >= 24}
+        aria-label={`${label} 키우기`}
+        title={`${label} 키우기`}
+      >
+        <Plus size={15} />
+      </button>
+    </div>
+  );
+}
+
 function CodeEditor({
   value,
   onChange,
   onRun,
-  colorMode
+  colorMode,
+  fontSize
 }: {
   value: string;
   onChange: (value: string) => void;
   onRun: () => void;
   colorMode: ColorMode;
+  fontSize: number;
 }) {
   const extensions = useMemo(
     () => [
@@ -546,7 +605,7 @@ function CodeEditor({
         ".cm-content": {
           caretColor: colorMode === "dark" ? "#ffffff" : "#111827",
           fontFamily: "Consolas, 'Courier New', monospace",
-          fontSize: "15px",
+          fontSize: `${fontSize}px`,
           lineHeight: "1.6",
           minHeight: "340px",
           padding: "18px"
@@ -589,7 +648,7 @@ function CodeEditor({
       ),
       keymap.of([...defaultKeymap, ...historyKeymap])
     ],
-    [colorMode, onRun]
+    [colorMode, fontSize, onRun]
   );
 
   return (
