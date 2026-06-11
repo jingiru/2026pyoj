@@ -13,6 +13,7 @@
   --code-ink: #e5e7eb;
   --console: #0b1220;
   --console-ink: #e5e7eb;
+  --console-accent: #60a5fa;
 }
 
 * {
@@ -66,6 +67,7 @@ button {
   --code-ink: #f8fafc;
   --console: #050816;
   --console-ink: #f8fafc;
+  --console-accent: #60a5fa;
 }
 
 .shell.lightMode {
@@ -78,8 +80,9 @@ button {
   --primary-dark: #1d4ed8;
   --code: #ffffff;
   --code-ink: #1f2937;
-  --console: #111827;
-  --console-ink: #e5e7eb;
+  --console: #ffffff;
+  --console-ink: #1f2937;
+  --console-accent: #2563eb;
 }
 
 .topbar {
@@ -336,7 +339,7 @@ button {
 }
 
 .terminalInputRow span {
-  color: #60a5fa;
+  color: var(--console-accent);
   font-family:
     Consolas,
     "Courier New",
