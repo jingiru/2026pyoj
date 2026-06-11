@@ -269,7 +269,7 @@ export default function Home() {
                     label="코드 글자 크기"
                     value={codeFontSize}
                     onDecrease={() => setCodeFontSize((size) => Math.max(12, size - 1))}
-                    onIncrease={() => setCodeFontSize((size) => Math.min(24, size + 1))}
+                    onIncrease={() => setCodeFontSize((size) => Math.min(60, size + 1))}
                   />
                   <button className="primaryButton" onClick={runPractice}>
                     <Play size={17} />
@@ -294,7 +294,7 @@ export default function Home() {
                     label="콘솔 글자 크기"
                     value={consoleFontSize}
                     onDecrease={() => setConsoleFontSize((size) => Math.max(12, size - 1))}
-                    onIncrease={() => setConsoleFontSize((size) => Math.min(24, size + 1))}
+                    onIncrease={() => setConsoleFontSize((size) => Math.min(60, size + 1))}
                   />
                   <span>{pendingPrompt !== null ? "입력 대기 중" : isPracticeRunning ? "실행 중" : "실행 결과"}</span>
                 </div>
@@ -558,7 +558,7 @@ function FontSizeControl({
       <button
         type="button"
         onClick={onIncrease}
-        disabled={value >= 24}
+        disabled={value >= 60}
         aria-label={`${label} 키우기`}
         title={`${label} 키우기`}
       >
