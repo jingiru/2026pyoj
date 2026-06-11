@@ -193,6 +193,31 @@ button {
   color: #fda4af;
 }
 
+.consoleResetButton {
+  align-items: center;
+  background: color-mix(in srgb, #f43f5e 9%, var(--panel));
+  border: 1px solid color-mix(in srgb, #f43f5e 32%, var(--line));
+  border-radius: 7px;
+  color: #e11d48;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 700;
+  gap: 6px;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 11px;
+  white-space: nowrap;
+}
+
+.consoleResetButton:hover {
+  background: color-mix(in srgb, #f43f5e 17%, var(--panel));
+  border-color: #fb7185;
+}
+
+.darkMode .consoleResetButton {
+  color: #fda4af;
+}
+
 .primaryButton:disabled {
   opacity: 0.65;
 }
@@ -405,9 +430,8 @@ button {
 }
 
 .terminalScroll {
-  max-height: 340px;
   min-height: 304px;
-  overflow: auto;
+  overflow: visible;
 }
 
 .terminal pre {
@@ -1092,7 +1116,9 @@ kbd {
   }
 
   .consoleActions {
+    flex-wrap: wrap;
     gap: 8px;
+    justify-content: flex-end;
   }
 
   .choiceGrid,

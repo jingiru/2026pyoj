@@ -17,7 +17,7 @@ import {
 } from "@codemirror/commands";
 import { python, pythonLanguage } from "@codemirror/lang-python";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
-import { EditorSelection, Prec } from "@codemirror/state";
+import { EditorSelection, EditorState, Prec } from "@codemirror/state";
 import { EditorView, keymap, lineNumbers } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
 import CodeMirror from "@uiw/react-codemirror";
@@ -229,6 +229,12 @@ export default function Home() {
     setPracticeCode("");
   }
 
+  function resetConsole() {
+    setConsoleLines([]);
+    setInputHistory([]);
+    setConsoleInput("");
+  }
+
   async function runPractice() {
     if (isPracticeRunning) return;
     setIsPracticeRunning(true);
@@ -383,6 +389,10 @@ export default function Home() {
               <div className="consoleHeader">
                 <strong>콘솔</strong>
                 <div className="consoleActions">
+                  <button className="consoleResetButton" onClick={resetConsole}>
+                    <Trash2 size={16} />
+                    콘솔 초기화
+                  </button>
                   <FontSizeControl
                     label="콘솔 글자 크기"
                     value={consoleFontSize}
@@ -707,6 +717,7 @@ function CodeEditor({
       lineNumbers(),
       history(),
       python(),
+      EditorState.allowMultipleSelections.of(true),
       pythonLanguage.data.of({ autocomplete: pythonCompletionSource }),
       autocompletion(),
       closeBrackets(),
@@ -831,16 +842,35 @@ function selectNextWordOccurrence(view: EditorView) {
   if (!query.trim()) return false;
 
   const doc = state.doc.toString();
-  let next = doc.indexOf(query, from);
-  if (next === -1) next = doc.indexOf(query, 0);
+  const selectedRanges = state.selection.ranges;
+  const isAlreadySelected = (start: number) =>
+    selectedRanges.some((range) => range.from === start && range.to === start + query.length);
+  let next = findNextUnselectedOccurrence(doc, query, from, isAlreadySelected);
+  if (next === -1) next = findNextUnselectedOccurrence(doc, query, 0, isAlreadySelected, from);
   if (next === -1) return false;
 
   const range = EditorSelection.range(next, next + query.length);
+  const ranges = [...selectedRanges, range].sort((left, right) => left.from - right.from);
   view.dispatch({
-    selection: EditorSelection.create([...state.selection.ranges, range], state.selection.ranges.length),
+    selection: EditorSelection.create(ranges, ranges.indexOf(range)),
     scrollIntoView: true
   });
   return true;
+}
+
+function findNextUnselectedOccurrence(
+  doc: string,
+  query: string,
+  from: number,
+  isAlreadySelected: (start: number) => boolean,
+  before = doc.length
+) {
+  let next = doc.indexOf(query, from);
+  while (next !== -1 && next < before) {
+    if (!isAlreadySelected(next)) return next;
+    next = doc.indexOf(query, next + query.length);
+  }
+  return -1;
 }
 
 function appendConsoleText(lines: string[], text: string) {
