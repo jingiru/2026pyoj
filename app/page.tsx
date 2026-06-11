@@ -51,11 +51,6 @@ import type { Student, SubmissionWithStudent } from "@/lib/types";
 
 type Screen = "home" | "practice" | "solve" | "teacher";
 type ColorMode = "light" | "dark";
-type SolveRunResult = {
-  input: string;
-  output: string;
-  error: string;
-};
 
 const PRACTICE_CODE_STORAGE_KEY = "pyoj:practice-code";
 const SELECTED_PROBLEM_STORAGE_KEY = "pyoj:selected-problem";
@@ -125,8 +120,16 @@ export default function Home() {
   const consoleInputRef = useRef<HTMLTextAreaElement | null>(null);
   const [notice, setNotice] = useState("");
   const [result, setResult] = useState<ReturnType<typeof judgePythonSubmission> | null>(null);
-  const [solveRunResult, setSolveRunResult] = useState<SolveRunResult | null>(null);
+  const [solveConsoleLines, setSolveConsoleLines] = useState<string[]>([
+    "실행 버튼 또는 Shift + Enter로 실행하세요."
+  ]);
+  const [solveConsoleInput, setSolveConsoleInput] = useState("");
+  const [solveInputHistory, setSolveInputHistory] = useState<string[]>([]);
+  const [solvePendingPrompt, setSolvePendingPrompt] = useState<string | null>(null);
   const [isSolveRunning, setIsSolveRunning] = useState(false);
+  const solveInputResolverRef = useRef<((value: string) => void) | null>(null);
+  const solveQueuedInputsRef = useRef<string[]>([]);
+  const solveConsoleInputRef = useRef<HTMLTextAreaElement | null>(null);
   const [bookSidebarOpen, setBookSidebarOpen] = useState(true);
   const [problemListOpen, setProblemListOpen] = useState(true);
   const [submissions, setSubmissions] = useState<SubmissionWithStudent[]>([]);
@@ -144,6 +147,10 @@ export default function Home() {
   useEffect(() => {
     if (pendingPrompt !== null) consoleInputRef.current?.focus();
   }, [pendingPrompt]);
+
+  useEffect(() => {
+    if (solvePendingPrompt !== null) solveConsoleInputRef.current?.focus();
+  }, [solvePendingPrompt]);
 
   useEffect(() => {
     if (!loginOpen && !teacherLoginOpen) return;
@@ -380,7 +387,7 @@ export default function Home() {
     setSelectedBookId(problem.bookId);
     setCode(getSavedProblemCode(problem.id) ?? problem.starterCode);
     setResult(null);
-    setSolveRunResult(null);
+    resetSolveConsole();
   }
 
   function resetPracticeCode() {
@@ -477,26 +484,61 @@ export default function Home() {
     if (isSolveRunning) return;
     setIsSolveRunning(true);
     setResult(null);
-
-    const sampleInput = selectedProblem.examples[0]?.input ?? "";
-    const queuedInputs = sampleInput.replace(/\r\n/g, "\n").split("\n");
-    const outputChunks: string[] = [];
-    const errorChunks: string[] = [];
+    setSolvePendingPrompt(null);
+    setSolveConsoleInput("");
+    setSolveInputHistory([]);
+    solveQueuedInputsRef.current = [];
+    setSolveConsoleLines(["$ python main.py", ""]);
 
     try {
       await runPythonWithSkulpt(code, {
-        output: (text) => outputChunks.push(text),
-        error: (text) => errorChunks.push(text),
-        input: async () => queuedInputs.shift() ?? ""
-      });
-      setSolveRunResult({
-        input: sampleInput,
-        output: outputChunks.join("").trimEnd(),
-        error: errorChunks.join("\n")
+        output: (text) => {
+          setSolveConsoleLines((lines) => appendConsoleText(lines, text));
+        },
+        error: (text) => {
+          setSolveConsoleLines((lines) => [...lines, text]);
+        },
+        input: requestSolveConsoleInput
       });
     } finally {
+      solveInputResolverRef.current = null;
+      setSolvePendingPrompt(null);
       setIsSolveRunning(false);
     }
+  }
+
+  function requestSolveConsoleInput(prompt: string) {
+    const queuedValue = solveQueuedInputsRef.current.shift();
+    if (queuedValue !== undefined) {
+      setSolveInputHistory((items) => [...items, queuedValue]);
+      return Promise.resolve(queuedValue);
+    }
+
+    return new Promise<string>((resolve) => {
+      solveInputResolverRef.current = resolve;
+      setSolvePendingPrompt(prompt);
+    });
+  }
+
+  function submitSolveConsoleInput(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key !== "Enter" || !solveInputResolverRef.current) return;
+    if (event.shiftKey) return;
+    event.preventDefault();
+    const resolver = solveInputResolverRef.current;
+    solveInputResolverRef.current = null;
+    const normalized = solveConsoleInput.replace(/\r\n/g, "\n");
+    const [currentValue, ...queuedValues] = normalized.split("\n");
+    solveQueuedInputsRef.current.push(...queuedValues);
+    setSolveInputHistory((items) => [...items, currentValue]);
+    setSolvePendingPrompt(null);
+    setSolveConsoleInput("");
+    resolver(currentValue);
+  }
+
+  function resetSolveConsole() {
+    setSolveConsoleLines([]);
+    setSolveInputHistory([]);
+    setSolveConsoleInput("");
   }
 
   async function refreshDashboard() {
@@ -764,13 +806,86 @@ export default function Home() {
                   </button>
                 </div>
               </div>
-              <textarea
-                className="codeEditor"
-                spellCheck={false}
-                value={code}
-                onChange={(event) => setCode(event.target.value)}
-              />
-              <SolveRunPanel result={solveRunResult} />
+              <div className="solveIdeBody">
+                <div className="solveEditorSection">
+                  <div className="solveSectionHeader">
+                    <strong>코드 에디터</strong>
+                    <FontSizeControl
+                      label="문제 코드 글자 크기"
+                      value={codeFontSize}
+                      onDecreaseLarge={() => setCodeFontSize((size) => Math.max(12, size - 10))}
+                      onDecrease={() => setCodeFontSize((size) => Math.max(12, size - 1))}
+                      onIncrease={() => setCodeFontSize((size) => Math.min(60, size + 1))}
+                      onIncreaseLarge={() => setCodeFontSize((size) => Math.min(60, size + 10))}
+                    />
+                  </div>
+                  <CodeEditor
+                    value={code}
+                    onChange={setCode}
+                    onRun={runSolveCode}
+                    colorMode={colorMode}
+                    fontSize={codeFontSize}
+                  />
+                </div>
+                <div className="solveConsoleSection">
+                  <div className="solveSectionHeader">
+                    <strong>출력 콘솔</strong>
+                    <div className="consoleActions">
+                      <button className="consoleResetButton" onClick={resetSolveConsole}>
+                        <Trash2 size={16} />
+                        콘솔 초기화
+                      </button>
+                      <FontSizeControl
+                        label="문제 콘솔 글자 크기"
+                        value={consoleFontSize}
+                        onDecreaseLarge={() => setConsoleFontSize((size) => Math.max(12, size - 10))}
+                        onDecrease={() => setConsoleFontSize((size) => Math.max(12, size - 1))}
+                        onIncrease={() => setConsoleFontSize((size) => Math.min(60, size + 1))}
+                        onIncreaseLarge={() => setConsoleFontSize((size) => Math.min(60, size + 10))}
+                      />
+                      <span>
+                        {solvePendingPrompt !== null ? "입력 대기 중" : isSolveRunning ? "실행 중" : "실행 결과"}
+                      </span>
+                    </div>
+                  </div>
+                  <div
+                    className="terminal solveTerminal"
+                    aria-live="polite"
+                    style={{ fontSize: `${consoleFontSize}px` }}
+                  >
+                    <div className="terminalScroll">
+                      <pre>{solveConsoleLines.join("\n")}</pre>
+                      {solvePendingPrompt !== null ? (
+                        <div className="terminalInputRow active">
+                          <span>{solvePendingPrompt}</span>
+                          <textarea
+                            value={solveConsoleInput}
+                            ref={solveConsoleInputRef}
+                            onChange={(event) => setSolveConsoleInput(event.target.value)}
+                            onKeyDown={submitSolveConsoleInput}
+                            placeholder="값을 입력하고 Enter"
+                            aria-label="문제 풀이 콘솔 입력"
+                            rows={1}
+                          />
+                        </div>
+                      ) : (
+                        <div className="terminalHint">
+                          <strong>입력값</strong>
+                          {solveInputHistory.length === 0 ? (
+                            <span>아직 입력한 값이 없습니다.</span>
+                          ) : (
+                            solveInputHistory.map((item, index) => (
+                              <code key={`${item}-${index}`}>
+                                {index + 1}. {item || "(빈 값)"}
+                              </code>
+                            ))
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
               <ResultPanel result={result} />
             </article>
           </section>
@@ -1230,23 +1345,6 @@ function ProblemPane({ selectedProblem }: { selectedProblem: (typeof problems)[n
         {selectedProblem.hint}
       </div>
     </article>
-  );
-}
-
-function SolveRunPanel({ result }: { result: SolveRunResult | null }) {
-  if (!result) return null;
-
-  return (
-    <div className={result.error ? "solveRunPanel error" : "solveRunPanel"}>
-      <div>
-        <strong>예시 입력</strong>
-        <pre>{result.input || "입력 없음"}</pre>
-      </div>
-      <div>
-        <strong>{result.error ? "실행 오류" : "실행 결과"}</strong>
-        <pre>{result.error || result.output || "출력 없음"}</pre>
-      </div>
-    </div>
   );
 }
 

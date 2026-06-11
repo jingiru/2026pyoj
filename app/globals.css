@@ -925,7 +925,7 @@ pre {
 
 .idePane {
   display: grid;
-  grid-template-rows: auto minmax(360px, 1fr) auto auto;
+  grid-template-rows: auto minmax(720px, 1fr) auto;
 }
 
 .ideHeader {
@@ -956,48 +956,57 @@ pre {
   justify-content: flex-end;
 }
 
-.codeEditor {
-  background: var(--code);
-  border: 0;
-  color: var(--code-ink);
-  font-family:
-    Consolas,
-    "Courier New",
-    monospace;
-  font-size: 15px;
-  line-height: 1.6;
-  min-height: 360px;
-  padding: 18px;
-  resize: vertical;
-  width: 100%;
-}
-
-.solveRunPanel {
-  background: color-mix(in srgb, var(--mint) 7%, var(--panel));
-  border-top: 1px solid var(--line);
+.solveIdeBody {
   display: grid;
+  grid-template-rows: repeat(2, minmax(340px, 1fr));
+  min-height: 720px;
+  min-width: 0;
+}
+
+.solveEditorSection,
+.solveConsoleSection {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+  min-width: 0;
+}
+
+.solveEditorSection {
+  border-bottom: 1px solid var(--line);
+}
+
+.solveSectionHeader {
+  align-items: center;
+  background: color-mix(in srgb, var(--panel) 88%, var(--bg));
+  border-bottom: 1px solid var(--line);
+  display: flex;
   gap: 12px;
-  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
-  padding: 14px;
+  justify-content: space-between;
+  min-height: 54px;
+  padding: 10px 12px;
 }
 
-.solveRunPanel.error {
-  background: color-mix(in srgb, var(--rose) 8%, var(--panel));
+.solveSectionHeader .consoleActions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
-.solveRunPanel strong {
-  display: block;
-  font-size: 13px;
-  margin-bottom: 8px;
+.solveSectionHeader .consoleActions > span {
+  color: var(--muted);
+  font-size: 12px;
 }
 
-.solveRunPanel pre {
-  font-family:
-    Consolas,
-    "Courier New",
-    monospace;
-  min-height: 64px;
-  max-height: 220px;
+.solveEditorSection .cm-editor,
+.solveEditorSection .cm-content {
+  min-height: 286px;
+}
+
+.solveTerminal {
+  min-height: 286px;
+}
+
+.solveTerminal .terminalScroll {
+  min-height: 250px;
 }
 
 .cm-editor {
@@ -1337,7 +1346,6 @@ kbd {
   .choiceGrid,
   .ioGrid,
   .descriptionGrid,
-  .solveRunPanel,
   .metrics,
   .roadmap {
     grid-template-columns: 1fr;
