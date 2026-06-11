@@ -776,7 +776,9 @@ pre {
 .ideActions {
   align-items: center;
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
+  justify-content: flex-end;
 }
 
 .codeEditor {
@@ -1051,7 +1053,8 @@ kbd {
     justify-content: space-between;
   }
 
-  .ideActions .primaryButton {
+  .ideActions .primaryButton,
+  .ideActions .ghostButton {
     flex: 1;
   }
 

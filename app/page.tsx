@@ -32,6 +32,7 @@ import {
   Play,
   Send,
   Sparkles,
+  Trash2,
   X
 } from "lucide-react";
 import { FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
@@ -49,6 +50,11 @@ import type { Student, SubmissionWithStudent } from "@/lib/types";
 
 type Screen = "home" | "practice" | "solve" | "teacher";
 type ColorMode = "light" | "dark";
+
+const PRACTICE_CODE_STORAGE_KEY = "pyoj:practice-code";
+const SELECTED_PROBLEM_STORAGE_KEY = "pyoj:selected-problem";
+const PROBLEM_CODE_STORAGE_PREFIX = "pyoj:problem-code:";
+const DEFAULT_PROBLEM = problems.find((problem) => problem.bookId === problemBooks[0].id) ?? problems[0];
 
 const sublimeDarkHighlight = HighlightStyle.define([
   { tag: tags.comment, color: "#75715e", fontStyle: "italic" },
@@ -87,10 +93,10 @@ export default function Home() {
   const [name, setName] = useState("");
   const [selectedBookId, setSelectedBookId] = useState(problemBooks[0].id);
   const selectedProblems = problems.filter((problem) => problem.bookId === selectedBookId);
-  const fallbackProblem = selectedProblems[0] ?? problems[0];
-  const [selectedProblemId, setSelectedProblemId] = useState(fallbackProblem.id);
-  const selectedProblem = problems.find((problem) => problem.id === selectedProblemId) ?? fallbackProblem;
-  const [code, setCode] = useState(selectedProblem.starterCode);
+  const fallbackProblem = selectedProblems[0] ?? DEFAULT_PROBLEM;
+  const [selectedProblemId, setSelectedProblemId] = useState(DEFAULT_PROBLEM.id);
+  const selectedProblem = problems.find((problem) => problem.id === selectedProblemId) ?? DEFAULT_PROBLEM;
+  const [code, setCode] = useState(DEFAULT_PROBLEM.starterCode);
   const [practiceCode, setPracticeCode] = useState("print()");
   const [codeFontSize, setCodeFontSize] = useState(15);
   const [consoleFontSize, setConsoleFontSize] = useState(15);
@@ -109,6 +115,7 @@ export default function Home() {
   const [result, setResult] = useState<ReturnType<typeof judgePythonSubmission> | null>(null);
   const [submissions, setSubmissions] = useState<SubmissionWithStudent[]>([]);
   const [loading, setLoading] = useState(false);
+  const [editorStorageReady, setEditorStorageReady] = useState(false);
 
   const dashboard = useMemo(() => {
     const accepted = submissions.filter((submission) => submission.status === "accepted").length;
@@ -121,6 +128,54 @@ export default function Home() {
   useEffect(() => {
     if (pendingPrompt !== null) consoleInputRef.current?.focus();
   }, [pendingPrompt]);
+
+  useEffect(() => {
+    function syncScreenFromUrl() {
+      setScreen(getScreenFromUrl());
+    }
+
+    syncScreenFromUrl();
+    window.addEventListener("popstate", syncScreenFromUrl);
+    return () => window.removeEventListener("popstate", syncScreenFromUrl);
+  }, []);
+
+  useEffect(() => {
+    const savedPracticeCode = getStoredValue(PRACTICE_CODE_STORAGE_KEY);
+    if (savedPracticeCode !== null) setPracticeCode(savedPracticeCode);
+
+    const savedProblemId = getStoredValue(SELECTED_PROBLEM_STORAGE_KEY);
+    const savedProblem = problems.find((problem) => problem.id === savedProblemId);
+    if (savedProblem) {
+      setSelectedProblemId(savedProblem.id);
+      setSelectedBookId(savedProblem.bookId);
+      setCode(getSavedProblemCode(savedProblem.id) ?? savedProblem.starterCode);
+    } else {
+      setCode(getSavedProblemCode(DEFAULT_PROBLEM.id) ?? DEFAULT_PROBLEM.starterCode);
+    }
+    setEditorStorageReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!editorStorageReady) return;
+    setStoredValue(PRACTICE_CODE_STORAGE_KEY, practiceCode);
+  }, [editorStorageReady, practiceCode]);
+
+  useEffect(() => {
+    if (!editorStorageReady) return;
+    setStoredValue(SELECTED_PROBLEM_STORAGE_KEY, selectedProblemId);
+    setStoredValue(`${PROBLEM_CODE_STORAGE_PREFIX}${selectedProblemId}`, code);
+  }, [code, editorStorageReady, selectedProblemId]);
+
+  function navigateTo(nextScreen: Screen) {
+    const url = new URL(window.location.href);
+    if (nextScreen === "home") {
+      url.searchParams.delete("screen");
+    } else {
+      url.searchParams.set("screen", nextScreen);
+    }
+    window.history.pushState({}, "", url);
+    setScreen(nextScreen);
+  }
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -138,7 +193,7 @@ export default function Home() {
       const signedIn = await findOrCreateStudent(studentNo, name);
       setStudent(signedIn);
       setLoginOpen(false);
-      setScreen("solve");
+      navigateTo("solve");
       setNotice(`${signedIn.name}님, 문제 풀이를 시작해볼까요?`);
     } catch (error) {
       setNotice(getDataErrorMessage(error, "로그인 중 문제가 생겼어요. Supabase 연결을 확인해주세요."));
@@ -149,7 +204,7 @@ export default function Home() {
 
   function enterSolveMode() {
     if (student) {
-      setScreen("solve");
+      navigateTo("solve");
       return;
     }
     setLoginOpen(true);
@@ -165,8 +220,13 @@ export default function Home() {
     const problem = problems.find((item) => item.id === problemId) ?? problems[0];
     setSelectedProblemId(problem.id);
     setSelectedBookId(problem.bookId);
-    setCode(problem.starterCode);
+    setCode(getSavedProblemCode(problem.id) ?? problem.starterCode);
     setResult(null);
+  }
+
+  function resetPracticeCode() {
+    if (!window.confirm("코드 에디터의 모든 코드를 삭제할까요?")) return;
+    setPracticeCode("");
   }
 
   async function runPractice() {
@@ -265,11 +325,11 @@ export default function Home() {
         screen={screen}
         student={student}
         colorMode={colorMode}
-        onHome={() => setScreen("home")}
-        onPractice={() => setScreen("practice")}
+        onHome={() => navigateTo("home")}
+        onPractice={() => navigateTo("practice")}
         onSolve={enterSolveMode}
         onTeacher={() => {
-          setScreen("teacher");
+          navigateTo("teacher");
           void refreshDashboard();
         }}
         onToggleColorMode={() => setColorMode((mode) => (mode === "dark" ? "light" : "dark"))}
@@ -277,7 +337,7 @@ export default function Home() {
 
       {notice && <div className="notice">{notice}</div>}
 
-      {screen === "home" && <HomeChoice onPractice={() => setScreen("practice")} onSolve={enterSolveMode} />}
+      {screen === "home" && <HomeChoice onPractice={() => navigateTo("practice")} onSolve={enterSolveMode} />}
 
       {screen === "practice" && (
         <section className="practiceView">
@@ -289,7 +349,7 @@ export default function Home() {
             <article className="idePane">
               <div className="ideHeader">
                 <div>
-                  <strong>파이썬 코드를 작성해보세요!</strong>
+                  <strong>코드 에디터</strong>
                 </div>
                 <div className="ideActions">
                   <FontSizeControl
@@ -300,6 +360,10 @@ export default function Home() {
                     onIncrease={() => setCodeFontSize((size) => Math.min(60, size + 1))}
                     onIncreaseLarge={() => setCodeFontSize((size) => Math.min(60, size + 10))}
                   />
+                  <button className="ghostButton" onClick={resetPracticeCode}>
+                    <Trash2 size={17} />
+                    코드 초기화
+                  </button>
                   <button className="primaryButton" onClick={runPractice}>
                     <Play size={17} />
                     실행
@@ -929,4 +993,29 @@ function Metric({ label, value }: { label: string; value: string }) {
 
 function problemTitle(problemId: string) {
   return problems.find((problem) => problem.id === problemId)?.title ?? problemId;
+}
+
+function getScreenFromUrl(): Screen {
+  const screen = new URL(window.location.href).searchParams.get("screen");
+  return screen === "practice" || screen === "solve" || screen === "teacher" ? screen : "home";
+}
+
+function getSavedProblemCode(problemId: string) {
+  return getStoredValue(`${PROBLEM_CODE_STORAGE_PREFIX}${problemId}`);
+}
+
+function getStoredValue(key: string) {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function setStoredValue(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // The editor remains usable when browser storage is unavailable.
+  }
 }
