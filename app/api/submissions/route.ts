@@ -24,6 +24,10 @@ export async function POST(request: Request) {
     );
   }
 
+  const score =
+    submission.total_count === 0
+      ? 0
+      : Math.round((submission.passed_count / submission.total_count) * 100);
   const { data, error } = await supabase
     .from("submissions")
     .insert({
@@ -33,15 +37,21 @@ export async function POST(request: Request) {
       status: submission.status,
       passed_count: submission.passed_count,
       total_count: submission.total_count,
-      feedback: submission.feedback
+      score,
+      feedback: submission.feedback,
+      judged_at: new Date().toISOString()
     })
     .select()
     .single();
 
   if (error) {
     console.error("[Submission]", error);
+    const message =
+      error.code === "23503"
+        ? "제출할 문제 데이터가 DB에 없습니다. 문제 초기화 SQL을 먼저 실행해주세요."
+        : "제출 기록을 저장하지 못했습니다.";
     return NextResponse.json(
-      { ok: false, message: "제출 기록을 저장하지 못했습니다.", code: error.code },
+      { ok: false, message, code: error.code },
       { status: 500 }
     );
   }

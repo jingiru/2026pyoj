@@ -43,6 +43,11 @@ Vercel에서 새로 배포해야 클라이언트 번들에 값이 반영됩니�
 `supabase/teacher_dashboard_security.sql`을 한 번 실행해 브라우저 anon 사용자의 제출 기록
 조회 권한을 제거합니다. 교사 대시보드는 인증된 서버 API가 service role로 조회합니다.
 
+처음 설치하거나 문제 테이블이 비어 있는 프로젝트는 Supabase SQL Editor에서
+`supabase/seed_current_curriculum.sql`을 실행해 현재 앱의 문제집, 문제, 테스트케이스를
+등록해야 합니다. `submissions.problem_id`는 `problems.id`를 참조하므로 문제 데이터가 없으면
+학생 제출 저장이 외래키 오류로 거부됩니다.
+
 로그인 오류에 `42P01`, `42501`, `42703` 같은 코드가 표시되면 각각 테이블 없음, RLS/권한
 문제, 컬럼 불일치를 뜻합니다. 브라우저 개발자 도구 콘솔에는 Supabase의 상세 오류도 기록됩니다.
 
