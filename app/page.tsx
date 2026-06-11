@@ -30,6 +30,8 @@ import {
   Lightbulb,
   LogIn,
   LogOut,
+  PanelLeftClose,
+  PanelLeftOpen,
   Play,
   Send,
   Sparkles,
@@ -49,6 +51,11 @@ import type { Student, SubmissionWithStudent } from "@/lib/types";
 
 type Screen = "home" | "practice" | "solve" | "teacher";
 type ColorMode = "light" | "dark";
+type SolveRunResult = {
+  input: string;
+  output: string;
+  error: string;
+};
 
 const PRACTICE_CODE_STORAGE_KEY = "pyoj:practice-code";
 const SELECTED_PROBLEM_STORAGE_KEY = "pyoj:selected-problem";
@@ -118,6 +125,10 @@ export default function Home() {
   const consoleInputRef = useRef<HTMLTextAreaElement | null>(null);
   const [notice, setNotice] = useState("");
   const [result, setResult] = useState<ReturnType<typeof judgePythonSubmission> | null>(null);
+  const [solveRunResult, setSolveRunResult] = useState<SolveRunResult | null>(null);
+  const [isSolveRunning, setIsSolveRunning] = useState(false);
+  const [bookSidebarOpen, setBookSidebarOpen] = useState(true);
+  const [problemListOpen, setProblemListOpen] = useState(true);
   const [submissions, setSubmissions] = useState<SubmissionWithStudent[]>([]);
   const [loading, setLoading] = useState(false);
   const [editorStorageReady, setEditorStorageReady] = useState(false);
@@ -369,6 +380,7 @@ export default function Home() {
     setSelectedBookId(problem.bookId);
     setCode(getSavedProblemCode(problem.id) ?? problem.starterCode);
     setResult(null);
+    setSolveRunResult(null);
   }
 
   function resetPracticeCode() {
@@ -458,6 +470,32 @@ export default function Home() {
       setNotice("제출 기록이 저장됐어요.");
     } catch (error) {
       setNotice(getDataErrorMessage(error, "채점은 완료됐지만 제출 기록 저장에 실패했어요."));
+    }
+  }
+
+  async function runSolveCode() {
+    if (isSolveRunning) return;
+    setIsSolveRunning(true);
+    setResult(null);
+
+    const sampleInput = selectedProblem.examples[0]?.input ?? "";
+    const queuedInputs = sampleInput.replace(/\r\n/g, "\n").split("\n");
+    const outputChunks: string[] = [];
+    const errorChunks: string[] = [];
+
+    try {
+      await runPythonWithSkulpt(code, {
+        output: (text) => outputChunks.push(text),
+        error: (text) => errorChunks.push(text),
+        input: async () => queuedInputs.shift() ?? ""
+      });
+      setSolveRunResult({
+        input: sampleInput,
+        output: outputChunks.join("").trimEnd(),
+        error: errorChunks.join("\n")
+      });
+    } finally {
+      setIsSolveRunning(false);
     }
   }
 
@@ -610,12 +648,28 @@ export default function Home() {
       )}
 
       {screen === "solve" && (
-        <section className="solveGrid">
-          <aside className="bookSidebar">
-            <div className="sectionTitle">
-              <BookOpen size={18} />
-              문제집
-            </div>
+        <section
+          className={`solveGrid ${bookSidebarOpen ? "" : "bookSidebarCollapsed"} ${
+            problemListOpen ? "" : "problemListCollapsed"
+          }`}
+        >
+          {bookSidebarOpen ? (
+            <aside className="bookSidebar">
+              <div className="sectionTitle collapsibleTitle">
+                <span>
+                  <BookOpen size={18} />
+                  문제집
+                </span>
+                <button
+                  type="button"
+                  className="iconButton"
+                  onClick={() => setBookSidebarOpen(false)}
+                  aria-label="문제집 목록 접기"
+                  title="문제집 목록 접기"
+                >
+                  <PanelLeftClose size={18} />
+                </button>
+              </div>
             {problemBooks.map((book) => {
               const count = problems.filter((problem) => problem.bookId === book.id).length;
               return (
@@ -630,10 +684,34 @@ export default function Home() {
                 </button>
               );
             })}
-          </aside>
+            </aside>
+          ) : (
+            <button
+              type="button"
+              className="collapsedSidebarButton"
+              onClick={() => setBookSidebarOpen(true)}
+              aria-label="문제집 목록 펼치기"
+              title="문제집 목록 펼치기"
+            >
+              <PanelLeftOpen size={19} />
+              <span>문제집</span>
+            </button>
+          )}
 
-          <aside className="problemList">
-            <div className="sectionTitle">문항</div>
+          {problemListOpen ? (
+            <aside className="problemList">
+              <div className="sectionTitle collapsibleTitle">
+                <span>문항</span>
+                <button
+                  type="button"
+                  className="iconButton"
+                  onClick={() => setProblemListOpen(false)}
+                  aria-label="문항 목록 접기"
+                  title="문항 목록 접기"
+                >
+                  <PanelLeftClose size={18} />
+                </button>
+              </div>
             {selectedProblems.length === 0 ? (
               <p className="empty">이 문제집의 문항은 곧 추가됩니다.</p>
             ) : (
@@ -649,7 +727,19 @@ export default function Home() {
                 </button>
               ))
             )}
-          </aside>
+            </aside>
+          ) : (
+            <button
+              type="button"
+              className="collapsedSidebarButton"
+              onClick={() => setProblemListOpen(true)}
+              aria-label="문항 목록 펼치기"
+              title="문항 목록 펼치기"
+            >
+              <PanelLeftOpen size={19} />
+              <span>문항</span>
+            </button>
+          )}
 
           <section className="workspace">
             <ProblemPane selectedProblem={selectedProblem} />
@@ -664,6 +754,10 @@ export default function Home() {
                     <Play size={17} />
                     초기 코드
                   </button>
+                  <button className="runButton" onClick={() => void runSolveCode()} disabled={isSolveRunning}>
+                    <Play size={17} />
+                    {isSolveRunning ? "실행 중" : "실행"}
+                  </button>
                   <button className="primaryButton" onClick={submitCode}>
                     <Send size={17} />
                     제출
@@ -676,6 +770,7 @@ export default function Home() {
                 value={code}
                 onChange={(event) => setCode(event.target.value)}
               />
+              <SolveRunPanel result={solveRunResult} />
               <ResultPanel result={result} />
             </article>
           </section>
@@ -1113,8 +1208,10 @@ function ProblemPane({ selectedProblem }: { selectedProblem: (typeof problems)[n
         </span>
       </div>
       <ProblemBlock title="문제" body={selectedProblem.statement} />
-      <ProblemBlock title="입력" body={selectedProblem.inputDescription} />
-      <ProblemBlock title="출력" body={selectedProblem.outputDescription} />
+      <div className="descriptionGrid">
+        <ProblemBlock title="입력" body={selectedProblem.inputDescription} />
+        <ProblemBlock title="출력" body={selectedProblem.outputDescription} />
+      </div>
       <div className="exampleBox">
         <h2>예시</h2>
         <div className="ioGrid">
@@ -1133,6 +1230,23 @@ function ProblemPane({ selectedProblem }: { selectedProblem: (typeof problems)[n
         {selectedProblem.hint}
       </div>
     </article>
+  );
+}
+
+function SolveRunPanel({ result }: { result: SolveRunResult | null }) {
+  if (!result) return null;
+
+  return (
+    <div className={result.error ? "solveRunPanel error" : "solveRunPanel"}>
+      <div>
+        <strong>예시 입력</strong>
+        <pre>{result.input || "입력 없음"}</pre>
+      </div>
+      <div>
+        <strong>{result.error ? "실행 오류" : "실행 결과"}</strong>
+        <pre>{result.error || result.output || "출력 없음"}</pre>
+      </div>
+    </div>
   );
 }
 

@@ -50,24 +50,21 @@ export async function findOrCreateStudent(studentNo: string, name: string) {
   assertSupabaseEnvironment();
   if (!supabase) return createLocalStudent(normalizedStudentNo, normalizedName);
 
-  const existing = await findStudent(normalizedStudentNo, normalizedName);
-  if (existing) return existing;
-
-  const { data, error } = await supabase
-    .from("students")
-    .insert({ student_no: normalizedStudentNo, name: normalizedName })
-    .select("id, student_no, name, created_at")
-    .single();
-
-  if (!error) return data as Student;
-
-  // Another request may have inserted the same student between select and insert.
-  if (error.code === "23505") {
-    const concurrentlyCreated = await findStudent(normalizedStudentNo, normalizedName);
-    if (concurrentlyCreated) return concurrentlyCreated;
+  const response = await fetch("/api/student-login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ studentNo: normalizedStudentNo, name: normalizedName })
+  });
+  const data = (await response.json()) as {
+    ok?: boolean;
+    student?: Student;
+    message?: string;
+    code?: string;
+  };
+  if (!response.ok || !data.ok || !data.student) {
+    throw new DataAccessError(data.message ?? "학생 정보를 저장하지 못했어요.", data.code);
   }
-
-  throw toDataAccessError(error, "학생 정보를 저장하지 못했어요.");
+  return data.student;
 }
 
 export async function saveSubmission(submission: Submission) {
@@ -83,22 +80,21 @@ export async function saveSubmission(submission: Submission) {
     return next;
   }
 
-  const { data, error } = await supabase
-    .from("submissions")
-    .insert({
-      student_id: submission.student_id,
-      problem_id: submission.problem_id,
-      code: submission.code,
-      status: submission.status,
-      passed_count: submission.passed_count,
-      total_count: submission.total_count,
-      feedback: submission.feedback
-    })
-    .select()
-    .single();
-
-  if (error) throw toDataAccessError(error, "제출 기록을 저장하지 못했어요.");
-  return data as Submission;
+  const response = await fetch("/api/submissions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(submission)
+  });
+  const data = (await response.json()) as {
+    ok?: boolean;
+    submission?: Submission;
+    message?: string;
+    code?: string;
+  };
+  if (!response.ok || !data.ok || !data.submission) {
+    throw new DataAccessError(data.message ?? "제출 기록을 저장하지 못했어요.", data.code);
+  }
+  return data.submission;
 }
 
 export async function listSubmissions(): Promise<SubmissionWithStudent[]> {
@@ -113,18 +109,6 @@ export async function listSubmissions(): Promise<SubmissionWithStudent[]> {
 
   if (error) throw toDataAccessError(error, "제출 기록을 불러오지 못했어요.");
   return (data ?? []) as SubmissionWithStudent[];
-}
-
-async function findStudent(studentNo: string, name: string) {
-  const { data, error } = await supabase!
-    .from("students")
-    .select("id, student_no, name, created_at")
-    .eq("student_no", studentNo)
-    .eq("name", name)
-    .maybeSingle();
-
-  if (error) throw toDataAccessError(error, "학생 정보를 조회하지 못했어요.");
-  return data as Student | null;
 }
 
 function toDataAccessError(error: PostgrestError, fallback: string) {
