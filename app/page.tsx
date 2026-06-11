@@ -130,6 +130,9 @@ export default function Home() {
   const solveInputResolverRef = useRef<((value: string) => void) | null>(null);
   const solveQueuedInputsRef = useRef<string[]>([]);
   const solveConsoleInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const solveRunInputsRef = useRef<string[]>([]);
+  const solveRunOutputsRef = useRef<string[]>([]);
+  const solveRunErrorsRef = useRef<string[]>([]);
   const [bookSidebarOpen, setBookSidebarOpen] = useState(true);
   const [problemListOpen, setProblemListOpen] = useState(true);
   const [submissions, setSubmissions] = useState<SubmissionWithStudent[]>([]);
@@ -482,20 +485,27 @@ export default function Home() {
 
   async function runSolveCode() {
     if (isSolveRunning) return;
+    const startedAt = performance.now();
+    const codeSnapshot = code;
     setIsSolveRunning(true);
     setResult(null);
     setSolvePendingPrompt(null);
     setSolveConsoleInput("");
     setSolveInputHistory([]);
     solveQueuedInputsRef.current = [];
+    solveRunInputsRef.current = [];
+    solveRunOutputsRef.current = [];
+    solveRunErrorsRef.current = [];
     setSolveConsoleLines(["$ python main.py", ""]);
 
     try {
-      await runPythonWithSkulpt(code, {
+      await runPythonWithSkulpt(codeSnapshot, {
         output: (text) => {
+          solveRunOutputsRef.current.push(text);
           setSolveConsoleLines((lines) => appendConsoleText(lines, text));
         },
         error: (text) => {
+          solveRunErrorsRef.current.push(text);
           setSolveConsoleLines((lines) => [...lines, text]);
         },
         input: requestSolveConsoleInput
@@ -504,12 +514,25 @@ export default function Home() {
       solveInputResolverRef.current = null;
       setSolvePendingPrompt(null);
       setIsSolveRunning(false);
+      if (student) {
+        await saveCodeRunLog({
+          studentId: student.id,
+          problemId: selectedProblem.id,
+          code: codeSnapshot,
+          stdin: solveRunInputsRef.current.join("\n"),
+          stdout: solveRunOutputsRef.current.join(""),
+          stderr: solveRunErrorsRef.current.join("\n"),
+          status: solveRunErrorsRef.current.length > 0 ? "runtime_error" : "success",
+          executionTimeMs: performance.now() - startedAt
+        });
+      }
     }
   }
 
   function requestSolveConsoleInput(prompt: string) {
     const queuedValue = solveQueuedInputsRef.current.shift();
     if (queuedValue !== undefined) {
+      solveRunInputsRef.current.push(queuedValue);
       setSolveInputHistory((items) => [...items, queuedValue]);
       return Promise.resolve(queuedValue);
     }
@@ -529,10 +552,37 @@ export default function Home() {
     const normalized = solveConsoleInput.replace(/\r\n/g, "\n");
     const [currentValue, ...queuedValues] = normalized.split("\n");
     solveQueuedInputsRef.current.push(...queuedValues);
+    solveRunInputsRef.current.push(currentValue);
     setSolveInputHistory((items) => [...items, currentValue]);
     setSolvePendingPrompt(null);
     setSolveConsoleInput("");
     resolver(currentValue);
+  }
+
+  async function saveCodeRunLog(payload: {
+    studentId: string;
+    problemId: string;
+    code: string;
+    stdin: string;
+    stdout: string;
+    stderr: string;
+    status: "success" | "runtime_error";
+    executionTimeMs: number;
+  }) {
+    try {
+      const response = await fetch("/api/code-runs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = (await response.json()) as { ok?: boolean; message?: string; code?: string };
+      if (!response.ok || !data.ok) {
+        const suffix = data.code ? ` (${data.code})` : "";
+        setNotice(`${data.message ?? "실행 로그를 저장하지 못했습니다."}${suffix}`);
+      }
+    } catch {
+      setNotice("코드는 실행됐지만 실행 로그를 저장하지 못했습니다.");
+    }
   }
 
   function resetSolveConsole() {
