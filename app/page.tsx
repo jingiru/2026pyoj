@@ -1559,10 +1559,12 @@ function ProblemPane({ selectedProblem }: { selectedProblem: Problem }) {
           </div>
         </div>
       </div>
-      <div className="hint">
-        <Lightbulb size={18} />
-        {selectedProblem.hint}
-      </div>
+      {selectedProblem.hint.trim() && (
+        <div className="hint">
+          <Lightbulb size={18} />
+          {selectedProblem.hint}
+        </div>
+      )}
     </article>
   );
 }
