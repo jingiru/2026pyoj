@@ -355,7 +355,7 @@ button {
   display: grid;
   gap: 18px;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  min-height: 380px;
+  min-height: 190px;
 }
 
 .practiceSide,
@@ -457,12 +457,12 @@ button {
     Consolas,
     "Courier New",
     monospace;
-  min-height: 340px;
+  min-height: 170px;
   padding: 18px;
 }
 
 .terminalScroll {
-  min-height: 304px;
+  min-height: 134px;
   overflow: visible;
 }
 
@@ -607,6 +607,63 @@ button {
 .problemList,
 .bookSidebar {
   padding: 16px;
+}
+
+.solveGrid .bookSidebar,
+.solveGrid .problemList {
+  padding: 12px;
+}
+
+.solveGrid .sectionTitle {
+  font-size: 14px;
+  margin-bottom: 9px;
+}
+
+.solveGrid .bookSidebar,
+.solveGrid .problemList {
+  gap: 6px;
+}
+
+.solveGrid .bookItem {
+  gap: 1px;
+  grid-template-columns: 28px 1fr;
+  padding: 9px;
+}
+
+.solveGrid .bookItem strong {
+  font-size: 13px;
+}
+
+.solveGrid .bookItem em {
+  font-size: 10px;
+}
+
+.solveGrid .problemGroups {
+  gap: 7px;
+}
+
+.solveGrid .problemGroupHeader {
+  gap: 6px;
+  padding: 8px;
+}
+
+.solveGrid .problemGroupHeader > div > strong,
+.solveGrid .problemItem strong {
+  font-size: 11px;
+}
+
+.solveGrid .problemGroupHeader > div > em {
+  font-size: 9px;
+}
+
+.solveGrid .problemGroupItems {
+  gap: 5px;
+  padding: 6px;
+}
+
+.solveGrid .problemItem {
+  grid-template-columns: 28px 1fr;
+  padding: 8px;
 }
 
 .sectionTitle {
@@ -982,6 +1039,14 @@ p {
   margin: 8px 0 0;
 }
 
+.problemHeader h1 {
+  font-size: clamp(24px, 1.7vw, 30px);
+  max-width: calc(100% - 205px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .problemNavigation {
   align-items: flex-end;
   display: grid;
@@ -1121,7 +1186,7 @@ pre {
 
 .idePane {
   display: grid;
-  grid-template-rows: auto minmax(720px, 1fr);
+  grid-template-rows: auto minmax(340px, 1fr);
 }
 
 .ideHeader {
@@ -1154,8 +1219,8 @@ pre {
 
 .solveIdeBody {
   display: grid;
-  grid-template-rows: repeat(2, minmax(340px, 1fr));
-  min-height: 720px;
+  grid-template-rows: auto auto;
+  min-height: 0;
   min-width: 0;
 }
 
@@ -1312,21 +1377,51 @@ pre {
 
 .solveEditorSection .cm-editor,
 .solveEditorSection .cm-content {
-  min-height: 286px;
+  min-height: 238px;
+  max-height: 238px;
 }
 
 .solveTerminal {
-  min-height: 286px;
+  min-height: 143px;
+  max-height: 143px;
 }
 
 .solveTerminal .terminalScroll {
-  min-height: 250px;
+  min-height: 107px;
+  max-height: 107px;
+  overflow: auto;
+}
+
+.solveGrid .ideHeader {
+  padding: 10px 12px;
+}
+
+.solveGrid .ideHeader .ghostButton,
+.solveGrid .ideHeader .runButton,
+.solveGrid .ideHeader .primaryButton {
+  font-size: 13px;
+  min-height: 32px;
+  padding: 0 10px;
 }
 
 .cm-editor {
   background: var(--code) !important;
   color: var(--code-ink);
   min-height: 340px;
+}
+
+.practiceGrid .idePane {
+  grid-template-rows: auto 170px;
+}
+
+.practiceGrid .cm-editor,
+.practiceGrid .cm-content {
+  max-height: 170px;
+  min-height: 170px;
+}
+
+.practiceGrid .cm-scroller {
+  overflow: auto;
 }
 
 .cm-scroller {
@@ -1350,7 +1445,16 @@ kbd {
   align-items: flex-end;
   display: flex;
   justify-content: space-between;
-  margin-bottom: 18px;
+  margin-bottom: 12px;
+}
+
+.dashboardTitle {
+  background: color-mix(in srgb, var(--primary) 13%, var(--panel));
+  border: 1px solid color-mix(in srgb, var(--primary) 28%, var(--line));
+  border-radius: 8px;
+  color: var(--primary);
+  font-size: 20px;
+  padding: 8px 13px;
 }
 
 .dashboardActions,
@@ -1365,7 +1469,7 @@ kbd {
   display: grid;
   gap: 12px;
   grid-template-columns: repeat(4, 1fr);
-  margin-bottom: 18px;
+  margin-bottom: 12px;
 }
 
 .metric {
@@ -1373,18 +1477,22 @@ kbd {
   border: 1px solid var(--line);
   border-radius: 8px;
   color: var(--ink);
-  padding: 18px;
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  padding: 11px 14px;
 }
 
 .metric span {
   color: var(--muted);
-  display: block;
+  display: inline;
   font-size: 13px;
-  margin-bottom: 8px;
+  margin-bottom: 0;
 }
 
 .metric strong {
-  font-size: 30px;
+  font-size: 22px;
 }
 
 .teacherGrid {
@@ -1395,6 +1503,10 @@ kbd {
 
 .panel {
   padding: 20px;
+}
+
+.teacherView > .panel {
+  padding: 14px 16px;
 }
 
 .roadmap {
@@ -1448,19 +1560,26 @@ kbd {
 }
 
 .submissionOverviewHeader {
-  align-items: flex-end;
+  align-items: center;
   display: flex;
   gap: 18px;
   justify-content: space-between;
-  margin-bottom: 18px;
+  margin-bottom: 12px;
 }
 
-.submissionOverviewHeader h2 {
-  margin: 8px 0 0;
+.sectionChip {
+  background: color-mix(in srgb, var(--primary) 13%, var(--panel));
+  border: 1px solid color-mix(in srgb, var(--primary) 25%, var(--line));
+  border-radius: 7px;
+  color: var(--primary);
+  display: inline-flex;
+  font-size: 14px;
+  padding: 7px 10px;
+  white-space: nowrap;
 }
 
 .dashboardFilters {
-  align-items: flex-end;
+  align-items: center;
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
@@ -1468,10 +1587,20 @@ kbd {
 }
 
 .dashboardFilters label {
-  color: var(--muted);
-  display: grid;
+  align-items: center;
+  display: flex;
   font-size: 12px;
-  gap: 5px;
+  gap: 7px;
+  margin: 0;
+}
+
+.dashboardFilters label > span {
+  background: color-mix(in srgb, var(--primary) 10%, var(--panel));
+  border-radius: 6px;
+  color: var(--primary);
+  font-weight: 800;
+  padding: 6px 8px;
+  white-space: nowrap;
 }
 
 .dashboardFilters select {
@@ -1480,7 +1609,7 @@ kbd {
   border-radius: 7px;
   color: var(--ink);
   min-width: 130px;
-  padding: 9px 10px;
+  padding: 7px 9px;
 }
 
 .dashboardFilters .subgroupSelect {
@@ -1757,7 +1886,8 @@ kbd {
   border-right: 1px solid var(--line);
   color: var(--ink);
   min-width: 74px;
-  padding: 11px 12px;
+  font-size: 12px;
+  padding: 7px 9px;
   text-align: center;
   white-space: nowrap;
 }
@@ -1832,7 +1962,8 @@ kbd {
   border: 0;
   border-radius: 6px;
   font-weight: 800;
-  padding: 6px 10px;
+  font-size: 12px;
+  padding: 4px 7px;
 }
 
 .submissionStatus.correct {
@@ -2032,7 +2163,7 @@ kbd {
 }
 
 .problemManager {
-  margin-top: 18px;
+  margin-top: 12px;
 }
 
 .problemManagerHeader {
@@ -2544,6 +2675,13 @@ kbd {
   .problemHeader h1,
   .dashboardHeader h1 {
     font-size: 28px;
+  }
+
+  .problemHeader h1 {
+    max-width: none;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
   }
 
   .caseRow,

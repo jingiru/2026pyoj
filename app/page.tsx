@@ -1981,10 +1981,7 @@ function TeacherDashboard({
   return (
     <section className="teacherView">
       <div className="dashboardHeader">
-        <div>
-          <span className="pill">교사 수업 지원</span>
-          <h1>학급 대시보드</h1>
-        </div>
+        <strong className="dashboardTitle">대시보드</strong>
         <div className="dashboardActions">
           <button className="ghostButton" onClick={onLogout}>
             <LogOut size={18} />
@@ -2004,13 +2001,10 @@ function TeacherDashboard({
       </div>
       <section className="panel">
         <div className="submissionOverviewHeader">
-          <div>
-            <span className="pill">제출 현황</span>
-            <h2>{selectedBook ? formatBookTitle(selectedBook) : "문제집을 선택해주세요"}</h2>
-          </div>
+          <strong className="sectionChip">제출 현황</strong>
           <div className="dashboardFilters">
             <label>
-              문제집
+              <span>문제집</span>
               <select value={selectedBook?.id ?? ""} onChange={(event) => setSelectedBookId(event.target.value)}>
                 {books.map((book) => (
                   <option key={book.id} value={book.id}>
@@ -2020,7 +2014,7 @@ function TeacherDashboard({
               </select>
             </label>
             <label>
-              소분류
+              <span>소분류</span>
               <select
                 className="subgroupSelect"
                 value={subgroupFilter}
@@ -2035,7 +2029,7 @@ function TeacherDashboard({
               </select>
             </label>
             <label>
-              학급
+              <span>학급</span>
               <select
                 value={classFilter}
                 onChange={(event) => {
@@ -2052,7 +2046,7 @@ function TeacherDashboard({
               </select>
             </label>
             <label>
-              학생
+              <span>학생</span>
               <select value={studentFilter} onChange={(event) => setStudentFilter(event.target.value)}>
                 <option value="all">전체 학생</option>
                 {students
@@ -2065,7 +2059,7 @@ function TeacherDashboard({
               </select>
             </label>
             <label>
-              정렬
+              <span>정렬</span>
               <select value={sortBy} onChange={(event) => setSortBy(event.target.value)}>
                 <option value="studentNo">학번순</option>
                 <option value="name">가나다순</option>
@@ -2636,8 +2630,7 @@ function TeacherProblemManager({
           aria-expanded={managerOpen}
         >
           <div>
-          <span className="pill">문제 관리</span>
-          <h2>문제 추가·수정·삭제</h2>
+          <strong className="sectionChip">문제 관리</strong>
           </div>
           <ChevronDown size={20} />
         </button>
