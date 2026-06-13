@@ -1696,11 +1696,17 @@ function TeacherDashboard({
   const [classFilter, setClassFilter] = useState("all");
   const [studentFilter, setStudentFilter] = useState("all");
   const [sortBy, setSortBy] = useState("studentNo");
+  const [subgroupFilter, setSubgroupFilter] = useState("all");
   const [selectedSubmission, setSelectedSubmission] = useState<SubmissionWithStudent | null>(null);
   const selectedBook = books.find((book) => book.id === selectedBookId) ?? books[0];
   const bookProblems = problems
     .filter((problem) => problem.bookId === selectedBook?.id)
     .sort((left, right) => left.order - right.order);
+  const bookProblemGroups = groupProblems(bookProblems, selectedBook);
+  const displayedProblems =
+    subgroupFilter === "all"
+      ? bookProblems
+      : bookProblemGroups.find((group) => group.id === subgroupFilter)?.problems ?? bookProblems;
   const latestSubmissionByStudentProblem = useMemo(() => {
     const latest = new Map<string, SubmissionWithStudent>();
     for (const submission of submissions) {
@@ -1718,13 +1724,13 @@ function TeacherDashboard({
   );
   const studentRows = useMemo(() => {
     const rows = students.map((item) => {
-      const statuses = bookProblems.map((problem) =>
+      const statuses = displayedProblems.map((problem) =>
         latestSubmissionByStudentProblem.get(`${item.id}:${problem.id}`)
       );
       const submitted = statuses.filter(Boolean).length;
       const accepted = statuses.filter((submission) => submission?.status === "accepted").length;
       const rate = submitted === 0 ? 0 : accepted / submitted;
-      const progress = bookProblems.length === 0 ? 0 : submitted / bookProblems.length;
+      const progress = displayedProblems.length === 0 ? 0 : submitted / displayedProblems.length;
       return { student: item, statuses, submitted, accepted, rate, progress };
     });
     const filtered = rows.filter(({ student }) => {
@@ -1740,7 +1746,7 @@ function TeacherDashboard({
     });
   }, [
     students,
-    bookProblems,
+    displayedProblems,
     latestSubmissionByStudentProblem,
     classFilter,
     sortBy
@@ -1759,6 +1765,13 @@ function TeacherDashboard({
     );
     return new Map(ranked.map((row, index) => [row.student.id, index + 1]));
   }, [studentRows]);
+  const selectedSubmissionHistory = selectedSubmission
+    ? submissions.filter(
+        (submission) =>
+          submission.student_id === selectedSubmission.student_id &&
+          submission.problem_id === selectedSubmission.problem_id
+      )
+    : [];
 
   useEffect(() => {
     if (!selectedSubmission) return;
@@ -1768,6 +1781,10 @@ function TeacherDashboard({
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [selectedSubmission]);
+
+  useEffect(() => {
+    setSubgroupFilter("all");
+  }, [selectedBookId]);
 
   return (
     <section className="teacherView">
@@ -1806,6 +1823,17 @@ function TeacherDashboard({
                 {books.map((book) => (
                   <option key={book.id} value={book.id}>
                     {formatBookTitle(book)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              소분류
+              <select value={subgroupFilter} onChange={(event) => setSubgroupFilter(event.target.value)}>
+                <option value="all">전체</option>
+                {bookProblemGroups.map((group) => (
+                  <option key={group.id} value={group.id}>
+                    {group.code} {group.title}
                   </option>
                 ))}
               </select>
@@ -1862,9 +1890,9 @@ function TeacherDashboard({
                   <th>순위</th>
                   <th>학번 / 이름</th>
                   <th>점수</th>
-                  {bookProblems.map((problem) => (
+                  {displayedProblems.map((problem) => (
                     <th key={problem.id}>
-                      {formatProblemNumber(problem)} {problem.title}
+                      {Number(formatProblemNumber(problem))}
                     </th>
                   ))}
                 </tr>
@@ -1881,11 +1909,11 @@ function TeacherDashboard({
                     </th>
                     <td>
                       <span className="scoreBadge">
-                        {row.accepted}/{bookProblems.length}
+                        {row.accepted}/{displayedProblems.length}
                       </span>
                     </td>
                     {row.statuses.map((submission, index) => (
-                      <td key={bookProblems[index].id}>
+                      <td key={displayedProblems[index].id}>
                         {submission ? (
                           <button
                             className={`submissionStatus ${submission.status === "accepted" ? "correct" : "incorrect"}`}
@@ -1936,7 +1964,30 @@ function TeacherDashboard({
                 ? ` · ${new Date(selectedSubmission.created_at).toLocaleString("ko-KR")}`
                 : ""}
             </p>
-            <pre className="submittedCode">{selectedSubmission.code}</pre>
+            <div className="submissionHistoryLayout">
+              <aside className="submissionHistoryList">
+                <strong>과거 제출 이력</strong>
+                {selectedSubmissionHistory.map((submission, index) => (
+                  <button
+                    type="button"
+                    className={submission.id === selectedSubmission.id ? "active" : ""}
+                    key={submission.id ?? `${submission.created_at}-${index}`}
+                    onClick={() => setSelectedSubmission(submission)}
+                  >
+                    <span className={`submissionResultBadge ${submission.status}`}>
+                      {submission.status === "accepted" ? "정답" : "오답"}
+                    </span>
+                    <b>{selectedSubmissionHistory.length - index}번째 제출</b>
+                    <small>
+                      {submission.created_at
+                        ? new Date(submission.created_at).toLocaleString("ko-KR")
+                        : "시간 정보 없음"}
+                    </small>
+                  </button>
+                ))}
+              </aside>
+              <pre className="submittedCode">{selectedSubmission.code}</pre>
+            </div>
           </div>
         </div>
       )}
@@ -1993,7 +2044,20 @@ function TeacherProblemManager({
   const [saving, setSaving] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<ProblemImportResult | null>(null);
+  const [managerOpen, setManagerOpen] = useState(false);
+  const [managerBookId, setManagerBookId] = useState(books[0]?.id ?? "");
+  const [managerSubgroupFilter, setManagerSubgroupFilter] = useState("all");
   const importFileRef = useRef<HTMLInputElement>(null);
+  const selectedManagedBook =
+    managedBooks.find((book) => book.id === managerBookId) ?? managedBooks[0];
+  const selectedManagedProblems = managedProblems
+    .filter((problem) => problem.bookId === selectedManagedBook?.id)
+    .sort((left, right) => left.order - right.order);
+  const managedProblemGroups = groupProblems(selectedManagedProblems, selectedManagedBook);
+  const filteredManagedProblems =
+    managerSubgroupFilter === "all"
+      ? selectedManagedProblems
+      : managedProblemGroups.find((group) => group.id === managerSubgroupFilter)?.problems ?? [];
 
   useEffect(() => {
     void loadManagedProblems();
@@ -2021,8 +2085,13 @@ function TeacherProblemManager({
         setManagerError(data.message ?? "문제 관리 데이터를 불러오지 못했습니다.");
         return;
       }
-      setManagedBooks(data.books);
-      setManagedProblems(data.problems);
+      const nextBooks = data.books;
+      const nextProblems = data.problems;
+      setManagedBooks(nextBooks);
+      setManagedProblems(nextProblems);
+      setManagerBookId((current) =>
+        nextBooks.some((book) => book.id === current) ? current : nextBooks[0]?.id ?? ""
+      );
     } catch {
       setManagerError("문제 관리 데이터를 불러오지 못했습니다.");
     }
@@ -2171,11 +2240,19 @@ function TeacherProblemManager({
   return (
     <section className="panel problemManager">
       <div className="problemManagerHeader">
-        <div>
+        <button
+          type="button"
+          className="problemManagerToggle"
+          onClick={() => setManagerOpen((open) => !open)}
+          aria-expanded={managerOpen}
+        >
+          <div>
           <span className="pill">문제 관리</span>
           <h2>문제 추가·수정·삭제</h2>
-        </div>
-        <div className="problemManagerActions">
+          </div>
+          <ChevronDown size={20} />
+        </button>
+        {managerOpen && <div className="problemManagerActions">
           <button className="ghostButton" onClick={() => void downloadImportTemplate()}>
             <Download size={17} />
             서식 다운로드
@@ -2202,11 +2279,46 @@ function TeacherProblemManager({
             <Plus size={18} />
             문제 추가
           </button>
-        </div>
+        </div>}
       </div>
-      {managerError && <p className="modalError">{managerError}</p>}
-      <div className="managedProblemList">
-        {managedProblems.map((problem) => (
+      {managerOpen && (
+        <>
+          <div className="problemManagerFilters">
+            <label>
+              문제집
+              <select
+                value={selectedManagedBook?.id ?? ""}
+                onChange={(event) => {
+                  setManagerBookId(event.target.value);
+                  setManagerSubgroupFilter("all");
+                }}
+              >
+                {managedBooks.map((book) => (
+                  <option key={book.id} value={book.id}>
+                    {formatBookTitle(book)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              소분류
+              <select
+                value={managerSubgroupFilter}
+                onChange={(event) => setManagerSubgroupFilter(event.target.value)}
+              >
+                <option value="all">전체</option>
+                {managedProblemGroups.map((group) => (
+                  <option key={group.id} value={group.id}>
+                    {group.code} {group.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <span>{filteredManagedProblems.length}문제</span>
+          </div>
+          {managerError && <p className="modalError">{managerError}</p>}
+          <div className="managedProblemList">
+        {filteredManagedProblems.map((problem) => (
           <div className="managedProblemRow" key={problem.id}>
             <div>
               <strong>{problem.title}</strong>
@@ -2235,7 +2347,9 @@ function TeacherProblemManager({
             </button>
           </div>
         ))}
-      </div>
+          </div>
+        </>
+      )}
 
       {editingProblem && (
         <div className="modalBackdrop" role="presentation" onMouseDown={() => !saving && setEditingProblem(null)}>
