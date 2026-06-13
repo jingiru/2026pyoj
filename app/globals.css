@@ -483,15 +483,9 @@ button {
 
 .terminalInputRow {
   align-items: center;
-  background: color-mix(in srgb, var(--console-ink) 6%, transparent);
-  border: 1px solid color-mix(in srgb, var(--console-accent) 42%, transparent);
-  border-radius: 7px;
   display: flex;
-  flex-basis: 100%;
   gap: 8px;
   min-height: 28px;
-  padding: 6px 9px;
-  width: 100%;
 }
 
 .terminalInputRow span {
@@ -505,27 +499,21 @@ button {
 }
 
 .terminalInputRow textarea {
-  background: color-mix(in srgb, var(--console-ink) 5%, transparent);
-  border: 1px solid color-mix(in srgb, var(--console-ink) 18%, transparent);
-  border-radius: 5px;
+  background: transparent;
+  border: 0;
   color: var(--console-ink);
   flex: 1;
   font-family: inherit;
   font-size: inherit;
   line-height: 1.6;
-  min-height: 30px;
+  min-height: 28px;
   overflow: hidden;
-  padding: 3px 7px;
+  padding: 0;
   resize: none;
 }
 
 .terminalInputRow textarea:focus {
-  border-color: var(--console-accent);
-  outline: 2px solid color-mix(in srgb, var(--console-accent) 18%, transparent);
-}
-
-.terminalInputRow textarea::placeholder {
-  color: color-mix(in srgb, var(--console-ink) 48%, transparent);
+  outline: 0;
 }
 
 .terminalHint {
@@ -554,6 +542,11 @@ button {
   border-radius: 6px;
   color: var(--console-ink);
   padding: 5px 8px;
+}
+
+.terminalHint .currentInputValue {
+  border-color: color-mix(in srgb, var(--console-accent) 52%, transparent);
+  color: var(--console-accent);
 }
 
 .inputArea {
