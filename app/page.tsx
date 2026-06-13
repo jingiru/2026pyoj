@@ -1938,7 +1938,6 @@ function TeacherDashboard({
         problems={problems}
         onChanged={onCurriculumChanged}
       />
-      <div className="supabaseNote">교사 대시보드 데이터는 인증된 서버 API를 통해 조회됩니다.</div>
       {selectedSubmission && (
         <div className="modalBackdrop" role="presentation" onMouseDown={() => setSelectedSubmission(null)}>
           <div
