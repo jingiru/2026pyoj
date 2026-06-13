@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
       starter_code: problem.starterCode,
       hint: problem.hint,
       sort_order: problem.order,
-      is_published: true,
+      is_published: false,
       updated_at: new Date().toISOString()
     }));
     for (const chunk of chunks(problemRows, CHUNK_SIZE)) {
@@ -88,6 +88,14 @@ export async function POST(request: NextRequest) {
       }));
     for (const chunk of chunks(solutionRows, 100)) {
       const { error } = await supabase.from("reference_solutions").upsert(chunk, { onConflict: "problem_id" });
+      if (error) throw error;
+    }
+
+    for (const chunk of chunks(ids, CHUNK_SIZE)) {
+      const { error } = await supabase
+        .from("problems")
+        .update({ is_published: true, updated_at: new Date().toISOString() })
+        .in("id", chunk);
       if (error) throw error;
     }
 
@@ -160,9 +168,10 @@ function validateProblems(problems: ImportedProblem[] | undefined) {
       !Number.isInteger(problem.order) ||
       problem.order < 0 ||
       !Array.isArray(problem.testCases) ||
-      problem.testCases.length === 0
+      problem.testCases.length === 0 ||
+      problem.testCases.length > 10
     ) {
-      return `"${problem.id || "ID 없음"}" 문제의 필수 항목을 확인해주세요.`;
+      return `"${problem.id || "ID 없음"}" 문제의 필수 항목과 테스트케이스 1~10개를 확인해주세요.`;
     }
     if (ids.has(problem.id)) return `문제ID "${problem.id}"가 중복되었습니다.`;
     ids.add(problem.id);

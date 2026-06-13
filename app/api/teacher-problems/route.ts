@@ -83,6 +83,7 @@ export async function DELETE(request: NextRequest) {
 
 async function saveProblem(problem: ProblemPayload, updating: boolean) {
   const supabase = createSupabaseAdmin()!;
+  const shouldPublish = problem.isPublished ?? true;
   const problemRow = {
     id: problem.id,
     book_id: problem.bookId,
@@ -93,7 +94,7 @@ async function saveProblem(problem: ProblemPayload, updating: boolean) {
     starter_code: problem.starterCode,
     hint: problem.hint,
     sort_order: problem.order,
-    is_published: problem.isPublished ?? true,
+    is_published: false,
     updated_at: new Date().toISOString()
   };
   const query = updating
@@ -118,6 +119,14 @@ async function saveProblem(problem: ProblemPayload, updating: boolean) {
     if (testError) return databaseError(testError, "테스트케이스를 저장하지 못했습니다.");
   }
 
+  if (shouldPublish) {
+    const { error: publishError } = await supabase
+      .from("problems")
+      .update({ is_published: true, updated_at: new Date().toISOString() })
+      .eq("id", problem.id);
+    if (publishError) return databaseError(publishError, "문제를 공개 상태로 변경하지 못했습니다.");
+  }
+
   return NextResponse.json({ ok: true });
 }
 
@@ -130,7 +139,8 @@ async function readPayload(request: NextRequest) {
     !problem.title.trim() ||
     !problem.statement.trim() ||
     !Array.isArray(problem.testCases) ||
-    problem.testCases.length === 0
+    problem.testCases.length === 0 ||
+    problem.testCases.length > 10
   ) {
     return {
       ok: false as const,
