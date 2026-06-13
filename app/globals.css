@@ -2062,11 +2062,11 @@ kbd {
 
 .submissionMatrix th:nth-child(n + 5),
 .submissionMatrix td:nth-child(n + 5) {
-  max-width: 40px;
-  min-width: 36px;
-  width: 36px;
-  padding-left: 4px;
-  padding-right: 4px;
+  max-width: 38px;
+  min-width: 34px;
+  width: 34px;
+  padding-left: 3px;
+  padding-right: 3px;
 }
 
 .submissionMatrix .subgroupTone0 {
