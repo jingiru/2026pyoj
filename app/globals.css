@@ -707,7 +707,13 @@ textarea:focus {
 
 .problemGroupHeader {
   align-items: center;
-  background: color-mix(in srgb, var(--panel) 82%, var(--bg));
+  background:
+    linear-gradient(
+      to right,
+      color-mix(in srgb, #10b981 18%, var(--panel)) 0 var(--progress, 0%),
+      transparent var(--progress, 0%) 100%
+    ),
+    color-mix(in srgb, var(--panel) 82%, var(--bg));
   border: 0;
   color: var(--ink);
   display: grid;
@@ -719,7 +725,7 @@ textarea:focus {
 }
 
 .problemGroupHeader:hover {
-  background: color-mix(in srgb, var(--primary) 7%, var(--panel));
+  filter: brightness(0.98);
 }
 
 .problemGroupHeader > span {
@@ -772,7 +778,13 @@ textarea:focus {
 }
 
 .bookItem {
-  background: #f8fafc;
+  background:
+    linear-gradient(
+      to right,
+      color-mix(in srgb, #10b981 18%, white) 0 var(--progress, 0%),
+      transparent var(--progress, 0%) 100%
+    ),
+    #f8fafc;
   border: 1px solid var(--line);
   border-radius: 7px;
   color: var(--ink);
@@ -796,7 +808,13 @@ textarea:focus {
 }
 
 .bookItem.active {
-  background: #eff6ff;
+  background:
+    linear-gradient(
+      to right,
+      color-mix(in srgb, #10b981 20%, #eff6ff) 0 var(--progress, 0%),
+      transparent var(--progress, 0%) 100%
+    ),
+    #eff6ff;
   border-color: #93c5fd;
 }
 
@@ -850,15 +868,35 @@ textarea:focus {
 }
 
 .darkMode .bookItem,
-.darkMode .problemItem,
-.darkMode .problemGroupHeader {
+.darkMode .problemItem {
   background: color-mix(in srgb, var(--panel) 84%, var(--bg));
+}
+
+.darkMode .bookItem,
+.darkMode .problemGroupHeader {
+  background:
+    linear-gradient(
+      to right,
+      color-mix(in srgb, #10b981 20%, var(--panel)) 0 var(--progress, 0%),
+      transparent var(--progress, 0%) 100%
+    ),
+    color-mix(in srgb, var(--panel) 84%, var(--bg));
 }
 
 .darkMode .bookItem.active,
 .darkMode .problemItem.active {
   background: color-mix(in srgb, var(--primary) 18%, var(--panel));
   border-color: color-mix(in srgb, var(--primary) 58%, var(--line));
+}
+
+.darkMode .bookItem.active {
+  background:
+    linear-gradient(
+      to right,
+      color-mix(in srgb, #10b981 24%, var(--panel)) 0 var(--progress, 0%),
+      transparent var(--progress, 0%) 100%
+    ),
+    color-mix(in srgb, var(--primary) 18%, var(--panel));
 }
 
 .darkMode .problemItem.solved {

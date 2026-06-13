@@ -47,7 +47,7 @@ import {
   Upload,
   X
 } from "lucide-react";
-import { FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
   problemBooks as fallbackProblemBooks,
   problems as fallbackProblems
@@ -909,6 +909,11 @@ export default function Home() {
                   key={book.id}
                   className={book.id === selectedBookId ? "bookItem active" : "bookItem"}
                   onClick={() => changeBook(book.id)}
+                  style={
+                    {
+                      "--progress": `${count === 0 ? 0 : (solvedCount / count) * 100}%`
+                    } as CSSProperties
+                  }
                 >
                   <span>{String(book.order).padStart(2, "0")}</span>
                   <strong>{book.title}</strong>
@@ -951,6 +956,9 @@ export default function Home() {
                 {problemGroups.map((group) => {
                   const isExpanded = expandedProblemGroups.has(group.id);
                   const containsSelected = group.problems.some((problem) => problem.id === selectedProblem.id);
+                  const solvedGroupCount = group.problems.filter((problem) =>
+                    solvedProblemIds.has(problem.id)
+                  ).length;
                   return (
                     <section className={`problemGroup ${containsSelected ? "containsSelected" : ""}`} key={group.id}>
                       <button
@@ -958,13 +966,17 @@ export default function Home() {
                         className="problemGroupHeader"
                         onClick={() => toggleProblemGroup(group.id)}
                         aria-expanded={isExpanded}
+                        style={
+                          {
+                            "--progress": `${(solvedGroupCount / group.problems.length) * 100}%`
+                          } as CSSProperties
+                        }
                       >
                         <span>{group.code}</span>
                         <div>
                           <strong>{group.title}</strong>
                           <em>
-                            {group.problems.filter((problem) => solvedProblemIds.has(problem.id)).length}문제 /{" "}
-                            {group.problems.length}문제
+                            {solvedGroupCount}문제 / {group.problems.length}문제
                           </em>
                         </div>
                         <ChevronDown size={17} />
