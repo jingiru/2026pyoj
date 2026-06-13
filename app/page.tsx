@@ -353,12 +353,16 @@ export default function Home() {
     if (savedPracticeCode !== null) setPracticeCode(savedPracticeCode);
     setAutoAdvanceOnAccepted(getStoredValue(AUTO_ADVANCE_STORAGE_KEY) === "true");
 
-    const savedProblemId = getStoredValue(SELECTED_PROBLEM_STORAGE_KEY);
+    const savedProblemId = getProblemIdFromUrl() ?? getStoredValue(SELECTED_PROBLEM_STORAGE_KEY);
     const savedProblem = fallbackProblems.find((problem) => problem.id === savedProblemId);
     if (savedProblem) {
       setSelectedProblemId(savedProblem.id);
       setSelectedBookId(savedProblem.bookId);
       setCode(getSavedProblemCode(savedProblem.id) ?? savedProblem.starterCode);
+    } else if (savedProblemId) {
+      // DB curriculum may not be loaded yet. Preserve its problem ID until refreshCurriculum resolves it.
+      setSelectedProblemId(savedProblemId);
+      setCode(getSavedProblemCode(savedProblemId) ?? DEFAULT_PROBLEM.starterCode);
     } else {
       setCode(getSavedProblemCode(DEFAULT_PROBLEM.id) ?? DEFAULT_PROBLEM.starterCode);
     }
@@ -532,6 +536,7 @@ export default function Home() {
     if (!problem) return;
     setSelectedProblemId(problem.id);
     setSelectedBookId(problem.bookId);
+    setProblemIdInUrl(problem.id);
     setCode(getSavedProblemCode(problem.id) ?? problem.starterCode);
     setResult(null);
     resetSolveConsole();
@@ -549,13 +554,15 @@ export default function Home() {
 
       setAvailableBooks(data.books);
       setAvailableProblems(data.problems);
-      const savedProblemId = getStoredValue(SELECTED_PROBLEM_STORAGE_KEY);
+      const savedProblemId =
+        getProblemIdFromUrl() ?? getStoredValue(SELECTED_PROBLEM_STORAGE_KEY);
       const nextProblem =
         data.problems.find((problem) => problem.id === savedProblemId) ??
         data.problems.find((problem) => problem.id === selectedProblemId) ??
         data.problems[0];
       setSelectedBookId(nextProblem.bookId);
       setSelectedProblemId(nextProblem.id);
+      setProblemIdInUrl(nextProblem.id);
       setCode(getSavedProblemCode(nextProblem.id) ?? nextProblem.starterCode);
     } catch {
       // Bundled curriculum remains available when the DB cannot be reached.
@@ -3095,6 +3102,16 @@ function groupProblems(problems: Problem[], book?: ProblemBook) {
 function getScreenFromUrl(): Screen {
   const screen = new URL(window.location.href).searchParams.get("screen");
   return screen === "practice" || screen === "solve" || screen === "teacher" ? screen : "home";
+}
+
+function getProblemIdFromUrl() {
+  return new URL(window.location.href).searchParams.get("problem");
+}
+
+function setProblemIdInUrl(problemId: string) {
+  const url = new URL(window.location.href);
+  url.searchParams.set("problem", problemId);
+  window.history.replaceState({}, "", url);
 }
 
 function getSavedProblemCode(problemId: string) {
