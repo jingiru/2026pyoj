@@ -901,7 +901,9 @@ export default function Home() {
                 </button>
               </div>
             {availableBooks.map((book) => {
-              const count = availableProblems.filter((problem) => problem.bookId === book.id).length;
+              const bookProblems = availableProblems.filter((problem) => problem.bookId === book.id);
+              const count = bookProblems.length;
+              const solvedCount = bookProblems.filter((problem) => solvedProblemIds.has(problem.id)).length;
               return (
                 <button
                   key={book.id}
@@ -910,7 +912,7 @@ export default function Home() {
                 >
                   <span>{String(book.order).padStart(2, "0")}</span>
                   <strong>{book.title}</strong>
-                  <em>{count > 0 ? `${count}문제` : "준비 중"}</em>
+                  <em>{count > 0 ? `${solvedCount}문제 / ${count}문제` : "준비 중"}</em>
                 </button>
               );
             })}
@@ -960,7 +962,10 @@ export default function Home() {
                         <span>{group.code}</span>
                         <div>
                           <strong>{group.title}</strong>
-                          <em>{group.problems.length}문제</em>
+                          <em>
+                            {group.problems.filter((problem) => solvedProblemIds.has(problem.id)).length}문제 /{" "}
+                            {group.problems.length}문제
+                          </em>
                         </div>
                         <ChevronDown size={17} />
                       </button>
