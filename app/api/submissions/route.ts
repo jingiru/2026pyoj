@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     !submission?.student_id ||
     !submission.problem_id ||
     typeof submission.code !== "string" ||
-    !["accepted", "wrong_answer", "runtime_error"].includes(submission.status)
+    !["accepted", "wrong_answer", "runtime_error", "code_requirement_failed"].includes(submission.status)
   ) {
     return NextResponse.json(
       { ok: false, message: "제출 데이터가 올바르지 않습니다." },

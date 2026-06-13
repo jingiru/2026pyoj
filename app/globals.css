@@ -1259,8 +1259,8 @@ pre {
 .submissionToast {
   animation: submissionToastIn 300ms ease-out both;
   background: var(--panel);
-  border: 1px solid #fdba74;
-  border-left: 5px solid #f97316;
+  border: 1px solid #fda4af;
+  border-left: 5px solid #e11d48;
   border-radius: 10px;
   box-shadow: 0 16px 38px rgba(15, 23, 42, 0.2);
   color: var(--ink);
@@ -1282,6 +1282,11 @@ pre {
   border-left-color: #10b981;
 }
 
+.submissionToast.codeRequirementFailed {
+  border-color: #fdba74;
+  border-left-color: #f97316;
+}
+
 .submissionToastClose {
   align-items: center;
   background: transparent;
@@ -1296,7 +1301,7 @@ pre {
 
 .submissionToastTitle {
   align-items: center;
-  color: #c2410c;
+  color: #be123c;
   display: flex;
   font-size: 18px;
   gap: 8px;
@@ -1305,6 +1310,10 @@ pre {
 
 .submissionToast.accepted .submissionToastTitle {
   color: #047857;
+}
+
+.submissionToast.codeRequirementFailed .submissionToastTitle {
+  color: #c2410c;
 }
 
 .submissionToast p {
@@ -1317,11 +1326,17 @@ pre {
   color: var(--ink);
 }
 
-.submissionToastConfirm {
-  background: #fff7ed;
-  border: 1px solid #fdba74;
-  border-radius: 7px;
+.submissionToast .codeRequirementNotice {
   color: #c2410c;
+  font-weight: 750;
+  margin-top: -6px;
+}
+
+.submissionToastConfirm {
+  background: #fff1f2;
+  border: 1px solid #fda4af;
+  border-radius: 7px;
+  color: #be123c;
   font-weight: 750;
   min-height: 36px;
   width: 100%;
@@ -1333,23 +1348,39 @@ pre {
   color: #047857;
 }
 
+.submissionToast.codeRequirementFailed .submissionToastConfirm {
+  background: #fff7ed;
+  border-color: #fdba74;
+  color: #c2410c;
+}
+
 .darkMode .submissionToast {
   background: var(--panel);
-  border-color: color-mix(in srgb, #f97316 52%, var(--line));
+  border-color: color-mix(in srgb, #e11d48 52%, var(--line));
 }
 
 .darkMode .submissionToast.accepted {
   border-color: color-mix(in srgb, #10b981 58%, var(--line));
 }
 
+.darkMode .submissionToast.codeRequirementFailed {
+  border-color: color-mix(in srgb, #f97316 52%, var(--line));
+}
+
 .darkMode .submissionToastTitle,
 .darkMode .submissionToastConfirm {
-  color: #fdba74;
+  color: #fda4af;
 }
 
 .darkMode .submissionToast.accepted .submissionToastTitle,
 .darkMode .submissionToast.accepted .submissionToastConfirm {
   color: #6ee7b7;
+}
+
+.darkMode .submissionToast.codeRequirementFailed .submissionToastTitle,
+.darkMode .submissionToast.codeRequirementFailed .submissionToastConfirm,
+.darkMode .submissionToast.codeRequirementFailed .codeRequirementNotice {
+  color: #fdba74;
 }
 
 @keyframes submissionToastIn {
@@ -1888,6 +1919,10 @@ kbd {
   background: #ef2b2d;
 }
 
+.studentProblemDot.codeRequirementFailed {
+  background: #f97316;
+}
+
 .studentProblemDot:not(:disabled):hover {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 22%, transparent);
   transform: translateY(-1px);
@@ -2033,6 +2068,10 @@ kbd {
   color: var(--rose);
 }
 
+.submissionStatus.codeRequirementFailed {
+  color: #ea580c;
+}
+
 .submissionStatus:hover {
   background: color-mix(in srgb, currentColor 9%, transparent);
 }
@@ -2075,6 +2114,11 @@ kbd {
 .submissionResultBadge.runtime_error {
   background: color-mix(in srgb, var(--rose) 12%, var(--panel));
   color: var(--rose);
+}
+
+.submissionResultBadge.code_requirement_failed {
+  background: color-mix(in srgb, #f97316 14%, var(--panel));
+  color: #c2410c;
 }
 
 .submissionCodeMeta {

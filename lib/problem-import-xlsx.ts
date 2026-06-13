@@ -76,7 +76,7 @@ export async function parseProblemWorkbook(file: File): Promise<ImportedProblem[
     );
     const testCases = deduplicateCases([...explicitExamples, ...judgingCases]);
     if (testCases.length === 0) throw new Error(`${rowNumber}행에 채점용 출력값이 없습니다.`);
-    if (explicitExamples.length === 0) testCases[0].isSample = true;
+    if (explicitExamples.length === 0 && testCases.length > 1) testCases[0].isSample = true;
 
     problems.push({
       id,

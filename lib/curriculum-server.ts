@@ -75,7 +75,7 @@ export async function loadCurriculum(supabase: SupabaseClient, publishedOnly: bo
         output: testCase.expected_output,
         isSample: testCase.is_sample
       })),
-      showExample: samples.length > 0,
+      showExample: cases.length > 1 && samples.length > 0,
       isPublished: problem.is_published
     };
   });

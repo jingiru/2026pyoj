@@ -66,7 +66,9 @@ create table if not exists public.submissions (
   student_id uuid not null references public.students(id) on delete cascade,
   problem_id text not null,
   code text not null,
-  status text not null check (status in ('accepted', 'wrong_answer', 'runtime_error')),
+  status text not null check (
+    status in ('accepted', 'wrong_answer', 'runtime_error', 'code_requirement_failed')
+  ),
   passed_count integer not null default 0,
   total_count integer not null default 0,
   feedback text not null default '',

@@ -65,6 +65,7 @@ import type {
   Problem,
   ProblemBook,
   Student,
+  SubmissionStatus,
   SubmissionWithStudent,
   TestCase
 } from "@/lib/types";
@@ -73,7 +74,7 @@ import type { ProblemImportResult } from "@/lib/problem-import-types";
 type Screen = "home" | "practice" | "solve" | "teacher";
 type ColorMode = "light" | "dark";
 type JudgeResult = {
-  status: "accepted" | "wrong_answer" | "runtime_error";
+  status: SubmissionStatus;
   passedCount: number;
   totalCount: number;
   feedback: string;
@@ -1195,7 +1196,7 @@ export default function Home() {
         <aside
           className={[
             "submissionToast",
-            result.status === "accepted" ? "accepted" : "failed",
+            submissionResultClass(result.status),
             isResultToastClosing ? "closing" : ""
           ]
             .filter(Boolean)
@@ -1218,6 +1219,9 @@ export default function Home() {
           <p>
             총 {result.totalCount}개의 테스트 케이스 중 <b>{result.passedCount}개</b>를 통과했습니다.
           </p>
+          {result.status === "code_requirement_failed" && (
+            <p className="codeRequirementNotice">문제에서 요구하는 코드의 조건을 다시 확인하세요.</p>
+          )}
           <button type="button" className="submissionToastConfirm" onClick={dismissResultToast}>
             확인
           </button>
@@ -1699,7 +1703,9 @@ function ProblemPane({
         <ProblemBlock title="입력" body={selectedProblem.inputDescription} />
         <ProblemBlock title="출력" body={selectedProblem.outputDescription} />
       </div>
-      {selectedProblem.showExample !== false && selectedProblem.examples.length > 0 && (
+      {selectedProblem.testCases.length > 1 &&
+        selectedProblem.showExample !== false &&
+        selectedProblem.examples.length > 0 && (
         <div className="exampleBox">
           <h2>예시</h2>
           <div className="exampleList">
@@ -1720,7 +1726,7 @@ function ProblemPane({
             ))}
           </div>
         </div>
-      )}
+        )}
       {selectedProblem.hint.trim() && (
         <div className="hint">
           <Lightbulb size={18} />
@@ -1732,21 +1738,6 @@ function ProblemPane({
 }
 
 async function judgeProblemSubmission(problem: Problem, code: string): Promise<JudgeResult> {
-  const requirementResult = checkCodeRequirements(code, problem.codeRequirements);
-  if (!requirementResult.passed) {
-    return {
-      status: "wrong_answer",
-      passedCount: 0,
-      totalCount: problem.testCases.length,
-      feedback: requirementResult.feedback,
-      cases: problem.testCases.map((testCase) => ({
-        ...testCase,
-        actual: "코드 작성 조건을 확인해주세요.",
-        passed: false
-      }))
-    };
-  }
-
   const cases: JudgeResult["cases"] = [];
   let hasRuntimeError = false;
 
@@ -1768,9 +1759,21 @@ async function judgeProblemSubmission(problem: Problem, code: string): Promise<J
   }
 
   const passedCount = cases.filter((testCase) => testCase.passed).length;
+  const outputAccepted = !hasRuntimeError && passedCount === cases.length;
+  const requirementResult = checkCodeRequirements(code, problem.codeRequirements);
+  if (outputAccepted && !requirementResult.passed) {
+    return {
+      status: "code_requirement_failed",
+      passedCount: 0,
+      totalCount: cases.length,
+      feedback: requirementResult.feedback,
+      cases: cases.map((testCase) => ({ ...testCase, passed: false }))
+    };
+  }
+
   const status: JudgeResult["status"] = hasRuntimeError
     ? "runtime_error"
-    : passedCount === cases.length
+    : outputAccepted
       ? "accepted"
       : "wrong_answer";
 
@@ -2156,10 +2159,10 @@ function TeacherDashboard({
                       >
                         {submission ? (
                           <button
-                            className={`submissionStatus ${submission.status === "accepted" ? "correct" : "incorrect"}`}
+                            className={`submissionStatus ${submissionResultClass(submission.status)}`}
                             onClick={() => setSelectedSubmission(submission)}
                           >
-                            {submission.status === "accepted" ? "정답" : "오답"}
+                            {submissionResultLabel(submission.status)}
                           </button>
                         ) : (
                           <span className="notSubmitted">미제출</span>
@@ -2301,14 +2304,10 @@ function TeacherDashboard({
                             {group.items.map(({ problem, submission }) => {
                               const resultClass = !submission
                                 ? "unsubmitted"
-                                : submission.status === "accepted"
-                                  ? "correct"
-                                  : "incorrect";
+                                : submissionResultClass(submission.status);
                               const label = !submission
                                 ? "미제출"
-                                : submission.status === "accepted"
-                                  ? "정답"
-                                  : "오답";
+                                : submissionResultLabel(submission.status);
                               return (
                                 <button
                                   className={`studentProblemDot ${resultClass}`}
@@ -2347,7 +2346,7 @@ function TeacherDashboard({
               <X size={18} />
             </button>
             <span className={`submissionResultBadge ${selectedSubmission.status}`}>
-              {selectedSubmission.status === "accepted" ? "정답" : "오답"}
+              {submissionResultLabel(selectedSubmission.status)}
             </span>
             <h2 id="submission-code-title">
               {selectedSubmission.students?.student_no} {selectedSubmission.students?.name} ·{" "}
@@ -2370,7 +2369,7 @@ function TeacherDashboard({
                     onClick={() => setSelectedSubmission(submission)}
                   >
                     <span className={`submissionResultBadge ${submission.status}`}>
-                      {submission.status === "accepted" ? "정답" : "오답"}
+                      {submissionResultLabel(submission.status)}
                     </span>
                     <b>{selectedSubmissionHistory.length - index}번째 제출</b>
                     <small>
@@ -2665,7 +2664,8 @@ function TeacherProblemManager({
       return {
         ...problem,
         testCases,
-        examples: testCases.filter((testCase) => testCase.isSample)
+        examples: testCases.filter((testCase) => testCase.isSample),
+        showExample: testCases.length > 1 && testCases.some((testCase) => testCase.isSample)
       };
     });
   }
@@ -3020,6 +3020,18 @@ function TeacherProblemManager({
       )}
     </section>
   );
+}
+
+function submissionResultClass(status: SubmissionStatus) {
+  if (status === "accepted") return "accepted correct";
+  if (status === "code_requirement_failed") return "codeRequirementFailed";
+  return "failed incorrect";
+}
+
+function submissionResultLabel(status: SubmissionStatus) {
+  if (status === "accepted") return "정답";
+  if (status === "code_requirement_failed") return "코드 조건 불충족";
+  return "오답";
 }
 
 function ImportResultItem({ label, value }: { label: string; value: number }) {

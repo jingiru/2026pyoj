@@ -52,12 +52,18 @@ export type Submission = {
   student_id: string;
   problem_id: string;
   code: string;
-  status: "accepted" | "wrong_answer" | "runtime_error";
+  status: SubmissionStatus;
   passed_count: number;
   total_count: number;
   feedback: string;
   created_at?: string;
 };
+
+export type SubmissionStatus =
+  | "accepted"
+  | "wrong_answer"
+  | "runtime_error"
+  | "code_requirement_failed";
 
 export type SubmissionWithStudent = Submission & {
   students?: Pick<Student, "student_no" | "name"> | null;
