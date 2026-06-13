@@ -886,7 +886,7 @@ export default function Home() {
                     ))}
                     {pendingPrompt !== null ? (
                       <div className="terminalInputRow active">
-                        <span>{pendingPrompt}</span>
+                        <span>{pendingPrompt || "입력"}</span>
                         <textarea
                           value={consoleInput}
                           ref={consoleInputRef}
@@ -1138,7 +1138,7 @@ export default function Home() {
                         ))}
                         {solvePendingPrompt !== null ? (
                           <div className="terminalInputRow active">
-                            <span>{solvePendingPrompt}</span>
+                            <span>{solvePendingPrompt || "입력"}</span>
                             <textarea
                               value={solveConsoleInput}
                               ref={solveConsoleInputRef}
