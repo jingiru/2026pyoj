@@ -950,7 +950,7 @@ p {
 .problemBlock p,
 .panel p {
   color: var(--muted);
-  line-height: 1.7;
+  line-height: 1.3;
   white-space: pre-wrap;
 }
 
