@@ -2307,6 +2307,7 @@ function TeacherProblemManager({
   const [isCreating, setIsCreating] = useState(false);
   const [managerError, setManagerError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [bulkVisibilitySaving, setBulkVisibilitySaving] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<ProblemImportResult | null>(null);
   const [managerOpen, setManagerOpen] = useState(false);
@@ -2323,6 +2324,9 @@ function TeacherProblemManager({
     managerSubgroupFilter === "all"
       ? selectedManagedProblems
       : managedProblemGroups.find((group) => group.id === managerSubgroupFilter)?.problems ?? [];
+  const publishedManagedProblemCount = selectedManagedProblems.filter(
+    (problem) => problem.isPublished !== false
+  ).length;
 
   useEffect(() => {
     void loadManagedProblems();
@@ -2446,6 +2450,34 @@ function TeacherProblemManager({
         items.map((item) => (item.id === problem.id ? { ...item, isPublished: problem.isPublished } : item))
       );
       setManagerError(error instanceof Error ? error.message : "공개 상태를 변경하지 못했습니다.");
+    }
+  }
+
+  async function setBookVisibility(isPublished: boolean) {
+    if (!selectedManagedBook || bulkVisibilitySaving) return;
+    setBulkVisibilitySaving(true);
+    setManagerError("");
+    try {
+      const response = await fetch("/api/teacher-problems", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookId: selectedManagedBook.id, isPublished })
+      });
+      const data = (await response.json()) as { ok?: boolean; message?: string; code?: string };
+      if (!response.ok || !data.ok) {
+        throw new Error(
+          `${data.message ?? "문제집 공개 상태를 변경하지 못했습니다."}${
+            data.code ? ` (${data.code})` : ""
+          }`
+        );
+      }
+      await Promise.all([loadManagedProblems(), onChanged()]);
+    } catch (error) {
+      setManagerError(
+        error instanceof Error ? error.message : "문제집 공개 상태를 변경하지 못했습니다."
+      );
+    } finally {
+      setBulkVisibilitySaving(false);
     }
   }
 
@@ -2579,7 +2611,40 @@ function TeacherProblemManager({
                 ))}
               </select>
             </label>
-            <span>{filteredManagedProblems.length}문제</span>
+            <span>
+              {filteredManagedProblems.length}문제 · 전체 {selectedManagedProblems.length}문제 중{" "}
+              {publishedManagedProblemCount}문제 공개
+            </span>
+            <div className="bookVisibilityActions">
+              <button
+                className="managerActionButton visibilityButton published"
+                type="button"
+                disabled={
+                  bulkVisibilitySaving ||
+                  selectedManagedProblems.length === 0 ||
+                  (selectedManagedBook?.isPublished !== false &&
+                    publishedManagedProblemCount === selectedManagedProblems.length)
+                }
+                onClick={() => void setBookVisibility(true)}
+              >
+                <Eye size={16} />
+                {bulkVisibilitySaving ? "처리 중" : "전체 공개"}
+              </button>
+              <button
+                className="managerActionButton visibilityButton private"
+                type="button"
+                disabled={
+                  bulkVisibilitySaving ||
+                  selectedManagedProblems.length === 0 ||
+                  (selectedManagedBook?.isPublished === false &&
+                    publishedManagedProblemCount === 0)
+                }
+                onClick={() => void setBookVisibility(false)}
+              >
+                <EyeOff size={16} />
+                {bulkVisibilitySaving ? "처리 중" : "전체 비공개"}
+              </button>
+            </div>
           </div>
           {managerError && <p className="modalError">{managerError}</p>}
           <div className="managedProblemList">

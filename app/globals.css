@@ -2060,6 +2060,18 @@ kbd {
   padding-bottom: 10px;
 }
 
+.bookVisibilityActions {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.bookVisibilityActions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 .visuallyHidden {
   height: 1px;
   margin: -1px;
@@ -2409,6 +2421,15 @@ kbd {
   .problemManagerFilters label {
     min-width: 0;
     width: 100%;
+  }
+
+  .bookVisibilityActions {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .bookVisibilityActions button {
+    flex: 1;
   }
 
   .dashboardFilters select {

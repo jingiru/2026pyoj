@@ -52,17 +52,50 @@ export async function PATCH(request: NextRequest) {
   if (authError) return authError;
   const payload = (await request.json().catch(() => null)) as {
     id?: string;
+    bookId?: string;
     isPublished?: boolean;
   } | null;
-  if (!payload?.id || typeof payload.isPublished !== "boolean") {
+  if ((!payload?.id && !payload?.bookId) || typeof payload.isPublished !== "boolean") {
     return NextResponse.json({ ok: false, message: "공개 상태 변경값을 확인해주세요." }, { status: 400 });
   }
 
   const supabase = createSupabaseAdmin()!;
+  const updatedAt = new Date().toISOString();
+  if (payload.bookId) {
+    const { data: currentBook, error: currentBookError } = await supabase
+      .from("problem_books")
+      .select("is_published")
+      .eq("id", payload.bookId)
+      .single();
+    if (currentBookError) {
+      return databaseError(currentBookError, "문제집 공개 상태를 확인하지 못했습니다.");
+    }
+
+    const { error: bookError } = await supabase
+      .from("problem_books")
+      .update({ is_published: payload.isPublished, updated_at: updatedAt })
+      .eq("id", payload.bookId);
+    if (bookError) return databaseError(bookError, "문제집 공개 상태를 변경하지 못했습니다.");
+
+    const { error: problemsError } = await supabase
+      .from("problems")
+      .update({ is_published: payload.isPublished, updated_at: updatedAt })
+      .eq("book_id", payload.bookId);
+    if (problemsError) {
+      await supabase
+        .from("problem_books")
+        .update({ is_published: currentBook.is_published, updated_at: new Date().toISOString() })
+        .eq("id", payload.bookId);
+      return databaseError(problemsError, "문제집의 문제 공개 상태를 변경하지 못했습니다.");
+    }
+
+    return NextResponse.json({ ok: true });
+  }
+
   const { error } = await supabase
     .from("problems")
-    .update({ is_published: payload.isPublished, updated_at: new Date().toISOString() })
-    .eq("id", payload.id);
+    .update({ is_published: payload.isPublished, updated_at: updatedAt })
+    .eq("id", payload.id!);
   if (error) return databaseError(error, "공개 상태를 변경하지 못했습니다.");
   return NextResponse.json({ ok: true });
 }
