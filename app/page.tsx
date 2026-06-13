@@ -1793,6 +1793,15 @@ function TeacherDashboard({
         return Boolean(submission && submission.status !== "accepted");
       });
       const unsubmittedProblems = bookItems.filter((_, index) => !statuses[index]);
+      const problemGroups = groupProblems(bookItems, book).map((group) => ({
+        ...group,
+        items: group.problems.map((problem) => ({
+          problem,
+          submission: latestSubmissionByStudentProblem.get(
+            `${overviewStudent.id}:${problem.id}`
+          )
+        }))
+      }));
       const latestActivity = submissions.find(
         (submission) =>
           submission.student_id === overviewStudent.id &&
@@ -1806,8 +1815,12 @@ function TeacherDashboard({
         accepted,
         wrongProblems,
         unsubmittedProblems,
+        problemGroups,
         latestActivity,
-        progress: bookItems.length === 0 ? 0 : Math.round((submitted / bookItems.length) * 100)
+        submittedProgress:
+          bookItems.length === 0 ? 0 : Math.round((submitted / bookItems.length) * 100),
+        acceptedProgress:
+          bookItems.length === 0 ? 0 : Math.round((accepted / bookItems.length) * 100)
       };
     });
   }, [
@@ -1865,13 +1878,13 @@ function TeacherDashboard({
   }, [students, overviewStudentId]);
 
   useEffect(() => {
-    if (!overviewStudentId) return;
+    if (!overviewStudentId || selectedSubmission) return;
     const closeOnEscape = (event: globalThis.KeyboardEvent) => {
       if (event.key === "Escape") setOverviewStudentId("");
     };
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [overviewStudentId]);
+  }, [overviewStudentId, selectedSubmission]);
 
   return (
     <section className="teacherView">
@@ -2110,7 +2123,7 @@ function TeacherDashboard({
                 return (
                   <article className="studentWorkbookRow" key={row.book.id}>
                     <div className="studentWorkbookHeading">
-                      <div>
+                      <div className="studentWorkbookTitle">
                         <span
                           className={`workbookState ${
                             status === "완료" ? "complete" : status === "진행 중" ? "active" : ""
@@ -2120,20 +2133,69 @@ function TeacherDashboard({
                         </span>
                         <strong>{formatBookTitle(row.book)}</strong>
                       </div>
-                      <b>
-                        {row.submitted}/{row.total} · {row.progress}%
-                      </b>
+                      <div className="studentWorkbookCounts">
+                        <span>
+                          제출 <b>{row.submitted}</b>개
+                        </span>
+                        <span>
+                          정답 <b>{row.accepted}</b>개
+                        </span>
+                        <span className={row.wrongProblems.length > 0 ? "wrongCount" : ""}>
+                          오답 <b>{row.wrongProblems.length}</b>개
+                        </span>
+                        <span>
+                          미제출 <b>{row.unsubmittedProblems.length}</b>개
+                        </span>
+                      </div>
                     </div>
-                    <div className="studentWorkbookProgress" aria-label={`진행률 ${row.progress}%`}>
-                      <span style={{ width: `${row.progress}%` }} />
+                    <div
+                      className="studentWorkbookProgress"
+                      aria-label={`제출률 ${row.submittedProgress}%, 정답률 ${row.acceptedProgress}%`}
+                    >
+                      <span
+                        className="submittedProgress"
+                        style={{ width: `${row.submittedProgress}%` }}
+                      />
+                      <span
+                        className="acceptedProgress"
+                        style={{ width: `${row.acceptedProgress}%` }}
+                      />
                     </div>
-                    <div className="studentProblemSummary">
-                      <span>
-                        <b>미풀이</b> {formatProblemNumberList(row.unsubmittedProblems)}
-                      </span>
-                      <span className={row.wrongProblems.length > 0 ? "hasWrongAnswers" : ""}>
-                        <b>오답</b> {formatProblemNumberList(row.wrongProblems)}
-                      </span>
+                    <div className="studentProblemGroups">
+                      {row.problemGroups.map((group) => (
+                        <section className="studentProblemGroup" key={group.id}>
+                          <strong>
+                            {group.code} {group.title}
+                          </strong>
+                          <div className="studentProblemDots">
+                            {group.items.map(({ problem, submission }) => {
+                              const resultClass = !submission
+                                ? "unsubmitted"
+                                : submission.status === "accepted"
+                                  ? "correct"
+                                  : "incorrect";
+                              const label = !submission
+                                ? "미제출"
+                                : submission.status === "accepted"
+                                  ? "정답"
+                                  : "오답";
+                              return (
+                                <button
+                                  className={`studentProblemDot ${resultClass}`}
+                                  type="button"
+                                  key={problem.id}
+                                  disabled={!submission}
+                                  title={`${problem.title}: ${label}`}
+                                  aria-label={`${problem.title} ${label}`}
+                                  onClick={() => submission && setSelectedSubmission(submission)}
+                                >
+                                  {Number(formatProblemNumber(problem))}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </section>
+                      ))}
                     </div>
                   </article>
                 );
@@ -2769,11 +2831,6 @@ function formatProblemNumber(problem: Problem) {
   const code = problem.id.match(/^(\d+(?:-\d+)+)/)?.[1];
   const lastNumber = code?.split("-").at(-1);
   return lastNumber ?? String(problem.order).padStart(2, "0");
-}
-
-function formatProblemNumberList(problems: Problem[]) {
-  if (problems.length === 0) return "없음";
-  return problems.map((problem) => formatProblemNumber(problem)).join(", ");
 }
 
 function groupProblems(problems: Problem[], book?: ProblemBook) {

@@ -1545,17 +1545,34 @@ kbd {
 }
 
 .studentWorkbookHeading,
-.studentWorkbookHeading > div {
+.studentWorkbookTitle {
   align-items: center;
   display: flex;
   gap: 9px;
-  justify-content: space-between;
 }
 
-.studentWorkbookHeading > b {
+.studentWorkbookHeading {
+  justify-content: flex-start;
+}
+
+.studentWorkbookCounts {
+  align-items: center;
   color: var(--muted);
-  font-size: 13px;
-  white-space: nowrap;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 14px;
+  gap: 8px 28px;
+  margin-left: 24px;
+}
+
+.studentWorkbookCounts b {
+  color: var(--ink);
+  font-size: 16px;
+}
+
+.studentWorkbookCounts .wrongCount,
+.studentWorkbookCounts .wrongCount b {
+  color: var(--rose);
 }
 
 .workbookState {
@@ -1586,30 +1603,80 @@ kbd {
   height: 6px;
   margin: 11px 0;
   overflow: hidden;
+  position: relative;
 }
 
 .studentWorkbookProgress span {
-  background: var(--primary);
+  bottom: 0;
   display: block;
   height: 100%;
+  left: 0;
+  position: absolute;
+  top: 0;
 }
 
-.studentProblemSummary {
-  color: var(--muted);
+.studentWorkbookProgress .submittedProgress {
+  background: #3b82f6;
+}
+
+.studentWorkbookProgress .acceptedProgress {
+  background: #22a447;
+}
+
+.studentProblemGroups {
   display: grid;
-  font-size: 12px;
-  gap: 5px;
-  grid-template-columns: 1fr 1fr;
-  line-height: 1.55;
+  gap: 14px 24px;
+  grid-template-columns: repeat(4, minmax(180px, 1fr));
+  margin-top: 14px;
 }
 
-.studentProblemSummary b {
+.studentProblemGroup {
+  min-width: 0;
+}
+
+.studentProblemGroup > strong {
   color: var(--ink);
+  display: block;
+  font-size: 14px;
+  margin-bottom: 9px;
 }
 
-.studentProblemSummary .hasWrongAnswers,
-.studentProblemSummary .hasWrongAnswers b {
-  color: var(--rose);
+.studentProblemDots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.studentProblemDot {
+  align-items: center;
+  border: 0;
+  border-radius: 50%;
+  color: #ffffff;
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 800;
+  height: 25px;
+  justify-content: center;
+  padding: 0;
+  width: 25px;
+}
+
+.studentProblemDot.unsubmitted {
+  background: #cbd0d8;
+  cursor: default;
+}
+
+.studentProblemDot.correct {
+  background: #22a447;
+}
+
+.studentProblemDot.incorrect {
+  background: #ef2b2d;
+}
+
+.studentProblemDot:not(:disabled):hover {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 22%, transparent);
+  transform: translateY(-1px);
 }
 
 .studentOverviewLink {
@@ -2298,9 +2365,21 @@ kbd {
   }
 
   .studentOverviewMetrics,
-  .currentLearningSummary,
-  .studentProblemSummary {
+  .currentLearningSummary {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .studentWorkbookHeading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .studentWorkbookCounts {
+    margin-left: 0;
+  }
+
+  .studentProblemGroups {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .dashboardFilters {
