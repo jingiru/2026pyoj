@@ -1447,9 +1447,18 @@ kbd {
   width: 240px;
 }
 
-.studentOverviewPanel {
-  margin-bottom: 18px;
-  scroll-margin-top: 18px;
+.studentOverviewModal {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.28);
+  color: var(--ink);
+  max-height: calc(100vh - 48px);
+  max-width: 1400px;
+  overflow: hidden;
+  padding: 24px;
+  position: relative;
+  width: 100%;
 }
 
 .studentOverviewHeader {
@@ -1523,8 +1532,9 @@ kbd {
 .studentWorkbookList {
   display: grid;
   gap: 9px;
-  max-height: 520px;
+  max-height: calc(100vh - 330px);
   overflow-y: auto;
+  padding-right: 4px;
 }
 
 .studentWorkbookRow {
@@ -2273,6 +2283,11 @@ kbd {
   .studentOverviewHeader {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .studentOverviewModal {
+    max-height: calc(100vh - 24px);
+    padding: 18px;
   }
 
   .studentOverviewHeader select,

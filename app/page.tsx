@@ -1698,7 +1698,7 @@ function TeacherDashboard({
   const [sortBy, setSortBy] = useState("studentNo");
   const [subgroupFilter, setSubgroupFilter] = useState("all");
   const [selectedSubmission, setSelectedSubmission] = useState<SubmissionWithStudent | null>(null);
-  const [overviewStudentId, setOverviewStudentId] = useState(students[0]?.id ?? "");
+  const [overviewStudentId, setOverviewStudentId] = useState("");
   const selectedBook = books.find((book) => book.id === selectedBookId) ?? books[0];
   const bookProblems = problems
     .filter((problem) => problem.bookId === selectedBook?.id)
@@ -1773,8 +1773,9 @@ function TeacherDashboard({
           submission.problem_id === selectedSubmission.problem_id
       )
     : [];
-  const overviewStudent =
-    students.find((student) => student.id === overviewStudentId) ?? students[0];
+  const overviewStudent = overviewStudentId
+    ? students.find((student) => student.id === overviewStudentId)
+    : undefined;
   const overviewBookRows = useMemo(() => {
     if (!overviewStudent) return [];
 
@@ -1858,14 +1859,19 @@ function TeacherDashboard({
   }, [selectedBookId]);
 
   useEffect(() => {
-    if (students.length === 0) {
+    if (overviewStudentId && !students.some((student) => student.id === overviewStudentId)) {
       setOverviewStudentId("");
-      return;
-    }
-    if (!students.some((student) => student.id === overviewStudentId)) {
-      setOverviewStudentId(students[0].id);
     }
   }, [students, overviewStudentId]);
+
+  useEffect(() => {
+    if (!overviewStudentId) return;
+    const closeOnEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") setOverviewStudentId("");
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [overviewStudentId]);
 
   return (
     <section className="teacherView">
@@ -1891,101 +1897,6 @@ function TeacherDashboard({
         <Metric label="정답률" value={`${dashboard.rate}%`} />
         <Metric label="참여 학생" value={`${dashboard.triedStudents}`} />
       </div>
-      <section className="panel studentOverviewPanel" id="student-learning-overview">
-        <div className="studentOverviewHeader">
-          <div>
-            <span className="pill">학생별 학습 현황</span>
-            <h2>
-              {overviewStudent
-                ? `${overviewStudent.student_no} ${overviewStudent.name}`
-                : "학생을 선택해주세요"}
-            </h2>
-          </div>
-          <label>
-            학생
-            <select
-              value={overviewStudent?.id ?? ""}
-              onChange={(event) => setOverviewStudentId(event.target.value)}
-            >
-              {students.map((student) => (
-                <option key={student.id} value={student.id}>
-                  {student.student_no} {student.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-        {!overviewStudent ? (
-          <p className="empty">등록된 학생이 없습니다.</p>
-        ) : (
-          <>
-            <div className="studentOverviewMetrics">
-              <Metric label="전체 진도" value={`${overviewStats.progress}%`} />
-              <Metric
-                label="푼 문제"
-                value={`${overviewStats.submitted}/${overviewStats.total}`}
-              />
-              <Metric label="정답 문제" value={`${overviewStats.accepted}`} />
-              <Metric label="재확인할 오답" value={`${overviewStats.wrong}`} />
-            </div>
-            <div className="currentLearningSummary">
-              <div>
-                <span>현재 학습 중</span>
-                <strong>
-                  {overviewStats.currentBook
-                    ? formatBookTitle(overviewStats.currentBook.book)
-                    : "아직 시작한 문제집이 없습니다."}
-                </strong>
-              </div>
-              <div>
-                <span>마지막 학습</span>
-                <strong>
-                  {overviewStats.lastActivity?.created_at
-                    ? new Date(overviewStats.lastActivity.created_at).toLocaleString("ko-KR")
-                    : "학습 기록 없음"}
-                </strong>
-              </div>
-            </div>
-            <div className="studentWorkbookList">
-              {overviewBookRows.map((row) => {
-                const status =
-                  row.total > 0 && row.accepted === row.total
-                    ? "완료"
-                    : row.submitted > 0
-                      ? "진행 중"
-                      : "미시작";
-                return (
-                  <article className="studentWorkbookRow" key={row.book.id}>
-                    <div className="studentWorkbookHeading">
-                      <div>
-                        <span className={`workbookState ${status === "완료" ? "complete" : status === "진행 중" ? "active" : ""}`}>
-                          {status}
-                        </span>
-                        <strong>{formatBookTitle(row.book)}</strong>
-                      </div>
-                      <b>
-                        {row.submitted}/{row.total} · {row.progress}%
-                      </b>
-                    </div>
-                    <div className="studentWorkbookProgress" aria-label={`진행률 ${row.progress}%`}>
-                      <span style={{ width: `${row.progress}%` }} />
-                    </div>
-                    <div className="studentProblemSummary">
-                      <span>
-                        <b>미풀이</b>{" "}
-                        {formatProblemNumberList(row.unsubmittedProblems)}
-                      </span>
-                      <span className={row.wrongProblems.length > 0 ? "hasWrongAnswers" : ""}>
-                        <b>오답</b> {formatProblemNumberList(row.wrongProblems)}
-                      </span>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          </>
-        )}
-      </section>
       <section className="panel">
         <div className="submissionOverviewHeader">
           <div>
@@ -2088,12 +1999,7 @@ function TeacherDashboard({
                       <button
                         className="studentOverviewLink"
                         type="button"
-                        onClick={() => {
-                          setOverviewStudentId(row.student.id);
-                          document
-                            .getElementById("student-learning-overview")
-                            ?.scrollIntoView({ behavior: "smooth", block: "start" });
-                        }}
+                        onClick={() => setOverviewStudentId(row.student.id)}
                       >
                         {row.student.student_no} {row.student.name}
                       </button>
@@ -2129,6 +2035,113 @@ function TeacherDashboard({
         problems={problems}
         onChanged={onCurriculumChanged}
       />
+      {overviewStudent && (
+        <div className="modalBackdrop" role="presentation" onMouseDown={() => setOverviewStudentId("")}>
+          <section
+            className="studentOverviewModal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="student-overview-title"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <button
+              className="iconButton closeButton"
+              onClick={() => setOverviewStudentId("")}
+              aria-label="닫기"
+            >
+              <X size={18} />
+            </button>
+            <div className="studentOverviewHeader">
+              <div>
+                <span className="pill">학생별 학습 현황</span>
+                <h2 id="student-overview-title">
+                  {overviewStudent.student_no} {overviewStudent.name}
+                </h2>
+              </div>
+              <label>
+                학생
+                <select
+                  value={overviewStudent.id}
+                  onChange={(event) => setOverviewStudentId(event.target.value)}
+                >
+                  {students.map((student) => (
+                    <option key={student.id} value={student.id}>
+                      {student.student_no} {student.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div className="studentOverviewMetrics">
+              <Metric label="전체 진도" value={`${overviewStats.progress}%`} />
+              <Metric
+                label="푼 문제"
+                value={`${overviewStats.submitted}/${overviewStats.total}`}
+              />
+              <Metric label="정답 문제" value={`${overviewStats.accepted}`} />
+              <Metric label="재확인할 오답" value={`${overviewStats.wrong}`} />
+            </div>
+            <div className="currentLearningSummary">
+              <div>
+                <span>현재 학습 중</span>
+                <strong>
+                  {overviewStats.currentBook
+                    ? formatBookTitle(overviewStats.currentBook.book)
+                    : "아직 시작한 문제집이 없습니다."}
+                </strong>
+              </div>
+              <div>
+                <span>마지막 학습</span>
+                <strong>
+                  {overviewStats.lastActivity?.created_at
+                    ? new Date(overviewStats.lastActivity.created_at).toLocaleString("ko-KR")
+                    : "학습 기록 없음"}
+                </strong>
+              </div>
+            </div>
+            <div className="studentWorkbookList">
+              {overviewBookRows.map((row) => {
+                const status =
+                  row.total > 0 && row.accepted === row.total
+                    ? "완료"
+                    : row.submitted > 0
+                      ? "진행 중"
+                      : "미시작";
+                return (
+                  <article className="studentWorkbookRow" key={row.book.id}>
+                    <div className="studentWorkbookHeading">
+                      <div>
+                        <span
+                          className={`workbookState ${
+                            status === "완료" ? "complete" : status === "진행 중" ? "active" : ""
+                          }`}
+                        >
+                          {status}
+                        </span>
+                        <strong>{formatBookTitle(row.book)}</strong>
+                      </div>
+                      <b>
+                        {row.submitted}/{row.total} · {row.progress}%
+                      </b>
+                    </div>
+                    <div className="studentWorkbookProgress" aria-label={`진행률 ${row.progress}%`}>
+                      <span style={{ width: `${row.progress}%` }} />
+                    </div>
+                    <div className="studentProblemSummary">
+                      <span>
+                        <b>미풀이</b> {formatProblemNumberList(row.unsubmittedProblems)}
+                      </span>
+                      <span className={row.wrongProblems.length > 0 ? "hasWrongAnswers" : ""}>
+                        <b>오답</b> {formatProblemNumberList(row.wrongProblems)}
+                      </span>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        </div>
+      )}
       {selectedSubmission && (
         <div className="modalBackdrop" role="presentation" onMouseDown={() => setSelectedSubmission(null)}>
           <div
