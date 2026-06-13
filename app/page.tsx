@@ -1694,19 +1694,21 @@ function ProblemPane({
         <ProblemBlock title="입력" body={selectedProblem.inputDescription} />
         <ProblemBlock title="출력" body={selectedProblem.outputDescription} />
       </div>
-      <div className="exampleBox">
-        <h2>예시</h2>
-        <div className="ioGrid">
-          <div>
-            <strong>입력</strong>
-            <pre>{selectedProblem.examples[0].input || "입력 없음"}</pre>
-          </div>
-          <div>
-            <strong>출력</strong>
-            <pre>{selectedProblem.examples[0].output}</pre>
+      {selectedProblem.showExample !== false && selectedProblem.examples[0] && (
+        <div className="exampleBox">
+          <h2>예시</h2>
+          <div className="ioGrid">
+            <div>
+              <strong>입력</strong>
+              <pre>{selectedProblem.examples[0].input || "입력 없음"}</pre>
+            </div>
+            <div>
+              <strong>출력</strong>
+              <pre>{selectedProblem.examples[0].output}</pre>
+            </div>
           </div>
         </div>
-      </div>
+      )}
       {selectedProblem.hint.trim() && (
         <div className="hint">
           <Lightbulb size={18} />

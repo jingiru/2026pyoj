@@ -971,6 +971,7 @@ textarea:focus {
 }
 
 .workspace {
+  align-items: start;
   display: grid;
   gap: 18px;
   grid-template-columns: minmax(360px, 0.92fr) minmax(420px, 1.08fr);
@@ -1189,6 +1190,11 @@ pre {
   grid-template-rows: auto minmax(340px, 1fr);
 }
 
+.workspace > .idePane {
+  align-self: start;
+  grid-template-rows: auto auto;
+}
+
 .ideHeader {
   align-items: center;
   border-bottom: 1px solid var(--line);
@@ -1376,9 +1382,19 @@ pre {
 }
 
 .solveEditorSection .cm-editor,
+.solveEditorSection .cm-content,
+.solveEditorSection .cm-scroller {
+  height: 330px;
+  max-height: 330px;
+  min-height: 330px;
+}
+
 .solveEditorSection .cm-content {
-  min-height: 238px;
-  max-height: 238px;
+  line-height: 1.35;
+}
+
+.solveEditorSection .cm-scroller {
+  overflow: auto;
 }
 
 .solveTerminal {

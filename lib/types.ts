@@ -8,6 +8,7 @@ export type Problem = {
   outputDescription: string;
   examples: TestCase[];
   testCases: TestCase[];
+  showExample?: boolean;
   starterCode: string;
   hint: string;
   isPublished?: boolean;
