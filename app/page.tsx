@@ -55,6 +55,7 @@ import {
   problems as fallbackProblems
 } from "@/lib/problems";
 import { runPythonWithSkulpt } from "@/lib/skulpt-runner";
+import { checkCodeRequirements } from "@/lib/code-requirements";
 import {
   findOrCreateStudent,
   getDataErrorMessage,
@@ -1731,6 +1732,21 @@ function ProblemPane({
 }
 
 async function judgeProblemSubmission(problem: Problem, code: string): Promise<JudgeResult> {
+  const requirementResult = checkCodeRequirements(code, problem.codeRequirements);
+  if (!requirementResult.passed) {
+    return {
+      status: "wrong_answer",
+      passedCount: 0,
+      totalCount: problem.testCases.length,
+      feedback: requirementResult.feedback,
+      cases: problem.testCases.map((testCase) => ({
+        ...testCase,
+        actual: "코드 작성 조건을 확인해주세요.",
+        passed: false
+      }))
+    };
+  }
+
   const cases: JudgeResult["cases"] = [];
   let hasRuntimeError = false;
 
@@ -2413,6 +2429,7 @@ function TeacherProblemManager({
     outputDescription: "",
     starterCode: "",
     hint: "",
+    codeRequirements: [],
     examples: [],
     testCases: [{ input: "", output: "", isSample: false }],
     isPublished: true

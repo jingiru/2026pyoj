@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Problem, ProblemBook } from "./types";
+import type { CodeRequirement, Problem, ProblemBook } from "./types";
 
 type ProblemRow = {
   id: string;
@@ -10,6 +10,7 @@ type ProblemRow = {
   output_description: string;
   starter_code: string;
   hint: string;
+  code_requirements: CodeRequirement[] | null;
   sort_order: number;
   is_published: boolean;
   test_cases?: Array<{
@@ -28,7 +29,7 @@ export async function loadCurriculum(supabase: SupabaseClient, publishedOnly: bo
   let problemQuery = supabase
     .from("problems")
     .select(
-      "id, book_id, title, statement, input_description, output_description, starter_code, hint, sort_order, is_published, test_cases(input, expected_output, is_sample, sort_order)"
+      "id, book_id, title, statement, input_description, output_description, starter_code, hint, code_requirements, sort_order, is_published, test_cases(input, expected_output, is_sample, sort_order)"
     )
     .order("sort_order")
     .order("id");
@@ -63,6 +64,7 @@ export async function loadCurriculum(supabase: SupabaseClient, publishedOnly: bo
       outputDescription: normalizeDisplayText(problem.output_description),
       starterCode: problem.starter_code,
       hint: normalizeDisplayText(problem.hint),
+      codeRequirements: problem.code_requirements ?? [],
       examples: (samples.length > 0 ? samples : cases.slice(0, 1)).map((testCase) => ({
         input: testCase.input,
         output: testCase.expected_output,

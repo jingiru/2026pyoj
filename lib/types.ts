@@ -11,8 +11,20 @@ export type Problem = {
   showExample?: boolean;
   starterCode: string;
   hint: string;
+  codeRequirements?: CodeRequirement[];
   isPublished?: boolean;
 };
+
+export type CodeRequirement =
+  | { type: "print_arguments"; minCount: number }
+  | { type: "operators"; values: Array<"+" | "-" | "*" | "/" | "//" | "%"> }
+  | { type: "assigned_output" }
+  | { type: "reassignment" }
+  | { type: "for_range" }
+  | { type: "indexing"; minCount: number }
+  | { type: "slicing"; minCount: number }
+  | { type: "functions"; names: Array<"sum" | "max" | "min" | "len" | "sorted"> }
+  | { type: "sorted_reverse" };
 
 export type ProblemBook = {
   id: string;

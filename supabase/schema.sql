@@ -27,6 +27,7 @@ create table if not exists public.problems (
   output_description text not null,
   starter_code text not null default '',
   hint text not null default '',
+  code_requirements jsonb not null default '[]'::jsonb,
   time_limit_ms integer not null default 2000,
   memory_limit_mb integer not null default 128,
   sort_order integer not null default 0,

@@ -126,6 +126,7 @@ async function saveProblem(problem: ProblemPayload, updating: boolean) {
     output_description: problem.outputDescription,
     starter_code: problem.starterCode,
     hint: problem.hint,
+    code_requirements: problem.codeRequirements ?? [],
     sort_order: problem.order,
     is_published: false,
     updated_at: new Date().toISOString()
