@@ -25,6 +25,8 @@ import {
   BookOpen,
   CheckCircle2,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Code2,
   Download,
   Eye,
@@ -92,6 +94,7 @@ const PROBLEM_GROUP_TITLES: Record<number, string[]> = {
 const PRACTICE_CODE_STORAGE_KEY = "pyoj:practice-code";
 const SELECTED_PROBLEM_STORAGE_KEY = "pyoj:selected-problem";
 const PROBLEM_CODE_STORAGE_PREFIX = "pyoj:problem-code:";
+const AUTO_ADVANCE_STORAGE_KEY = "pyoj:auto-advance-on-accepted";
 const DEFAULT_PROBLEM =
   fallbackProblems.find((problem) => problem.bookId === fallbackProblemBooks[0].id) ??
   fallbackProblems[0];
@@ -148,6 +151,29 @@ export default function Home() {
   const [selectedProblemId, setSelectedProblemId] = useState(DEFAULT_PROBLEM.id);
   const selectedProblem =
     availableProblems.find((problem) => problem.id === selectedProblemId) ?? fallbackProblem;
+  const orderedProblems = useMemo(() => {
+    const bookOrder = new Map(
+      [...availableBooks]
+        .sort((left, right) => left.order - right.order)
+        .map((book, index) => [book.id, index])
+    );
+    return [...availableProblems].sort(
+      (left, right) =>
+        (bookOrder.get(left.bookId) ?? Number.MAX_SAFE_INTEGER) -
+          (bookOrder.get(right.bookId) ?? Number.MAX_SAFE_INTEGER) ||
+        left.order - right.order ||
+        left.id.localeCompare(right.id, "ko")
+    );
+  }, [availableBooks, availableProblems]);
+  const selectedProblemIndex = orderedProblems.findIndex(
+    (problem) => problem.id === selectedProblem.id
+  );
+  const previousProblem =
+    selectedProblemIndex > 0 ? orderedProblems[selectedProblemIndex - 1] : undefined;
+  const nextProblem =
+    selectedProblemIndex >= 0 && selectedProblemIndex < orderedProblems.length - 1
+      ? orderedProblems[selectedProblemIndex + 1]
+      : undefined;
   const [code, setCode] = useState(DEFAULT_PROBLEM.starterCode);
   const [practiceCode, setPracticeCode] = useState("print()");
   const [codeFontSize, setCodeFontSize] = useState(15);
@@ -168,6 +194,7 @@ export default function Home() {
   const [isResultToastClosing, setIsResultToastClosing] = useState(false);
   const [solvedProblemIds, setSolvedProblemIds] = useState<Set<string>>(() => new Set());
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [autoAdvanceOnAccepted, setAutoAdvanceOnAccepted] = useState(false);
   const [solveConsoleLines, setSolveConsoleLines] = useState<string[]>([
     "실행 버튼 또는 Shift + Enter로 실행하세요."
   ]);
@@ -316,6 +343,7 @@ export default function Home() {
   useEffect(() => {
     const savedPracticeCode = getStoredValue(PRACTICE_CODE_STORAGE_KEY);
     if (savedPracticeCode !== null) setPracticeCode(savedPracticeCode);
+    setAutoAdvanceOnAccepted(getStoredValue(AUTO_ADVANCE_STORAGE_KEY) === "true");
 
     const savedProblemId = getStoredValue(SELECTED_PROBLEM_STORAGE_KEY);
     const savedProblem = fallbackProblems.find((problem) => problem.id === savedProblemId);
@@ -339,6 +367,11 @@ export default function Home() {
     setStoredValue(SELECTED_PROBLEM_STORAGE_KEY, selectedProblemId);
     setStoredValue(`${PROBLEM_CODE_STORAGE_PREFIX}${selectedProblemId}`, code);
   }, [code, editorStorageReady, selectedProblemId]);
+
+  useEffect(() => {
+    if (!editorStorageReady) return;
+    setStoredValue(AUTO_ADVANCE_STORAGE_KEY, String(autoAdvanceOnAccepted));
+  }, [autoAdvanceOnAccepted, editorStorageReady]);
 
   function navigateTo(nextScreen: Screen) {
     const url = new URL(window.location.href);
@@ -608,6 +641,9 @@ export default function Home() {
       });
       if (judged.status === "accepted") {
         setSolvedProblemIds((current) => new Set(current).add(selectedProblem.id));
+        if (autoAdvanceOnAccepted && nextProblem) {
+          window.setTimeout(() => changeProblem(nextProblem.id), 800);
+        }
       }
       setNotice("");
     } catch (error) {
@@ -1021,7 +1057,15 @@ export default function Home() {
           )}
 
           <section className="workspace">
-            <ProblemPane selectedProblem={selectedProblem} />
+            <ProblemPane
+              selectedProblem={selectedProblem}
+              previousProblem={previousProblem}
+              nextProblem={nextProblem}
+              autoAdvanceOnAccepted={autoAdvanceOnAccepted}
+              onPrevious={() => previousProblem && changeProblem(previousProblem.id)}
+              onNext={() => nextProblem && changeProblem(nextProblem.id)}
+              onAutoAdvanceChange={setAutoAdvanceOnAccepted}
+            />
             <article className="idePane">
               <div className="ideHeader">
                 <div>
@@ -1591,11 +1635,59 @@ function appendConsoleText(lines: string[], text: string) {
   return next;
 }
 
-function ProblemPane({ selectedProblem }: { selectedProblem: Problem }) {
+function ProblemPane({
+  selectedProblem,
+  previousProblem,
+  nextProblem,
+  autoAdvanceOnAccepted,
+  onPrevious,
+  onNext,
+  onAutoAdvanceChange
+}: {
+  selectedProblem: Problem;
+  previousProblem?: Problem;
+  nextProblem?: Problem;
+  autoAdvanceOnAccepted: boolean;
+  onPrevious: () => void;
+  onNext: () => void;
+  onAutoAdvanceChange: (enabled: boolean) => void;
+}) {
   return (
     <article className="problemPane">
       <div className="problemHeader">
         <h1>{selectedProblem.title}</h1>
+        <div className="problemNavigation">
+          <div className="problemNavigationButtons">
+            <button
+              type="button"
+              className="ghostButton"
+              disabled={!previousProblem}
+              onClick={onPrevious}
+              title={previousProblem?.title ?? "첫 문제입니다."}
+            >
+              <ChevronLeft size={17} />
+              이전
+            </button>
+            <button
+              type="button"
+              className="ghostButton"
+              disabled={!nextProblem}
+              onClick={onNext}
+              title={nextProblem?.title ?? "마지막 문제입니다."}
+            >
+              다음
+              <ChevronRight size={17} />
+            </button>
+          </div>
+          <label className="autoAdvanceOption">
+            <input
+              type="checkbox"
+              checked={autoAdvanceOnAccepted}
+              onChange={(event) => onAutoAdvanceChange(event.target.checked)}
+            />
+            정답 시 자동 다음
+          </label>
+        </div>
       </div>
       <ProblemBlock title="문제" body={selectedProblem.statement} />
       <div className="descriptionGrid">

@@ -91,7 +91,7 @@ button {
   gap: 18px;
   justify-content: space-between;
   margin: 0 auto 18px;
-  max-width: 1440px;
+  max-width: 1720px;
 }
 
 .brand {
@@ -261,7 +261,7 @@ button {
   border-radius: 8px;
   color: var(--ink);
   margin: 0 auto 18px;
-  max-width: 1440px;
+  max-width: 1720px;
   padding: 12px 14px;
 }
 
@@ -273,7 +273,7 @@ button {
 }
 
 .practiceView {
-  max-width: 1440px;
+  max-width: 1720px;
 }
 
 .teacherView {
@@ -570,7 +570,7 @@ button {
   gap: 18px;
   grid-template-columns: 260px 220px 1fr;
   margin: 0 auto;
-  max-width: 1540px;
+  max-width: 1720px;
   transition: grid-template-columns 180ms ease;
 }
 
@@ -980,6 +980,48 @@ p {
   letter-spacing: 0;
   line-height: 1.15;
   margin: 8px 0 0;
+}
+
+.problemNavigation {
+  align-items: flex-end;
+  display: grid;
+  flex: 0 0 auto;
+  gap: 8px;
+  justify-items: end;
+}
+
+.problemNavigationButtons {
+  display: flex;
+  gap: 7px;
+}
+
+.problemNavigationButtons .ghostButton {
+  min-height: 34px;
+  padding: 0 11px;
+}
+
+.problemNavigationButtons .ghostButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.autoAdvanceOption {
+  align-items: center;
+  color: var(--muted);
+  cursor: pointer;
+  display: flex;
+  font-size: 12px;
+  gap: 7px;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.autoAdvanceOption input {
+  accent-color: var(--primary);
+  height: 16px;
+  margin: 0;
+  padding: 0;
+  width: 16px;
 }
 
 .problemBlock {
@@ -2357,6 +2399,24 @@ kbd {
   .submissionOverviewHeader {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .problemHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .problemNavigation {
+    align-items: stretch;
+    justify-items: stretch;
+  }
+
+  .problemNavigationButtons button {
+    flex: 1;
+  }
+
+  .autoAdvanceOption {
+    justify-content: flex-end;
   }
 
   .studentOverviewHeader {
