@@ -1441,6 +1441,182 @@ kbd {
   padding: 9px 10px;
 }
 
+.dashboardFilters .subgroupSelect {
+  max-width: 240px;
+  min-width: 240px;
+  width: 240px;
+}
+
+.studentOverviewPanel {
+  margin-bottom: 18px;
+  scroll-margin-top: 18px;
+}
+
+.studentOverviewHeader {
+  align-items: flex-end;
+  display: flex;
+  gap: 18px;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.studentOverviewHeader h2 {
+  margin: 8px 0 0;
+}
+
+.studentOverviewHeader label {
+  color: var(--muted);
+  display: grid;
+  font-size: 12px;
+  gap: 5px;
+}
+
+.studentOverviewHeader select {
+  background: color-mix(in srgb, var(--panel) 84%, var(--bg));
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--ink);
+  min-width: 210px;
+  padding: 9px 10px;
+}
+
+.studentOverviewMetrics {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.studentOverviewMetrics .metric {
+  background: color-mix(in srgb, var(--panel) 82%, var(--bg));
+  padding: 14px;
+}
+
+.studentOverviewMetrics .metric strong {
+  font-size: 24px;
+}
+
+.currentLearningSummary {
+  background: color-mix(in srgb, var(--primary) 8%, var(--panel));
+  border: 1px solid color-mix(in srgb, var(--primary) 22%, var(--line));
+  border-radius: 8px;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1fr 1fr;
+  margin: 12px 0;
+  padding: 14px 16px;
+}
+
+.currentLearningSummary div {
+  display: grid;
+  gap: 5px;
+}
+
+.currentLearningSummary span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.currentLearningSummary strong {
+  color: var(--ink);
+}
+
+.studentWorkbookList {
+  display: grid;
+  gap: 9px;
+  max-height: 520px;
+  overflow-y: auto;
+}
+
+.studentWorkbookRow {
+  background: color-mix(in srgb, var(--panel) 86%, var(--bg));
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 13px 14px;
+}
+
+.studentWorkbookHeading,
+.studentWorkbookHeading > div {
+  align-items: center;
+  display: flex;
+  gap: 9px;
+  justify-content: space-between;
+}
+
+.studentWorkbookHeading > b {
+  color: var(--muted);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.workbookState {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 7px;
+  white-space: nowrap;
+}
+
+.workbookState.active {
+  background: color-mix(in srgb, var(--primary) 10%, var(--panel));
+  border-color: color-mix(in srgb, var(--primary) 28%, var(--line));
+  color: var(--primary);
+}
+
+.workbookState.complete {
+  background: color-mix(in srgb, #10b981 12%, var(--panel));
+  border-color: color-mix(in srgb, #10b981 30%, var(--line));
+  color: #087f5b;
+}
+
+.studentWorkbookProgress {
+  background: color-mix(in srgb, var(--muted) 13%, var(--panel));
+  border-radius: 999px;
+  height: 6px;
+  margin: 11px 0;
+  overflow: hidden;
+}
+
+.studentWorkbookProgress span {
+  background: var(--primary);
+  display: block;
+  height: 100%;
+}
+
+.studentProblemSummary {
+  color: var(--muted);
+  display: grid;
+  font-size: 12px;
+  gap: 5px;
+  grid-template-columns: 1fr 1fr;
+  line-height: 1.55;
+}
+
+.studentProblemSummary b {
+  color: var(--ink);
+}
+
+.studentProblemSummary .hasWrongAnswers,
+.studentProblemSummary .hasWrongAnswers b {
+  color: var(--rose);
+}
+
+.studentOverviewLink {
+  background: transparent;
+  border: 0;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 800;
+  padding: 3px 0;
+  text-align: left;
+}
+
+.studentOverviewLink:hover {
+  color: var(--primary);
+  text-decoration: underline;
+}
+
 .submissionMatrixWrap {
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -2092,6 +2268,24 @@ kbd {
   .submissionOverviewHeader {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .studentOverviewHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .studentOverviewHeader select,
+  .dashboardFilters .subgroupSelect {
+    max-width: none;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .studentOverviewMetrics,
+  .currentLearningSummary,
+  .studentProblemSummary {
+    grid-template-columns: 1fr 1fr;
   }
 
   .dashboardFilters {

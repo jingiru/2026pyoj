@@ -1698,6 +1698,7 @@ function TeacherDashboard({
   const [sortBy, setSortBy] = useState("studentNo");
   const [subgroupFilter, setSubgroupFilter] = useState("all");
   const [selectedSubmission, setSelectedSubmission] = useState<SubmissionWithStudent | null>(null);
+  const [overviewStudentId, setOverviewStudentId] = useState(students[0]?.id ?? "");
   const selectedBook = books.find((book) => book.id === selectedBookId) ?? books[0];
   const bookProblems = problems
     .filter((problem) => problem.bookId === selectedBook?.id)
@@ -1772,6 +1773,76 @@ function TeacherDashboard({
           submission.problem_id === selectedSubmission.problem_id
       )
     : [];
+  const overviewStudent =
+    students.find((student) => student.id === overviewStudentId) ?? students[0];
+  const overviewBookRows = useMemo(() => {
+    if (!overviewStudent) return [];
+
+    return books.map((book) => {
+      const bookItems = problems
+        .filter((problem) => problem.bookId === book.id)
+        .sort((left, right) => left.order - right.order);
+      const statuses = bookItems.map((problem) =>
+        latestSubmissionByStudentProblem.get(`${overviewStudent.id}:${problem.id}`)
+      );
+      const submitted = statuses.filter(Boolean).length;
+      const accepted = statuses.filter((submission) => submission?.status === "accepted").length;
+      const wrongProblems = bookItems.filter((_, index) => {
+        const submission = statuses[index];
+        return Boolean(submission && submission.status !== "accepted");
+      });
+      const unsubmittedProblems = bookItems.filter((_, index) => !statuses[index]);
+      const latestActivity = submissions.find(
+        (submission) =>
+          submission.student_id === overviewStudent.id &&
+          bookItems.some((problem) => problem.id === submission.problem_id)
+      );
+
+      return {
+        book,
+        total: bookItems.length,
+        submitted,
+        accepted,
+        wrongProblems,
+        unsubmittedProblems,
+        latestActivity,
+        progress: bookItems.length === 0 ? 0 : Math.round((submitted / bookItems.length) * 100)
+      };
+    });
+  }, [
+    overviewStudent,
+    books,
+    problems,
+    submissions,
+    latestSubmissionByStudentProblem
+  ]);
+  const overviewStats = useMemo(() => {
+    const total = overviewBookRows.reduce((sum, row) => sum + row.total, 0);
+    const submitted = overviewBookRows.reduce((sum, row) => sum + row.submitted, 0);
+    const accepted = overviewBookRows.reduce((sum, row) => sum + row.accepted, 0);
+    const wrong = overviewBookRows.reduce((sum, row) => sum + row.wrongProblems.length, 0);
+    const currentBook =
+      overviewBookRows
+        .filter((row) => row.latestActivity?.created_at)
+        .sort(
+          (left, right) =>
+            new Date(right.latestActivity!.created_at!).getTime() -
+            new Date(left.latestActivity!.created_at!).getTime()
+        )[0] ?? overviewBookRows.find((row) => row.submitted > 0);
+    const lastActivity = submissions.find(
+      (submission) => submission.student_id === overviewStudent?.id
+    );
+
+    return {
+      total,
+      submitted,
+      accepted,
+      wrong,
+      progress: total === 0 ? 0 : Math.round((submitted / total) * 100),
+      currentBook,
+      lastActivity
+    };
+  }, [overviewBookRows, overviewStudent, submissions]);
 
   useEffect(() => {
     if (!selectedSubmission) return;
@@ -1785,6 +1856,16 @@ function TeacherDashboard({
   useEffect(() => {
     setSubgroupFilter("all");
   }, [selectedBookId]);
+
+  useEffect(() => {
+    if (students.length === 0) {
+      setOverviewStudentId("");
+      return;
+    }
+    if (!students.some((student) => student.id === overviewStudentId)) {
+      setOverviewStudentId(students[0].id);
+    }
+  }, [students, overviewStudentId]);
 
   return (
     <section className="teacherView">
@@ -1810,6 +1891,101 @@ function TeacherDashboard({
         <Metric label="정답률" value={`${dashboard.rate}%`} />
         <Metric label="참여 학생" value={`${dashboard.triedStudents}`} />
       </div>
+      <section className="panel studentOverviewPanel" id="student-learning-overview">
+        <div className="studentOverviewHeader">
+          <div>
+            <span className="pill">학생별 학습 현황</span>
+            <h2>
+              {overviewStudent
+                ? `${overviewStudent.student_no} ${overviewStudent.name}`
+                : "학생을 선택해주세요"}
+            </h2>
+          </div>
+          <label>
+            학생
+            <select
+              value={overviewStudent?.id ?? ""}
+              onChange={(event) => setOverviewStudentId(event.target.value)}
+            >
+              {students.map((student) => (
+                <option key={student.id} value={student.id}>
+                  {student.student_no} {student.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        {!overviewStudent ? (
+          <p className="empty">등록된 학생이 없습니다.</p>
+        ) : (
+          <>
+            <div className="studentOverviewMetrics">
+              <Metric label="전체 진도" value={`${overviewStats.progress}%`} />
+              <Metric
+                label="푼 문제"
+                value={`${overviewStats.submitted}/${overviewStats.total}`}
+              />
+              <Metric label="정답 문제" value={`${overviewStats.accepted}`} />
+              <Metric label="재확인할 오답" value={`${overviewStats.wrong}`} />
+            </div>
+            <div className="currentLearningSummary">
+              <div>
+                <span>현재 학습 중</span>
+                <strong>
+                  {overviewStats.currentBook
+                    ? formatBookTitle(overviewStats.currentBook.book)
+                    : "아직 시작한 문제집이 없습니다."}
+                </strong>
+              </div>
+              <div>
+                <span>마지막 학습</span>
+                <strong>
+                  {overviewStats.lastActivity?.created_at
+                    ? new Date(overviewStats.lastActivity.created_at).toLocaleString("ko-KR")
+                    : "학습 기록 없음"}
+                </strong>
+              </div>
+            </div>
+            <div className="studentWorkbookList">
+              {overviewBookRows.map((row) => {
+                const status =
+                  row.total > 0 && row.accepted === row.total
+                    ? "완료"
+                    : row.submitted > 0
+                      ? "진행 중"
+                      : "미시작";
+                return (
+                  <article className="studentWorkbookRow" key={row.book.id}>
+                    <div className="studentWorkbookHeading">
+                      <div>
+                        <span className={`workbookState ${status === "완료" ? "complete" : status === "진행 중" ? "active" : ""}`}>
+                          {status}
+                        </span>
+                        <strong>{formatBookTitle(row.book)}</strong>
+                      </div>
+                      <b>
+                        {row.submitted}/{row.total} · {row.progress}%
+                      </b>
+                    </div>
+                    <div className="studentWorkbookProgress" aria-label={`진행률 ${row.progress}%`}>
+                      <span style={{ width: `${row.progress}%` }} />
+                    </div>
+                    <div className="studentProblemSummary">
+                      <span>
+                        <b>미풀이</b>{" "}
+                        {formatProblemNumberList(row.unsubmittedProblems)}
+                      </span>
+                      <span className={row.wrongProblems.length > 0 ? "hasWrongAnswers" : ""}>
+                        <b>오답</b> {formatProblemNumberList(row.wrongProblems)}
+                      </span>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </>
+        )}
+      </section>
       <section className="panel">
         <div className="submissionOverviewHeader">
           <div>
@@ -1829,7 +2005,11 @@ function TeacherDashboard({
             </label>
             <label>
               소분류
-              <select value={subgroupFilter} onChange={(event) => setSubgroupFilter(event.target.value)}>
+              <select
+                className="subgroupSelect"
+                value={subgroupFilter}
+                onChange={(event) => setSubgroupFilter(event.target.value)}
+              >
                 <option value="all">전체</option>
                 {bookProblemGroups.map((group) => (
                   <option key={group.id} value={group.id}>
@@ -1905,7 +2085,18 @@ function TeacherDashboard({
                       {rankByStudent.get(row.student.id)}
                     </td>
                     <th>
-                      {row.student.student_no} {row.student.name}
+                      <button
+                        className="studentOverviewLink"
+                        type="button"
+                        onClick={() => {
+                          setOverviewStudentId(row.student.id);
+                          document
+                            .getElementById("student-learning-overview")
+                            ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                        }}
+                      >
+                        {row.student.student_no} {row.student.name}
+                      </button>
                     </th>
                     <td>
                       <span className="scoreBadge">
@@ -2565,6 +2756,11 @@ function formatProblemNumber(problem: Problem) {
   const code = problem.id.match(/^(\d+(?:-\d+)+)/)?.[1];
   const lastNumber = code?.split("-").at(-1);
   return lastNumber ?? String(problem.order).padStart(2, "0");
+}
+
+function formatProblemNumberList(problems: Problem[]) {
+  if (problems.length === 0) return "없음";
+  return problems.map((problem) => formatProblemNumber(problem)).join(", ");
 }
 
 function groupProblems(problems: Problem[], book?: ProblemBook) {
