@@ -1068,53 +1068,129 @@ pre {
   justify-content: flex-end;
 }
 
-.submissionSummary {
-  align-items: center;
-  background: #fff7ed;
-  border: 1px solid #fdba74;
-  border-radius: 7px;
-  color: #c2410c;
-  display: inline-flex;
-  gap: 6px;
-  min-height: 40px;
-  padding: 0 11px;
-  white-space: nowrap;
-}
-
-.submissionSummary strong,
-.submissionSummary span {
-  display: inline;
-  margin: 0;
-}
-
-.submissionSummary span {
-  color: inherit;
-  font-size: 12px;
-}
-
-.submissionSummary.accepted {
-  background: #ecfdf5;
-  border-color: #6ee7b7;
-  color: #047857;
-}
-
-.darkMode .submissionSummary {
-  background: color-mix(in srgb, #f97316 14%, var(--panel));
-  border-color: color-mix(in srgb, #f97316 48%, var(--line));
-  color: #fdba74;
-}
-
-.darkMode .submissionSummary.accepted {
-  background: color-mix(in srgb, #10b981 16%, var(--panel));
-  border-color: color-mix(in srgb, #10b981 52%, var(--line));
-  color: #6ee7b7;
-}
-
 .solveIdeBody {
   display: grid;
   grid-template-rows: repeat(2, minmax(340px, 1fr));
   min-height: 720px;
   min-width: 0;
+}
+
+.submissionToast {
+  animation: submissionToastIn 300ms ease-out both;
+  background: var(--panel);
+  border: 1px solid #fdba74;
+  border-left: 5px solid #f97316;
+  border-radius: 10px;
+  box-shadow: 0 16px 38px rgba(15, 23, 42, 0.2);
+  color: var(--ink);
+  min-width: 300px;
+  padding: 18px;
+  position: fixed;
+  right: 24px;
+  top: 92px;
+  width: min(360px, calc(100vw - 32px));
+  z-index: 30;
+}
+
+.submissionToast.closing {
+  animation: submissionToastOut 300ms ease-in both;
+}
+
+.submissionToast.accepted {
+  border-color: #6ee7b7;
+  border-left-color: #10b981;
+}
+
+.submissionToastClose {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  display: flex;
+  padding: 4px;
+  position: absolute;
+  right: 9px;
+  top: 9px;
+}
+
+.submissionToastTitle {
+  align-items: center;
+  color: #c2410c;
+  display: flex;
+  font-size: 18px;
+  gap: 8px;
+  padding-right: 28px;
+}
+
+.submissionToast.accepted .submissionToastTitle {
+  color: #047857;
+}
+
+.submissionToast p {
+  color: var(--muted);
+  line-height: 1.55;
+  margin: 10px 0 14px;
+}
+
+.submissionToast p b {
+  color: var(--ink);
+}
+
+.submissionToastConfirm {
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  border-radius: 7px;
+  color: #c2410c;
+  font-weight: 750;
+  min-height: 36px;
+  width: 100%;
+}
+
+.submissionToast.accepted .submissionToastConfirm {
+  background: #ecfdf5;
+  border-color: #6ee7b7;
+  color: #047857;
+}
+
+.darkMode .submissionToast {
+  background: var(--panel);
+  border-color: color-mix(in srgb, #f97316 52%, var(--line));
+}
+
+.darkMode .submissionToast.accepted {
+  border-color: color-mix(in srgb, #10b981 58%, var(--line));
+}
+
+.darkMode .submissionToastTitle,
+.darkMode .submissionToastConfirm {
+  color: #fdba74;
+}
+
+.darkMode .submissionToast.accepted .submissionToastTitle,
+.darkMode .submissionToast.accepted .submissionToastConfirm {
+  color: #6ee7b7;
+}
+
+@keyframes submissionToastIn {
+  from {
+    opacity: 0;
+    transform: translateX(calc(100% + 32px));
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes submissionToastOut {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(calc(100% + 32px));
+  }
 }
 
 .solveEditorSection,

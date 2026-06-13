@@ -165,6 +165,7 @@ export default function Home() {
   const consoleInputRef = useRef<HTMLTextAreaElement | null>(null);
   const [notice, setNotice] = useState("");
   const [result, setResult] = useState<JudgeResult | null>(null);
+  const [isResultToastClosing, setIsResultToastClosing] = useState(false);
   const [solvedProblemIds, setSolvedProblemIds] = useState<Set<string>>(() => new Set());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [solveConsoleLines, setSolveConsoleLines] = useState<string[]>([
@@ -203,6 +204,18 @@ export default function Home() {
   useEffect(() => {
     if (solvePendingPrompt !== null) solveConsoleInputRef.current?.focus();
   }, [solvePendingPrompt]);
+
+  useEffect(() => {
+    if (!result) return;
+
+    setIsResultToastClosing(false);
+    const startClosing = window.setTimeout(() => setIsResultToastClosing(true), 2700);
+    const removeToast = window.setTimeout(() => setResult(null), 3000);
+    return () => {
+      window.clearTimeout(startClosing);
+      window.clearTimeout(removeToast);
+    };
+  }, [result]);
 
   useEffect(() => {
     if (!loginOpen && !teacherLoginOpen) return;
@@ -445,6 +458,11 @@ export default function Home() {
     setResult(null);
     setNotice("");
     navigateTo("home");
+  }
+
+  function dismissResultToast() {
+    setIsResultToastClosing(true);
+    window.setTimeout(() => setResult(null), 300);
   }
 
   async function refreshSolvedProblems(studentId: string) {
@@ -1006,20 +1024,6 @@ export default function Home() {
                     <Send size={17} />
                     {isSubmitting ? "채점 중" : "제출"}
                   </button>
-                  {result && (
-                    <div
-                      className={`submissionSummary ${result.status === "accepted" ? "accepted" : ""}`}
-                      aria-live="polite"
-                    >
-                      {result.status === "accepted" && <CheckCircle2 size={16} />}
-                      <strong>{result.status === "accepted" ? "성공" : `${result.passedCount}/${result.totalCount} 통과`}</strong>
-                      {result.status === "accepted" && (
-                        <span>
-                          {result.passedCount}/{result.totalCount} 통과
-                        </span>
-                      )}
-                    </div>
-                  )}
                 </div>
               </div>
               <div className="solveIdeBody">
@@ -1119,6 +1123,39 @@ export default function Home() {
           onCurriculumChanged={refreshCurriculum}
           onLogout={() => void logoutTeacher()}
         />
+      )}
+
+      {result && (
+        <aside
+          className={[
+            "submissionToast",
+            result.status === "accepted" ? "accepted" : "failed",
+            isResultToastClosing ? "closing" : ""
+          ]
+            .filter(Boolean)
+            .join(" ")}
+          role="status"
+          aria-live="polite"
+        >
+          <button
+            type="button"
+            className="submissionToastClose"
+            onClick={dismissResultToast}
+            aria-label="채점 결과 닫기"
+          >
+            <X size={17} />
+          </button>
+          <div className="submissionToastTitle">
+            {result.status === "accepted" && <CheckCircle2 size={21} />}
+            <strong>{result.status === "accepted" ? "성공" : "채점 결과"}</strong>
+          </div>
+          <p>
+            총 {result.totalCount}개의 테스트 케이스 중 <b>{result.passedCount}개</b>를 통과했습니다.
+          </p>
+          <button type="button" className="submissionToastConfirm" onClick={dismissResultToast}>
+            확인
+          </button>
+        </aside>
       )}
 
       {loginOpen && (
