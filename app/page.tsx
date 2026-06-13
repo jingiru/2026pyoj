@@ -940,8 +940,10 @@ export default function Home() {
                         aria-expanded={isExpanded}
                       >
                         <span>{group.code}</span>
-                        <strong>{group.title}</strong>
-                        <em>{group.problems.length}문제</em>
+                        <div>
+                          <strong>{group.title}</strong>
+                          <em>{group.problems.length}문제</em>
+                        </div>
                         <ChevronDown size={17} />
                       </button>
                       {isExpanded && (

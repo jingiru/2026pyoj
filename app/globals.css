@@ -711,8 +711,8 @@ textarea:focus {
   border: 0;
   color: var(--ink);
   display: grid;
-  gap: 4px 8px;
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  gap: 8px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   padding: 11px 10px;
   text-align: left;
   width: 100%;
@@ -728,13 +728,19 @@ textarea:focus {
   font-weight: 850;
 }
 
-.problemGroupHeader > strong {
+.problemGroupHeader > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.problemGroupHeader > div > strong {
   font-size: 13px;
   line-height: 1.35;
   min-width: 0;
 }
 
-.problemGroupHeader > em {
+.problemGroupHeader > div > em {
   color: var(--muted);
   font-size: 11px;
   font-style: normal;
