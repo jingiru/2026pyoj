@@ -103,6 +103,7 @@ const PRACTICE_CODE_STORAGE_KEY = "pyoj:practice-code";
 const SELECTED_PROBLEM_STORAGE_KEY = "pyoj:selected-problem";
 const PROBLEM_CODE_STORAGE_PREFIX = "pyoj:problem-code:";
 const AUTO_ADVANCE_STORAGE_KEY = "pyoj:auto-advance-on-accepted";
+const STUDENT_STORAGE_KEY = "pyoj:student";
 const DEFAULT_PROBLEM =
   fallbackProblems.find((problem) => problem.bookId === fallbackProblemBooks[0].id) ??
   fallbackProblems[0];
@@ -353,6 +354,14 @@ export default function Home() {
     if (savedPracticeCode !== null) setPracticeCode(savedPracticeCode);
     setAutoAdvanceOnAccepted(getStoredValue(AUTO_ADVANCE_STORAGE_KEY) === "true");
 
+    const savedStudent = getStoredStudent();
+    if (savedStudent) {
+      setStudent(savedStudent);
+      setStudentNo(savedStudent.student_no);
+      setName(savedStudent.name);
+      void refreshSolvedProblems(savedStudent.id);
+    }
+
     const savedProblemId = getStoredValue(SELECTED_PROBLEM_STORAGE_KEY);
     const savedProblem = fallbackProblems.find((problem) => problem.id === savedProblemId);
     if (savedProblem) {
@@ -411,6 +420,7 @@ export default function Home() {
     try {
       const signedIn = await findOrCreateStudent(studentNo, name);
       setStudent(signedIn);
+      setStoredValue(STUDENT_STORAGE_KEY, JSON.stringify(signedIn));
       void refreshSolvedProblems(signedIn.id);
       setLoginOpen(false);
       navigateTo("solve");
@@ -499,6 +509,7 @@ export default function Home() {
 
   function logoutStudent() {
     setStudent(null);
+    removeStoredValue(STUDENT_STORAGE_KEY);
     setSolvedProblemIds(new Set());
     setResult(null);
     setNotice("");
@@ -1091,10 +1102,12 @@ export default function Home() {
                   <button className="runButton" onClick={() => void runSolveCode()} disabled={isSolveRunning}>
                     <Play size={17} />
                     {isSolveRunning ? "실행 중" : "실행"}
+                    <kbd className="compactShortcut">Shift + Enter</kbd>
                   </button>
                   <button className="primaryButton" onClick={() => void submitCode()} disabled={isSubmitting}>
                     <Send size={17} />
                     {isSubmitting ? "채점 중" : "제출"}
+                    <kbd className="compactShortcut">Alt + Enter</kbd>
                   </button>
                 </div>
               </div>
@@ -1115,6 +1128,7 @@ export default function Home() {
                     value={code}
                     onChange={setCode}
                     onRun={runSolveCode}
+                    onSubmit={submitCode}
                     colorMode={colorMode}
                     fontSize={codeFontSize}
                   />
@@ -1460,12 +1474,14 @@ function CodeEditor({
   value,
   onChange,
   onRun,
+  onSubmit,
   colorMode,
   fontSize
 }: {
   value: string;
   onChange: (value: string) => void;
   onRun: () => void;
+  onSubmit?: () => void;
   colorMode: ColorMode;
   fontSize: number;
 }) {
@@ -1528,6 +1544,13 @@ function CodeEditor({
               return true;
             }
           },
+          {
+            key: "Alt-Enter",
+            run: () => {
+              onSubmit?.();
+              return Boolean(onSubmit);
+            }
+          },
           { key: "Ctrl-Enter", mac: "Cmd-Enter", run: insertBlankLine },
           { key: "Ctrl-Shift-d", mac: "Cmd-Shift-d", run: copyLineDown },
           { key: "Ctrl-d", mac: "Cmd-d", run: selectNextWordOccurrence },
@@ -1538,7 +1561,7 @@ function CodeEditor({
       ),
       keymap.of([...defaultKeymap, ...historyKeymap])
     ],
-    [colorMode, fontSize, onRun]
+    [colorMode, fontSize, onRun, onSubmit]
   );
 
   return (
@@ -1670,36 +1693,38 @@ function ProblemPane({
       <div className="problemHeader">
         <h1>{selectedProblem.title}</h1>
         <div className="problemNavigation">
-          <div className="problemNavigationButtons">
-            <button
-              type="button"
-              className="ghostButton"
-              disabled={!previousProblem}
-              onClick={onPrevious}
-              title={previousProblem?.title ?? "첫 문제입니다."}
-            >
-              <ChevronLeft size={17} />
-              이전
-            </button>
-            <button
-              type="button"
-              className="ghostButton"
-              disabled={!nextProblem}
-              onClick={onNext}
-              title={nextProblem?.title ?? "마지막 문제입니다."}
-            >
-              다음
-              <ChevronRight size={17} />
-            </button>
-          </div>
-          <label className="autoAdvanceOption">
-            <input
-              type="checkbox"
-              checked={autoAdvanceOnAccepted}
-              onChange={(event) => onAutoAdvanceChange(event.target.checked)}
-            />
-            정답 시 자동 다음
-          </label>
+          <button
+            type="button"
+            className="problemNavigationButton"
+            disabled={!previousProblem}
+            onClick={onPrevious}
+            aria-label="이전 문제"
+            data-tooltip={previousProblem ? `이전 문제: ${previousProblem.title}` : "첫 문제입니다."}
+          >
+            <ChevronLeft size={19} />
+          </button>
+          <button
+            type="button"
+            className="problemNavigationButton"
+            disabled={!nextProblem}
+            onClick={onNext}
+            aria-label="다음 문제"
+            data-tooltip={nextProblem ? `다음 문제: ${nextProblem.title}` : "마지막 문제입니다."}
+          >
+            <ChevronRight size={19} />
+          </button>
+          <button
+            type="button"
+            className={`problemNavigationButton autoAdvanceButton ${
+              autoAdvanceOnAccepted ? "active" : ""
+            }`}
+            onClick={() => onAutoAdvanceChange(!autoAdvanceOnAccepted)}
+            aria-label="정답 시 자동으로 다음 문제 이동"
+            aria-pressed={autoAdvanceOnAccepted}
+            data-tooltip={`정답 시 자동 다음: ${autoAdvanceOnAccepted ? "켜짐" : "꺼짐"}`}
+          >
+            <CheckCircle2 size={18} />
+          </button>
         </div>
       </div>
       <ProblemBlock title="문제" body={selectedProblem.statement} />
@@ -3118,5 +3143,32 @@ function setStoredValue(key: string, value: string) {
     localStorage.setItem(key, value);
   } catch {
     // The editor remains usable when browser storage is unavailable.
+  }
+}
+
+function removeStoredValue(key: string) {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // Logout still works in memory when browser storage is unavailable.
+  }
+}
+
+function getStoredStudent(): Student | null {
+  const value = getStoredValue(STUDENT_STORAGE_KEY);
+  if (!value) return null;
+
+  try {
+    const student = JSON.parse(value) as Partial<Student>;
+    if (
+      typeof student.id !== "string" ||
+      typeof student.student_no !== "string" ||
+      typeof student.name !== "string"
+    ) {
+      return null;
+    }
+    return student as Student;
+  } catch {
+    return null;
   }
 }
