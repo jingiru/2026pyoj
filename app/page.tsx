@@ -1839,13 +1839,16 @@ function TeacherDashboard({
     });
     return tones;
   }, [bookProblemGroups]);
-  const latestSubmissionByStudentProblem = useMemo(() => {
-    const latest = new Map<string, SubmissionWithStudent>();
+  const dashboardSubmissionByStudentProblem = useMemo(() => {
+    const representative = new Map<string, SubmissionWithStudent>();
     for (const submission of submissions) {
       const key = `${submission.student_id}:${submission.problem_id}`;
-      if (!latest.has(key)) latest.set(key, submission);
+      const current = representative.get(key);
+      if (!current || (current.status !== "accepted" && submission.status === "accepted")) {
+        representative.set(key, submission);
+      }
     }
-    return latest;
+    return representative;
   }, [submissions]);
   const classes = useMemo(
     () =>
@@ -1857,7 +1860,7 @@ function TeacherDashboard({
   const studentRows = useMemo(() => {
     const rows = students.map((item) => {
       const statuses = displayedProblems.map((problem) =>
-        latestSubmissionByStudentProblem.get(`${item.id}:${problem.id}`)
+        dashboardSubmissionByStudentProblem.get(`${item.id}:${problem.id}`)
       );
       const submitted = statuses.filter(Boolean).length;
       const accepted = statuses.filter((submission) => submission?.status === "accepted").length;
@@ -1879,7 +1882,7 @@ function TeacherDashboard({
   }, [
     students,
     displayedProblems,
-    latestSubmissionByStudentProblem,
+    dashboardSubmissionByStudentProblem,
     classFilter,
     sortBy
   ]);
@@ -1915,7 +1918,7 @@ function TeacherDashboard({
         .filter((problem) => problem.bookId === book.id)
         .sort((left, right) => left.order - right.order);
       const statuses = bookItems.map((problem) =>
-        latestSubmissionByStudentProblem.get(`${overviewStudent.id}:${problem.id}`)
+        dashboardSubmissionByStudentProblem.get(`${overviewStudent.id}:${problem.id}`)
       );
       const submitted = statuses.filter(Boolean).length;
       const accepted = statuses.filter((submission) => submission?.status === "accepted").length;
@@ -1928,7 +1931,7 @@ function TeacherDashboard({
         ...group,
         items: group.problems.map((problem) => ({
           problem,
-          submission: latestSubmissionByStudentProblem.get(
+          submission: dashboardSubmissionByStudentProblem.get(
             `${overviewStudent.id}:${problem.id}`
           )
         }))
@@ -1959,7 +1962,7 @@ function TeacherDashboard({
     books,
     problems,
     submissions,
-    latestSubmissionByStudentProblem
+    dashboardSubmissionByStudentProblem
   ]);
   const overviewStats = useMemo(() => {
     const total = overviewBookRows.reduce((sum, row) => sum + row.total, 0);
@@ -2117,7 +2120,8 @@ function TeacherDashboard({
               <thead>
                 <tr>
                   <th>순위</th>
-                  <th>학번 / 이름</th>
+                  <th>학번</th>
+                  <th>이름</th>
                   <th>점수</th>
                   {displayedProblems.map((problem) => (
                     <th
@@ -2142,14 +2146,19 @@ function TeacherDashboard({
                         type="button"
                         onClick={() => setOverviewStudentId(row.student.id)}
                       >
-                        {row.student.student_no} {row.student.name}
+                        {row.student.student_no}
                       </button>
                     </th>
-                    <td>
-                      <span className="scoreBadge">
-                        {row.accepted}/{displayedProblems.length}
-                      </span>
-                    </td>
+                    <th>
+                      <button
+                        className="studentOverviewLink"
+                        type="button"
+                        onClick={() => setOverviewStudentId(row.student.id)}
+                      >
+                        {row.student.name}
+                      </button>
+                    </th>
+                    <td className="scoreCell">{row.accepted}</td>
                     {row.statuses.map((submission, index) => (
                       <td
                         className={`subgroupTone${
@@ -2161,11 +2170,13 @@ function TeacherDashboard({
                           <button
                             className={`submissionStatus ${submissionResultClass(submission.status)}`}
                             onClick={() => setSelectedSubmission(submission)}
+                            title={submissionResultLabel(submission.status)}
+                            aria-label={`${displayedProblems[index].title} ${submissionResultLabel(submission.status)}`}
                           >
-                            {submissionResultLabel(submission.status)}
+                            {submission.status === "accepted" ? "O" : "X"}
                           </button>
                         ) : (
-                          <span className="notSubmitted">미제출</span>
+                          <span className="notSubmitted" aria-label="미제출" />
                         )}
                       </td>
                     ))}
