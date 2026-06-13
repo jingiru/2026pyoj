@@ -25,6 +25,7 @@ export type ProblemBook = {
 export type TestCase = {
   input: string;
   output: string;
+  isSample?: boolean;
 };
 
 export type Student = {

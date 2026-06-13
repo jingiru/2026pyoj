@@ -1144,6 +1144,26 @@ p {
   margin-bottom: 18px;
 }
 
+.exampleList {
+  display: grid;
+  gap: 14px;
+}
+
+.exampleCase {
+  min-width: 0;
+}
+
+.exampleCase + .exampleCase {
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+
+.exampleCase h3 {
+  color: var(--muted);
+  font-size: 14px;
+  margin: 0 0 8px;
+}
+
 .ioGrid {
   display: grid;
   gap: 12px;
@@ -1947,10 +1967,26 @@ kbd {
 
 .submissionMatrix th:nth-child(n + 4),
 .submissionMatrix td:nth-child(n + 4) {
-  max-width: 78px;
-  min-width: 72px;
-  padding-left: 8px;
-  padding-right: 8px;
+  max-width: 58px;
+  min-width: 54px;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+.submissionMatrix .subgroupTone0 {
+  background: color-mix(in srgb, #3b82f6 7%, var(--panel));
+}
+
+.submissionMatrix .subgroupTone1 {
+  background: color-mix(in srgb, #10b981 8%, var(--panel));
+}
+
+.submissionMatrix .subgroupTone2 {
+  background: color-mix(in srgb, #f59e0b 8%, var(--panel));
+}
+
+.submissionMatrix .subgroupTone3 {
+  background: color-mix(in srgb, #a855f7 7%, var(--panel));
 }
 
 .submissionMatrix thead th:nth-child(1),
@@ -2491,11 +2527,25 @@ kbd {
   align-items: start;
   display: grid;
   gap: 10px;
-  grid-template-columns: 64px minmax(0, 1fr) minmax(0, 1fr) 36px;
+  grid-template-columns: 104px minmax(0, 1fr) minmax(0, 1fr) 36px;
 }
 
-.testCaseRow strong {
-  padding-top: 10px;
+.sampleToggle {
+  align-items: center;
+  color: var(--ink);
+  display: flex !important;
+  font-size: 12px;
+  font-weight: 800;
+  gap: 6px !important;
+  margin: 8px 0 0 !important;
+  white-space: nowrap;
+}
+
+.sampleToggle input {
+  accent-color: var(--primary);
+  height: 16px;
+  padding: 0;
+  width: 16px;
 }
 
 .testCaseRow textarea {

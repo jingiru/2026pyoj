@@ -60,7 +60,13 @@ import {
   getDataErrorMessage,
   saveSubmission
 } from "@/lib/supabase";
-import type { Problem, ProblemBook, Student, SubmissionWithStudent } from "@/lib/types";
+import type {
+  Problem,
+  ProblemBook,
+  Student,
+  SubmissionWithStudent,
+  TestCase
+} from "@/lib/types";
 import type { ProblemImportResult } from "@/lib/problem-import-types";
 
 type Screen = "home" | "practice" | "solve" | "teacher";
@@ -1692,18 +1698,25 @@ function ProblemPane({
         <ProblemBlock title="입력" body={selectedProblem.inputDescription} />
         <ProblemBlock title="출력" body={selectedProblem.outputDescription} />
       </div>
-      {selectedProblem.showExample !== false && selectedProblem.examples[0] && (
+      {selectedProblem.showExample !== false && selectedProblem.examples.length > 0 && (
         <div className="exampleBox">
           <h2>예시</h2>
-          <div className="ioGrid">
-            <div>
-              <strong>입력</strong>
-              <pre>{selectedProblem.examples[0].input || "입력 없음"}</pre>
-            </div>
-            <div>
-              <strong>출력</strong>
-              <pre>{selectedProblem.examples[0].output}</pre>
-            </div>
+          <div className="exampleList">
+            {selectedProblem.examples.map((example, index) => (
+              <section className="exampleCase" key={index}>
+                {selectedProblem.examples.length > 1 && <h3>예시 {index + 1}</h3>}
+                <div className="ioGrid">
+                  <div>
+                    <strong>입력</strong>
+                    <pre>{example.input || "입력 없음"}</pre>
+                  </div>
+                  <div>
+                    <strong>출력</strong>
+                    <pre>{example.output}</pre>
+                  </div>
+                </div>
+              </section>
+            ))}
           </div>
         </div>
       )}
@@ -1800,6 +1813,13 @@ function TeacherDashboard({
     subgroupFilter === "all"
       ? bookProblems
       : bookProblemGroups.find((group) => group.id === subgroupFilter)?.problems ?? bookProblems;
+  const subgroupToneByProblemId = useMemo(() => {
+    const tones = new Map<string, number>();
+    bookProblemGroups.forEach((group, groupIndex) => {
+      group.problems.forEach((problem) => tones.set(problem.id, groupIndex % 4));
+    });
+    return tones;
+  }, [bookProblemGroups]);
   const latestSubmissionByStudentProblem = useMemo(() => {
     const latest = new Map<string, SubmissionWithStudent>();
     for (const submission of submissions) {
@@ -2081,7 +2101,10 @@ function TeacherDashboard({
                   <th>학번 / 이름</th>
                   <th>점수</th>
                   {displayedProblems.map((problem) => (
-                    <th key={problem.id}>
+                    <th
+                      className={`subgroupTone${subgroupToneByProblemId.get(problem.id) ?? 0}`}
+                      key={problem.id}
+                    >
                       {Number(formatProblemNumber(problem))}
                     </th>
                   ))}
@@ -2109,7 +2132,12 @@ function TeacherDashboard({
                       </span>
                     </td>
                     {row.statuses.map((submission, index) => (
-                      <td key={displayedProblems[index].id}>
+                      <td
+                        className={`subgroupTone${
+                          subgroupToneByProblemId.get(displayedProblems[index].id) ?? 0
+                        }`}
+                        key={displayedProblems[index].id}
+                      >
                         {submission ? (
                           <button
                             className={`submissionStatus ${submission.status === "accepted" ? "correct" : "incorrect"}`}
@@ -2385,8 +2413,8 @@ function TeacherProblemManager({
     outputDescription: "",
     starterCode: "",
     hint: "",
-    examples: [{ input: "", output: "" }],
-    testCases: [{ input: "", output: "" }],
+    examples: [],
+    testCases: [{ input: "", output: "", isSample: false }],
     isPublished: true
   });
   const [editingProblem, setEditingProblem] = useState<Problem | null>(null);
@@ -2461,7 +2489,10 @@ function TeacherProblemManager({
   function openEdit(problem: Problem) {
     setEditingProblem({
       ...problem,
-      testCases: problem.testCases.length > 0 ? problem.testCases : [{ input: "", output: "" }]
+      testCases:
+        problem.testCases.length > 0
+          ? problem.testCases
+          : [{ input: "", output: "", isSample: false }]
     });
     setIsCreating(false);
     setManagerError("");
@@ -2476,13 +2507,7 @@ function TeacherProblemManager({
       const response = await fetch("/api/teacher-problems", {
         method: isCreating ? "POST" : "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...editingProblem,
-          testCases: editingProblem.testCases.map((testCase, index) => ({
-            ...testCase,
-            isSample: index === 0
-          }))
-        })
+        body: JSON.stringify(editingProblem)
       });
       const data = (await response.json()) as { ok?: boolean; message?: string; code?: string };
       if (!response.ok || !data.ok) {
@@ -2610,13 +2635,21 @@ function TeacherProblemManager({
     setEditingProblem((problem) => (problem ? { ...problem, [key]: value } : problem));
   }
 
-  function updateTestCase(index: number, key: "input" | "output", value: string) {
+  function updateTestCase<K extends keyof TestCase>(
+    index: number,
+    key: K,
+    value: TestCase[K]
+  ) {
     setEditingProblem((problem) => {
       if (!problem) return problem;
       const testCases = problem.testCases.map((testCase, caseIndex) =>
         caseIndex === index ? { ...testCase, [key]: value } : testCase
       );
-      return { ...problem, testCases, examples: testCases.slice(0, 1) };
+      return {
+        ...problem,
+        testCases,
+        examples: testCases.filter((testCase) => testCase.isSample)
+      };
     });
   }
 
@@ -2864,7 +2897,10 @@ function TeacherProblemManager({
                     type="button"
                     className="ghostButton"
                     onClick={() =>
-                      updateProblem("testCases", [...editingProblem.testCases, { input: "", output: "" }])
+                      updateProblem("testCases", [
+                        ...editingProblem.testCases,
+                        { input: "", output: "", isSample: false }
+                      ])
                     }
                   >
                     <Plus size={16} />
@@ -2873,7 +2909,16 @@ function TeacherProblemManager({
                 </div>
                 {editingProblem.testCases.map((testCase, index) => (
                   <div className="testCaseRow" key={index}>
-                    <strong>{index === 0 ? "예시" : `숨김 ${index}`}</strong>
+                    <label className="sampleToggle">
+                      <input
+                        type="checkbox"
+                        checked={testCase.isSample === true}
+                        onChange={(event) =>
+                          updateTestCase(index, "isSample", event.target.checked)
+                        }
+                      />
+                      예시 표시
+                    </label>
                     <textarea
                       placeholder="입력"
                       value={testCase.input}

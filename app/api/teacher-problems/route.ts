@@ -143,7 +143,7 @@ async function saveProblem(problem: ProblemPayload, updating: boolean) {
     problem_id: problem.id,
     input: testCase.input,
     expected_output: testCase.output,
-    is_sample: testCase.isSample ?? index === 0,
+    is_sample: testCase.isSample ?? false,
     score: 1,
     sort_order: index + 1
   }));

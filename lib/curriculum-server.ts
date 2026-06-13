@@ -65,13 +65,15 @@ export async function loadCurriculum(supabase: SupabaseClient, publishedOnly: bo
       hint: normalizeDisplayText(problem.hint),
       examples: (samples.length > 0 ? samples : cases.slice(0, 1)).map((testCase) => ({
         input: testCase.input,
-        output: testCase.expected_output
+        output: testCase.expected_output,
+        isSample: true
       })),
       testCases: cases.map((testCase) => ({
         input: testCase.input,
-        output: testCase.expected_output
+        output: testCase.expected_output,
+        isSample: testCase.is_sample
       })),
-      showExample: !(cases.length === 1 && cases[0].is_sample),
+      showExample: samples.length > 0,
       isPublished: problem.is_published
     };
   });
