@@ -83,7 +83,9 @@ export async function POST(request: NextRequest) {
       .filter((problem) => problem.solutionCode !== "")
       .map((problem) => ({
         problem_id: problem.id,
-        solution_code: problem.solutionCode,
+        language: "python",
+        code: problem.solutionCode,
+        is_primary: true,
         updated_at: new Date().toISOString()
       }));
     for (const chunk of chunks(solutionRows, 100)) {

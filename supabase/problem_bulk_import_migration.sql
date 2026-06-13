@@ -13,39 +13,20 @@ alter table public.problems drop column if exists unit;
 alter table public.problems drop column if exists level;
 
 create table if not exists public.reference_solutions (
-  problem_id text primary key references public.problems(id) on delete cascade,
-  solution_code text not null default '',
+  id uuid primary key default gen_random_uuid(),
+  problem_id text not null references public.problems(id) on delete cascade,
+  language text not null default 'python' check (language = 'python'),
+  code text not null,
+  explanation text not null default '',
+  is_primary boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
-alter table public.reference_solutions
-  add column if not exists solution_code text not null default '',
-  add column if not exists created_at timestamptz not null default now(),
-  add column if not exists updated_at timestamptz not null default now();
-
 create unique index if not exists reference_solutions_problem_id_uidx
 on public.reference_solutions(problem_id);
 
--- Preserve any legacy "code" column contents when that column exists.
-do $$
-begin
-  if exists (
-    select 1
-    from information_schema.columns
-    where table_schema = 'public'
-      and table_name = 'reference_solutions'
-      and column_name = 'code'
-  ) then
-    execute '
-      update public.reference_solutions
-      set solution_code = code
-      where solution_code = ''''
-        and code is not null
-    ';
-  end if;
-end
-$$;
+alter table public.reference_solutions drop column if exists solution_code;
 
 with book_mapping(old_id, new_id, new_title, new_order) as (
   values

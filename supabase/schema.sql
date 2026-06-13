@@ -47,11 +47,18 @@ create table if not exists public.test_cases (
 );
 
 create table if not exists public.reference_solutions (
-  problem_id text primary key references public.problems(id) on delete cascade,
-  solution_code text not null default '',
+  id uuid primary key default gen_random_uuid(),
+  problem_id text not null references public.problems(id) on delete cascade,
+  language text not null default 'python' check (language = 'python'),
+  code text not null,
+  explanation text not null default '',
+  is_primary boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+create unique index if not exists reference_solutions_problem_id_uidx
+on public.reference_solutions(problem_id);
 
 create table if not exists public.submissions (
   id uuid primary key default gen_random_uuid(),
