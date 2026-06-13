@@ -24,6 +24,7 @@ import CodeMirror from "@uiw/react-codemirror";
 import {
   BookOpen,
   CheckCircle2,
+  ChevronDown,
   Code2,
   Download,
   Eye,
@@ -68,6 +69,24 @@ type JudgeResult = {
   totalCount: number;
   feedback: string;
   cases: Array<{ input: string; output: string; actual: string; passed: boolean }>;
+};
+
+const PROBLEM_GROUP_TITLES: Record<number, string[]> = {
+  1: ["기본 출력(정수)", "기본 출력(실수)", "기본 출력(문자)", "기본 출력(문자열)"],
+  2: [
+    "여러 요소 출력(띄어쓰기)",
+    "여러 요소 출력(개행)",
+    "계산 결과 출력(사칙연산)",
+    "연산자 활용 출력(곱하기, 더하기)"
+  ],
+  3: ["변수 기초", "변수 활용", "변수와 입력"],
+  4: ["순차 구조 기초", "순차 구조 응용(문자/문자열)", "순차 구조 응용(정수)"],
+  5: ["선택 구조 기초 (if)", "선택 구조 응용 (if else)", "선택 구조 응용 (if elif else)"],
+  6: ["반복 구조 기초", "반복 구조 응용"],
+  7: ["리스트 인덱싱(기초)", "리스트 인덱싱(복수, 개행)"],
+  8: ["문자열 인덱싱(기초)", "문자열 인덱싱(복수, 개행)"],
+  9: ["리스트 슬라이싱", "문자열 슬라이싱"],
+  10: ["리스트 통계 함수 활용", "리스트 통계 함수 응용", "문자열 함수 활용", "리스트 및 문자열 정렬"]
 };
 
 const PRACTICE_CODE_STORAGE_KEY = "pyoj:practice-code";
@@ -124,6 +143,7 @@ export default function Home() {
   const selectedProblems = availableProblems
     .filter((problem) => problem.bookId === selectedBookId)
     .sort((left, right) => left.order - right.order || left.id.localeCompare(right.id, "ko"));
+  const problemGroups = groupProblems(selectedProblems, availableBooks.find((book) => book.id === selectedBookId));
   const fallbackProblem = selectedProblems[0] ?? DEFAULT_PROBLEM;
   const [selectedProblemId, setSelectedProblemId] = useState(DEFAULT_PROBLEM.id);
   const selectedProblem =
@@ -161,6 +181,7 @@ export default function Home() {
   const solveRunErrorsRef = useRef<string[]>([]);
   const [bookSidebarOpen, setBookSidebarOpen] = useState(true);
   const [problemListOpen, setProblemListOpen] = useState(true);
+  const [expandedProblemGroups, setExpandedProblemGroups] = useState<Set<string>>(() => new Set());
   const [submissions, setSubmissions] = useState<SubmissionWithStudent[]>([]);
   const [teacherStudents, setTeacherStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(false);
@@ -412,7 +433,17 @@ export default function Home() {
   function changeBook(bookId: string) {
     const nextProblem = availableProblems.find((problem) => problem.bookId === bookId);
     setSelectedBookId(bookId);
+    setExpandedProblemGroups(new Set());
     if (nextProblem) changeProblem(nextProblem.id);
+  }
+
+  function toggleProblemGroup(groupId: string) {
+    setExpandedProblemGroups((current) => {
+      const next = new Set(current);
+      if (next.has(groupId)) next.delete(groupId);
+      else next.add(groupId);
+      return next;
+    });
   }
 
   function changeProblem(problemId: string) {
@@ -870,16 +901,41 @@ export default function Home() {
             {selectedProblems.length === 0 ? (
               <p className="empty">이 문제집의 문항은 곧 추가됩니다.</p>
             ) : (
-              selectedProblems.map((problem) => (
-                <button
-                  key={problem.id}
-                  className={problem.id === selectedProblem.id ? "problemItem active" : "problemItem"}
-                  onClick={() => changeProblem(problem.id)}
-                >
-                  <span>{formatProblemNumber(problem)}</span>
-                  <strong>{problem.title}</strong>
-                </button>
-              ))
+              <div className="problemGroups">
+                {problemGroups.map((group) => {
+                  const isExpanded = expandedProblemGroups.has(group.id);
+                  const containsSelected = group.problems.some((problem) => problem.id === selectedProblem.id);
+                  return (
+                    <section className={`problemGroup ${containsSelected ? "containsSelected" : ""}`} key={group.id}>
+                      <button
+                        type="button"
+                        className="problemGroupHeader"
+                        onClick={() => toggleProblemGroup(group.id)}
+                        aria-expanded={isExpanded}
+                      >
+                        <span>{group.code}</span>
+                        <strong>{group.title}</strong>
+                        <em>{group.problems.length}문제</em>
+                        <ChevronDown size={17} />
+                      </button>
+                      {isExpanded && (
+                        <div className="problemGroupItems">
+                          {group.problems.map((problem) => (
+                            <button
+                              key={problem.id}
+                              className={problem.id === selectedProblem.id ? "problemItem active" : "problemItem"}
+                              onClick={() => changeProblem(problem.id)}
+                            >
+                              <span>{formatProblemNumber(problem)}</span>
+                              <strong>{problem.title}</strong>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </section>
+                  );
+                })}
+              </div>
             )}
             </aside>
           ) : (
@@ -2305,6 +2361,30 @@ function formatProblemNumber(problem: Problem) {
   const code = problem.id.match(/^(\d+(?:-\d+)+)/)?.[1];
   const lastNumber = code?.split("-").at(-1);
   return lastNumber ?? String(problem.order).padStart(2, "0");
+}
+
+function groupProblems(problems: Problem[], book?: ProblemBook) {
+  const groups = new Map<string, Problem[]>();
+  for (const problem of problems) {
+    const code = problem.id.match(/^(\d+)-(\d+)-\d+/);
+    const subgroup = code?.[2] ?? String(Math.floor(problem.order / 100) || 1);
+    const key = `${book?.id ?? problem.bookId}:${subgroup}`;
+    const items = groups.get(key) ?? [];
+    items.push(problem);
+    groups.set(key, items);
+  }
+
+  return [...groups.entries()].map(([id, groupedProblems], index) => {
+    const firstProblem = groupedProblems[0];
+    const subgroup = Number(firstProblem.id.match(/^\d+-(\d+)-\d+/)?.[1] ?? index + 1);
+    const bookOrder = book?.order ?? Number(firstProblem.id.match(/^(\d+)-/)?.[1] ?? 0);
+    return {
+      id,
+      code: `${bookOrder}-${subgroup}`,
+      title: PROBLEM_GROUP_TITLES[bookOrder]?.[subgroup - 1] ?? `문항 묶음 ${subgroup}`,
+      problems: groupedProblems
+    };
+  });
 }
 
 function getScreenFromUrl(): Screen {
