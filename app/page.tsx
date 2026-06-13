@@ -572,7 +572,7 @@ export default function Home() {
     setConsoleInput("");
     setInputHistory([]);
     queuedConsoleInputsRef.current = [];
-    setConsoleLines(["$ python main.py", ""]);
+    setConsoleLines([]);
 
     try {
       await runPythonWithSkulpt(practiceCode, {
@@ -666,7 +666,7 @@ export default function Home() {
     solveRunInputsRef.current = [];
     solveRunOutputsRef.current = [];
     solveRunErrorsRef.current = [];
-    setSolveConsoleLines(["$ python main.py", ""]);
+    setSolveConsoleLines([]);
 
     try {
       await runPythonWithSkulpt(codeSnapshot, {
