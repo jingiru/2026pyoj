@@ -1429,18 +1429,17 @@ pre {
 
 .practiceGrid .idePane {
   align-self: start;
-  grid-template-rows: auto 340px;
+  grid-template-rows: auto auto;
 }
 
 .practiceGrid .cm-editor,
 .practiceGrid .cm-content,
 .practiceGrid .cm-scroller {
-  height: 340px;
   min-height: 340px;
 }
 
 .practiceGrid .cm-scroller {
-  overflow: auto;
+  overflow: visible;
 }
 
 .cm-scroller {
