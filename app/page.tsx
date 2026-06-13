@@ -25,8 +25,10 @@ import {
   BookOpen,
   CheckCircle2,
   Code2,
+  Download,
   Eye,
   EyeOff,
+  FileSpreadsheet,
   GraduationCap,
   LayoutDashboard,
   Lightbulb,
@@ -41,6 +43,7 @@ import {
   Sparkles,
   Trophy,
   Trash2,
+  Upload,
   X
 } from "lucide-react";
 import { FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
@@ -55,6 +58,7 @@ import {
   saveSubmission
 } from "@/lib/supabase";
 import type { Problem, ProblemBook, Student, SubmissionWithStudent } from "@/lib/types";
+import type { ProblemImportResult } from "@/lib/problem-import-types";
 
 type Screen = "home" | "practice" | "solve" | "teacher";
 type ColorMode = "light" | "dark";
@@ -117,7 +121,9 @@ export default function Home() {
   const [availableBooks, setAvailableBooks] = useState<ProblemBook[]>(fallbackProblemBooks);
   const [availableProblems, setAvailableProblems] = useState<Problem[]>(fallbackProblems);
   const [selectedBookId, setSelectedBookId] = useState(fallbackProblemBooks[0].id);
-  const selectedProblems = availableProblems.filter((problem) => problem.bookId === selectedBookId);
+  const selectedProblems = availableProblems
+    .filter((problem) => problem.bookId === selectedBookId)
+    .sort((left, right) => left.order - right.order || left.id.localeCompare(right.id, "ko"));
   const fallbackProblem = selectedProblems[0] ?? DEFAULT_PROBLEM;
   const [selectedProblemId, setSelectedProblemId] = useState(DEFAULT_PROBLEM.id);
   const selectedProblem =
@@ -870,7 +876,7 @@ export default function Home() {
                   className={problem.id === selectedProblem.id ? "problemItem active" : "problemItem"}
                   onClick={() => changeProblem(problem.id)}
                 >
-                  <span>{String(problem.order).padStart(2, "0")}</span>
+                  <span>{formatProblemNumber(problem)}</span>
                   <strong>{problem.title}</strong>
                 </button>
               ))
@@ -1711,7 +1717,7 @@ function TeacherDashboard({
                   <th>점수</th>
                   {bookProblems.map((problem) => (
                     <th key={problem.id}>
-                      {String(problem.order).padStart(2, "0")} {problem.title}
+                      {formatProblemNumber(problem)} {problem.title}
                     </th>
                   ))}
                 </tr>
@@ -1825,8 +1831,6 @@ function TeacherProblemManager({
     bookId: managedBooks[0]?.id ?? "",
     order: managedProblems.length + 1,
     title: "",
-    unit: "",
-    level: "start",
     statement: "",
     inputDescription: "",
     outputDescription: "",
@@ -1840,6 +1844,9 @@ function TeacherProblemManager({
   const [isCreating, setIsCreating] = useState(false);
   const [managerError, setManagerError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<ProblemImportResult | null>(null);
+  const importFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     void loadManagedProblems();
@@ -1961,6 +1968,45 @@ function TeacherProblemManager({
     }
   }
 
+  async function downloadImportTemplate() {
+    setManagerError("");
+    try {
+      const { downloadProblemImportTemplate } = await import("@/lib/problem-import-xlsx");
+      await downloadProblemImportTemplate();
+    } catch {
+      setManagerError("일괄 업로드 서식 파일을 만들지 못했습니다.");
+    }
+  }
+
+  async function importProblemFile(file: File) {
+    setImporting(true);
+    setManagerError("");
+    try {
+      const { parseProblemWorkbook } = await import("@/lib/problem-import-xlsx");
+      const importedProblems = await parseProblemWorkbook(file);
+      const response = await fetch("/api/teacher-problems/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ problems: importedProblems })
+      });
+      const data = (await response.json()) as {
+        ok?: boolean;
+        message?: string;
+        result?: ProblemImportResult;
+      };
+      if (!response.ok || !data.ok || !data.result) {
+        throw new Error(data.message ?? "문제 일괄 업로드에 실패했습니다.");
+      }
+      setImportResult(data.result);
+      await Promise.all([loadManagedProblems(), onChanged()]);
+    } catch (error) {
+      setManagerError(error instanceof Error ? error.message : "문제 일괄 업로드에 실패했습니다.");
+    } finally {
+      setImporting(false);
+      if (importFileRef.current) importFileRef.current.value = "";
+    }
+  }
+
   function updateProblem<K extends keyof Problem>(key: K, value: Problem[K]) {
     setEditingProblem((problem) => (problem ? { ...problem, [key]: value } : problem));
   }
@@ -1982,10 +2028,34 @@ function TeacherProblemManager({
           <span className="pill">문제 관리</span>
           <h2>문제 추가·수정·삭제</h2>
         </div>
-        <button className="primaryButton" onClick={openCreate}>
-          <Plus size={18} />
-          문제 추가
-        </button>
+        <div className="problemManagerActions">
+          <button className="ghostButton" onClick={() => void downloadImportTemplate()}>
+            <Download size={17} />
+            서식 다운로드
+          </button>
+          <button
+            className="managerActionButton"
+            disabled={importing}
+            onClick={() => importFileRef.current?.click()}
+          >
+            <Upload size={17} />
+            {importing ? "업로드 중" : "일괄 업로드"}
+          </button>
+          <input
+            ref={importFileRef}
+            className="visuallyHidden"
+            type="file"
+            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) void importProblemFile(file);
+            }}
+          />
+          <button className="primaryButton" onClick={openCreate}>
+            <Plus size={18} />
+            문제 추가
+          </button>
+        </div>
       </div>
       {managerError && <p className="modalError">{managerError}</p>}
       <div className="managedProblemList">
@@ -2040,8 +2110,8 @@ function TeacherProblemManager({
                   <input
                     value={editingProblem.id}
                     disabled={!isCreating}
-                    placeholder="예: print-hello-01"
-                    onChange={(event) => updateProblem("id", event.target.value.toLowerCase())}
+                    placeholder="예: 1-1-01 정수 출력"
+                    onChange={(event) => updateProblem("id", event.target.value)}
                   />
                 </label>
                 <label>
@@ -2168,7 +2238,58 @@ function TeacherProblemManager({
           </div>
         </div>
       )}
+
+      {importResult && (
+        <div className="modalBackdrop" role="presentation" onMouseDown={() => setImportResult(null)}>
+          <div
+            className="importResultModal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="import-result-title"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <button className="iconButton closeButton" onClick={() => setImportResult(null)} aria-label="닫기">
+              <X size={18} />
+            </button>
+            <FileSpreadsheet size={34} className="importResultIcon" />
+            <h2 id="import-result-title">일괄 업로드 완료</h2>
+            <p>업로드 후 DB에서 문제와 테스트케이스를 다시 확인했습니다.</p>
+            <div className="importResultGrid">
+              <ImportResultItem label="전체 문제" value={importResult.total} />
+              <ImportResultItem label="신규 등록" value={importResult.inserted} />
+              <ImportResultItem label="기존 수정" value={importResult.updated} />
+              <ImportResultItem label="문제집" value={importResult.books} />
+              <ImportResultItem label="테스트케이스" value={importResult.testCases} />
+              <ImportResultItem label="모범답안" value={importResult.solutions} />
+            </div>
+            <div className="importVerification">
+              <CheckCircle2 size={18} />
+              DB 확인: 문제 {importResult.verifiedProblems}개 · 테스트케이스{" "}
+              {importResult.verifiedTestCases}개 · 모범답안 {importResult.verifiedSolutions}개
+            </div>
+            {importResult.warnings.length > 0 && (
+              <ul className="importWarnings">
+                {importResult.warnings.map((warning) => (
+                  <li key={warning}>{warning}</li>
+                ))}
+              </ul>
+            )}
+            <button className="primaryButton wideButton" onClick={() => setImportResult(null)}>
+              확인
+            </button>
+          </div>
+        </div>
+      )}
     </section>
+  );
+}
+
+function ImportResultItem({ label, value }: { label: string; value: number }) {
+  return (
+    <div>
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
   );
 }
 
@@ -2178,6 +2299,12 @@ function problemTitle(problemId: string, problems: Problem[]) {
 
 function formatBookTitle(book: ProblemBook) {
   return `${String(book.order).padStart(2, "0")} ${book.title}`;
+}
+
+function formatProblemNumber(problem: Problem) {
+  const code = problem.id.match(/^(\d+(?:-\d+)+)/)?.[1];
+  const lastNumber = code?.split("-").at(-1);
+  return lastNumber ?? String(problem.order).padStart(2, "0");
 }
 
 function getScreenFromUrl(): Screen {

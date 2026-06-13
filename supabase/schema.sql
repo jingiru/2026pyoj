@@ -8,28 +8,49 @@ create table if not exists public.students (
   unique (student_no, name)
 );
 
-create table if not exists public.problems (
+create table if not exists public.problem_books (
   id text primary key,
   title text not null,
-  unit text not null,
-  level text not null check (level in ('start', 'practice', 'challenge')),
+  description text not null default '',
+  sort_order integer not null default 0,
+  is_published boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.problems (
+  id text primary key,
+  book_id text not null references public.problem_books(id),
+  title text not null,
   statement text not null,
   input_description text not null,
   output_description text not null,
   starter_code text not null default '',
   hint text not null default '',
+  time_limit_ms integer not null default 2000,
+  memory_limit_mb integer not null default 128,
   sort_order integer not null default 0,
-  created_at timestamptz not null default now()
+  is_published boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 
 create table if not exists public.test_cases (
   id uuid primary key default gen_random_uuid(),
   problem_id text not null references public.problems(id) on delete cascade,
   input text not null default '',
-  output text not null,
+  expected_output text not null,
   is_sample boolean not null default false,
+  score numeric not null default 1,
   sort_order integer not null default 0,
   created_at timestamptz not null default now()
+);
+
+create table if not exists public.reference_solutions (
+  problem_id text primary key references public.problems(id) on delete cascade,
+  solution_code text not null default '',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 
 create table if not exists public.submissions (
@@ -50,11 +71,12 @@ create index if not exists submissions_created_at_idx on public.submissions(crea
 
 grant usage on schema public to anon, authenticated;
 grant select, insert on public.students to anon, authenticated;
-grant select on public.problems, public.test_cases to anon, authenticated;
+grant select on public.problem_books, public.problems, public.test_cases to anon, authenticated;
 revoke select on public.submissions from anon, authenticated;
 grant insert on public.submissions to anon, authenticated;
 
 alter table public.students enable row level security;
+alter table public.problem_books enable row level security;
 alter table public.problems enable row level security;
 alter table public.test_cases enable row level security;
 alter table public.submissions enable row level security;
@@ -91,26 +113,33 @@ with check (true);
 
 drop policy if exists "class dashboard can read submissions" on public.submissions;
 
+insert into public.problem_books (id, title, sort_order, is_published) values
+  ('01 출력 함수 기초', '출력 함수 기초', 1, true),
+  ('03 변수와 입력 기초', '변수와 입력 기초', 3, true)
+on conflict (id) do update set
+  title = excluded.title,
+  sort_order = excluded.sort_order,
+  is_published = excluded.is_published;
+
 insert into public.problems (
-  id, title, unit, level, statement, input_description, output_description,
+  id, book_id, title, statement, input_description, output_description,
   starter_code, hint, sort_order
 ) values
   (
-    'print-int-01', '정수 출력 01', '출력', 'start', '1을 출력하세요.',
+    '1-1-01 정수 출력 (1 출력)', '01 출력 함수 기초', '정수 출력 01', '1을 출력하세요.',
     '입력은 없습니다.', '1을 출력합니다.', 'print(1)',
     'print() 안에 출력하고 싶은 값을 넣으면 됩니다.', 1
   ),
   (
-    'repeat-char-02', '변수와 입력 02', '입력과 변수', 'practice',
+    '3-1-02 변수와 입력', '03 변수와 입력 기초', '변수와 입력 02',
     '사용자로부터 어떤 문자를 입력 받아 10번 반복하여 출력하는 프로그램을 작성하세요.',
     '1개의 문자가 주어집니다.', '문자를 10번 반복하여 출력합니다.',
     'ch = input()\nprint(ch * 10)',
     '문자열도 곱셈을 사용할 수 있어요. 예: ''a'' * 3', 2
   )
 on conflict (id) do update set
+  book_id = excluded.book_id,
   title = excluded.title,
-  unit = excluded.unit,
-  level = excluded.level,
   statement = excluded.statement,
   input_description = excluded.input_description,
   output_description = excluded.output_description,
@@ -118,22 +147,23 @@ on conflict (id) do update set
   hint = excluded.hint,
   sort_order = excluded.sort_order;
 
-insert into public.test_cases (problem_id, input, output, is_sample, sort_order)
+insert into public.test_cases (problem_id, input, expected_output, is_sample, sort_order)
 select values_to_insert.*
 from (
   values
-    ('print-int-01', '', '1', true, 1),
-    ('repeat-char-02', 'a', 'aaaaaaaaaa', true, 1),
-    ('repeat-char-02', 'b', 'bbbbbbbbbb', false, 2),
-    ('repeat-char-02', '1', '1111111111', false, 3),
-    ('repeat-char-02', '*', '**********', false, 4),
-    ('repeat-char-02', '가', '가가가가가가가가가가', false, 5),
-    ('repeat-char-02', 'x', 'xxxxxxxxxx', false, 6)
-) as values_to_insert(problem_id, input, output, is_sample, sort_order)
+    ('1-1-01 정수 출력 (1 출력)', '', '1', true, 1),
+    ('3-1-02 변수와 입력', 'a', 'aaaaaaaaaa', true, 1),
+    ('3-1-02 변수와 입력', 'b', 'bbbbbbbbbb', false, 2)
+) as values_to_insert(problem_id, input, expected_output, is_sample, sort_order)
 where not exists (
   select 1
   from public.test_cases existing
   where existing.problem_id = values_to_insert.problem_id
     and existing.input = values_to_insert.input
-    and existing.output = values_to_insert.output
+    and existing.expected_output = values_to_insert.expected_output
 );
+drop policy if exists "public can read problem books" on public.problem_books;
+create policy "public can read problem books"
+on public.problem_books for select
+to anon, authenticated
+using (is_published = true);

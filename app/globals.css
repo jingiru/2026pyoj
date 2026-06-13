@@ -1471,6 +1471,25 @@ kbd {
   margin: 8px 0 0;
 }
 
+.problemManagerActions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.visuallyHidden {
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  width: 1px;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 .managedProblemList {
   display: grid;
   gap: 8px;
@@ -1553,6 +1572,74 @@ kbd {
   padding: 24px;
   position: relative;
   width: 100%;
+}
+
+.importResultModal {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.28);
+  color: var(--ink);
+  max-width: 560px;
+  padding: 28px;
+  position: relative;
+  width: 100%;
+}
+
+.importResultModal h2 {
+  margin: 8px 0 4px;
+}
+
+.importResultModal > p {
+  color: var(--muted);
+  margin: 0 0 18px;
+}
+
+.importResultIcon {
+  color: var(--primary);
+}
+
+.importResultGrid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 16px;
+}
+
+.importResultGrid > div {
+  background: color-mix(in srgb, var(--primary) 7%, var(--panel));
+  border: 1px solid color-mix(in srgb, var(--primary) 20%, var(--line));
+  border-radius: 8px;
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+}
+
+.importResultGrid span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.importResultGrid strong {
+  font-size: 22px;
+}
+
+.importVerification {
+  align-items: center;
+  background: color-mix(in srgb, #10b981 10%, var(--panel));
+  border: 1px solid color-mix(in srgb, #10b981 30%, var(--line));
+  border-radius: 8px;
+  color: #087f5b;
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 12px;
+}
+
+.importWarnings {
+  color: #b45309;
+  margin: 0 0 16px;
+  padding-left: 20px;
 }
 
 .problemEditorModal form,

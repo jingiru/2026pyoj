@@ -5,8 +5,6 @@ type ProblemRow = {
   id: string;
   book_id: string | null;
   title: string;
-  unit: string;
-  level: Problem["level"];
   statement: string;
   input_description: string;
   output_description: string;
@@ -30,9 +28,10 @@ export async function loadCurriculum(supabase: SupabaseClient, publishedOnly: bo
   let problemQuery = supabase
     .from("problems")
     .select(
-      "id, book_id, title, unit, level, statement, input_description, output_description, starter_code, hint, sort_order, is_published, test_cases(input, expected_output, is_sample, sort_order)"
+      "id, book_id, title, statement, input_description, output_description, starter_code, hint, sort_order, is_published, test_cases(input, expected_output, is_sample, sort_order)"
     )
-    .order("sort_order");
+    .order("sort_order")
+    .order("id");
 
   if (publishedOnly) {
     bookQuery = bookQuery.eq("is_published", true);
@@ -59,8 +58,6 @@ export async function loadCurriculum(supabase: SupabaseClient, publishedOnly: bo
       bookId: problem.book_id ?? books[0]?.id ?? "",
       order: problem.sort_order,
       title: problem.title,
-      unit: problem.unit,
-      level: problem.level,
       statement: problem.statement,
       inputDescription: problem.input_description,
       outputDescription: problem.output_description,

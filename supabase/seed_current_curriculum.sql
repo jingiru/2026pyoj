@@ -4,16 +4,16 @@
 insert into public.problem_books (
   id, title, description, sort_order, is_published
 ) values
-  ('print-basic', '출력 함수 기초', '', 1, true),
-  ('print-advanced', '출력 함수 응용', '', 2, true),
-  ('input-basic', '변수와 입력 기초', '', 3, true),
-  ('sequence', '순차 구조', '', 4, true),
-  ('condition', '선택 구조', '', 5, true),
-  ('loop', '반복 구조', '', 6, true),
-  ('list-index', '리스트 인덱싱', '', 7, true),
-  ('string-index', '문자열 인덱싱', '', 8, true),
-  ('slicing', '슬라이싱', '', 9, true),
-  ('list-analysis', '리스트 데이터 분석', '', 10, true)
+  ('01 출력 함수 기초', '출력 함수 기초', '', 1, true),
+  ('02 출력 함수 응용', '출력 함수 응용', '', 2, true),
+  ('03 변수와 입력 기초', '변수와 입력 기초', '', 3, true),
+  ('04 순차 구조', '순차 구조', '', 4, true),
+  ('05 선택 구조', '선택 구조', '', 5, true),
+  ('06 반복 구조', '반복 구조', '', 6, true),
+  ('07 리스트 인덱싱', '리스트 인덱싱', '', 7, true),
+  ('08 문자열 인덱싱', '문자열 인덱싱', '', 8, true),
+  ('09 슬라이싱', '슬라이싱', '', 9, true),
+  ('10 리스트 데이터 분석', '리스트 데이터 분석', '', 10, true)
 on conflict (id) do update set
   title = excluded.title,
   description = excluded.description,
@@ -22,18 +22,18 @@ on conflict (id) do update set
   updated_at = now();
 
 insert into public.problems (
-  id, book_id, title, unit, level, statement,
+  id, book_id, title, statement,
   input_description, output_description, starter_code, hint,
   time_limit_ms, memory_limit_mb, sort_order, is_published
 ) values
   (
-    'print-int-01', 'print-basic', '정수 출력 01', '출력', 'start',
+    'print-int-01', '01 출력 함수 기초', '정수 출력 01',
     '1을 출력하세요.', '입력은 없습니다.', '1을 출력합니다.',
     'print(1)', 'print() 안에 출력하고 싶은 값을 넣으면 됩니다.',
     2000, 128, 1, true
   ),
   (
-    'repeat-char-02', 'input-basic', '변수와 입력 02', '입력과 변수', 'practice',
+    'repeat-char-02', '03 변수와 입력 기초', '변수와 입력 02',
     '사용자로부터 어떤 문자를 입력 받아 10번 반복하여 출력하는 프로그램을 작성하세요.',
     '1개의 문자가 주어집니다.', '문자를 10번 반복하여 출력합니다.',
     E'ch = input()\nprint(ch * 10)',
@@ -41,7 +41,7 @@ insert into public.problems (
     2000, 128, 1, true
   ),
   (
-    'sum-two-03', 'sequence', '덧셈 연습 03', '자료형', 'practice',
+    'sum-two-03', '04 순차 구조', '덧셈 연습 03',
     '두 정수를 입력 받아 합을 출력하는 프로그램을 작성하세요.',
     '첫 줄에 정수 a, 둘째 줄에 정수 b가 주어집니다.',
     'a와 b의 합을 출력합니다.',
@@ -50,7 +50,7 @@ insert into public.problems (
     2000, 128, 1, true
   ),
   (
-    'even-odd-04', 'condition', '짝수 홀수 04', '조건문', 'challenge',
+    'even-odd-04', '05 선택 구조', '짝수 홀수 04',
     '정수 하나를 입력 받아 짝수면 even, 홀수면 odd를 출력하세요.',
     '정수 1개가 주어집니다.', '짝수는 even, 홀수는 odd를 출력합니다.',
     E'n = int(input())\nif n % 2 == 0:\n    print(''even'')\nelse:\n    print(''odd'')',
@@ -60,8 +60,6 @@ insert into public.problems (
 on conflict (id) do update set
   book_id = excluded.book_id,
   title = excluded.title,
-  unit = excluded.unit,
-  level = excluded.level,
   statement = excluded.statement,
   input_description = excluded.input_description,
   output_description = excluded.output_description,

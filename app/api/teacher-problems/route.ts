@@ -18,8 +18,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ ok: true, ...curriculum });
   } catch (error) {
     console.error("[Teacher problems]", error);
+    const databaseError = toDatabaseError(error);
     return NextResponse.json(
-      { ok: false, message: "문제 관리 데이터를 불러오지 못했습니다." },
+      {
+        ok: false,
+        message: databaseError
+          ? `문제 관리 데이터를 불러오지 못했습니다. (${databaseError.code}: ${databaseError.message})`
+          : "문제 관리 데이터를 불러오지 못했습니다."
+      },
       { status: 500 }
     );
   }
@@ -81,8 +87,6 @@ async function saveProblem(problem: ProblemPayload, updating: boolean) {
     id: problem.id,
     book_id: problem.bookId,
     title: problem.title,
-    unit: problem.unit,
-    level: problem.level,
     statement: problem.statement,
     input_description: problem.inputDescription,
     output_description: problem.outputDescription,
@@ -121,11 +125,10 @@ async function readPayload(request: NextRequest) {
   const problem = (await request.json().catch(() => null)) as ProblemPayload | null;
   if (
     !problem ||
-    !/^[a-z0-9][a-z0-9-]*$/.test(problem.id) ||
+    !problem.id.trim() ||
     !problem.bookId ||
     !problem.title.trim() ||
     !problem.statement.trim() ||
-    !["start", "practice", "challenge"].includes(problem.level) ||
     !Array.isArray(problem.testCases) ||
     problem.testCases.length === 0
   ) {
@@ -138,6 +141,16 @@ async function readPayload(request: NextRequest) {
     };
   }
   return { ok: true as const, problem };
+}
+
+function toDatabaseError(error: unknown) {
+  if (!error || typeof error !== "object") return null;
+  const candidate = error as { code?: unknown; message?: unknown };
+  if (typeof candidate.message !== "string") return null;
+  return {
+    code: typeof candidate.code === "string" ? candidate.code : "DB",
+    message: candidate.message
+  };
 }
 
 function authenticate(request: NextRequest) {

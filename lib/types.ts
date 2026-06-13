@@ -3,8 +3,6 @@ export type Problem = {
   bookId: string;
   order: number;
   title: string;
-  unit: string;
-  level: "start" | "practice" | "challenge";
   statement: string;
   inputDescription: string;
   outputDescription: string;
