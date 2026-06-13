@@ -165,6 +165,7 @@ export default function Home() {
   const consoleInputRef = useRef<HTMLTextAreaElement | null>(null);
   const [notice, setNotice] = useState("");
   const [result, setResult] = useState<JudgeResult | null>(null);
+  const [solvedProblemIds, setSolvedProblemIds] = useState<Set<string>>(() => new Set());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [solveConsoleLines, setSolveConsoleLines] = useState<string[]>([
     "실행 버튼 또는 Shift + Enter로 실행하세요."
@@ -352,9 +353,10 @@ export default function Home() {
     try {
       const signedIn = await findOrCreateStudent(studentNo, name);
       setStudent(signedIn);
+      void refreshSolvedProblems(signedIn.id);
       setLoginOpen(false);
       navigateTo("solve");
-      setNotice(`${signedIn.name}님, 문제 풀이를 시작해볼까요?`);
+      setNotice("");
     } catch (error) {
       setNotice(getDataErrorMessage(error, "로그인 중 문제가 생겼어요. Supabase 연결을 확인해주세요."));
     } finally {
@@ -435,6 +437,26 @@ export default function Home() {
     setSelectedBookId(bookId);
     setExpandedProblemGroups(new Set());
     if (nextProblem) changeProblem(nextProblem.id);
+  }
+
+  function logoutStudent() {
+    setStudent(null);
+    setSolvedProblemIds(new Set());
+    setResult(null);
+    setNotice("");
+    navigateTo("home");
+  }
+
+  async function refreshSolvedProblems(studentId: string) {
+    try {
+      const response = await fetch(`/api/submissions?studentId=${encodeURIComponent(studentId)}`, {
+        cache: "no-store"
+      });
+      const data = (await response.json()) as { ok?: boolean; problemIds?: string[] };
+      if (response.ok && data.ok) setSolvedProblemIds(new Set(data.problemIds ?? []));
+    } catch {
+      setSolvedProblemIds(new Set());
+    }
   }
 
   function toggleProblemGroup(groupId: string) {
@@ -566,7 +588,10 @@ export default function Home() {
         total_count: judged.totalCount,
         feedback: judged.feedback
       });
-      setNotice("제출 기록이 저장됐어요.");
+      if (judged.status === "accepted") {
+        setSolvedProblemIds((current) => new Set(current).add(selectedProblem.id));
+      }
+      setNotice("");
     } catch (error) {
       setNotice(getDataErrorMessage(error, "채점 또는 제출 기록 저장에 실패했어요."));
     } finally {
@@ -730,6 +755,7 @@ export default function Home() {
         onPractice={() => navigateTo("practice")}
         onSolve={enterSolveMode}
         onTeacher={enterTeacherMode}
+        onLogout={logoutStudent}
         onToggleColorMode={() => setColorMode((mode) => (mode === "dark" ? "light" : "dark"))}
       />
 
@@ -923,7 +949,13 @@ export default function Home() {
                           {group.problems.map((problem) => (
                             <button
                               key={problem.id}
-                              className={problem.id === selectedProblem.id ? "problemItem active" : "problemItem"}
+                              className={[
+                                "problemItem",
+                                problem.id === selectedProblem.id ? "active" : "",
+                                solvedProblemIds.has(problem.id) ? "solved" : ""
+                              ]
+                                .filter(Boolean)
+                                .join(" ")}
                               onClick={() => changeProblem(problem.id)}
                             >
                               <span>{formatProblemNumber(problem)}</span>
@@ -972,6 +1004,20 @@ export default function Home() {
                     <Send size={17} />
                     {isSubmitting ? "채점 중" : "제출"}
                   </button>
+                  {result && (
+                    <div
+                      className={`submissionSummary ${result.status === "accepted" ? "accepted" : ""}`}
+                      aria-live="polite"
+                    >
+                      {result.status === "accepted" && <CheckCircle2 size={16} />}
+                      <strong>{result.status === "accepted" ? "성공" : `${result.passedCount}/${result.totalCount} 통과`}</strong>
+                      {result.status === "accepted" && (
+                        <span>
+                          {result.passedCount}/{result.totalCount} 통과
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="solveIdeBody">
@@ -1054,7 +1100,6 @@ export default function Home() {
                   </div>
                 </div>
               </div>
-              <ResultPanel result={result} />
             </article>
           </section>
         </section>
@@ -1162,6 +1207,7 @@ function Header({
   onPractice,
   onSolve,
   onTeacher,
+  onLogout,
   onToggleColorMode
 }: {
   screen: Screen;
@@ -1171,6 +1217,7 @@ function Header({
   onPractice: () => void;
   onSolve: () => void;
   onTeacher: () => void;
+  onLogout: () => void;
   onToggleColorMode: () => void;
 }) {
   return (
@@ -1185,6 +1232,12 @@ function Header({
         </div>
       </button>
       <div className="modeSwitch" aria-label="화면 선택">
+        {student && (
+          <button className="logoutNavButton" onClick={onLogout}>
+            <LogOut size={18} />
+            로그아웃
+          </button>
+        )}
         <button className={screen === "practice" ? "active" : ""} onClick={onPractice}>
           <Code2 size={18} />
           연습
@@ -1558,26 +1611,6 @@ async function judgeProblemSubmission(problem: Problem, code: string): Promise<J
 
 function normalizeJudgeOutput(value: string) {
   return value.replace(/\r\n/g, "\n").trim();
-}
-
-function ResultPanel({ result }: { result: JudgeResult | null }) {
-  return (
-    <div className={result?.status === "accepted" ? "result accepted" : "result"}>
-      <strong>{result ? result.feedback : "코드를 제출하면 결과가 여기에 표시됩니다."}</strong>
-      {result && (
-        <div className="caseList">
-          {result.cases.map((testCase, index) => (
-            <div key={`${testCase.input}-${index}`} className="caseRow">
-              <span>{index + 1}</span>
-              <code>{testCase.input || "입력 없음"}</code>
-              <code>{testCase.actual || "출력 없음"}</code>
-              <b>{testCase.passed ? "통과" : "확인"}</b>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
 }
 
 function TeacherDashboard({

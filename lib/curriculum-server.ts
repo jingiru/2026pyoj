@@ -58,11 +58,11 @@ export async function loadCurriculum(supabase: SupabaseClient, publishedOnly: bo
       bookId: problem.book_id ?? books[0]?.id ?? "",
       order: problem.sort_order,
       title: problem.title,
-      statement: problem.statement,
-      inputDescription: problem.input_description,
-      outputDescription: problem.output_description,
+      statement: normalizeDisplayText(problem.statement),
+      inputDescription: normalizeDisplayText(problem.input_description),
+      outputDescription: normalizeDisplayText(problem.output_description),
       starterCode: problem.starter_code,
-      hint: problem.hint,
+      hint: normalizeDisplayText(problem.hint),
       examples: (samples.length > 0 ? samples : cases.slice(0, 1)).map((testCase) => ({
         input: testCase.input,
         output: testCase.expected_output
@@ -76,4 +76,8 @@ export async function loadCurriculum(supabase: SupabaseClient, publishedOnly: bo
   });
 
   return { books, problems };
+}
+
+function normalizeDisplayText(value: string) {
+  return value.replace(/\r\n/g, "\n").replace(/\\r\\n|\\n|\\r/g, "\n");
 }

@@ -58,9 +58,9 @@ export async function parseProblemWorkbook(file: File): Promise<ImportedProblem[
     const id = toText(row[0]).trim();
     const bookId = toText(row[1]).trim();
     const title = toText(row[2]).trim();
-    const statement = toText(row[3]).trim();
-    const inputDescription = toText(row[4]).trim();
-    const outputDescription = toText(row[5]).trim();
+    const statement = toDisplayText(row[3]).trim();
+    const inputDescription = toDisplayText(row[4]).trim();
+    const outputDescription = toDisplayText(row[5]).trim();
 
     if (!id || !bookId || !title || !statement || !inputDescription || !outputDescription) {
       throw new Error(`${rowNumber}행의 문제ID, 문제집, 제목, 문제 내용, 입력, 출력을 확인해주세요.`);
@@ -88,7 +88,7 @@ export async function parseProblemWorkbook(file: File): Promise<ImportedProblem[
       statement,
       inputDescription,
       outputDescription,
-      hint: toText(row[10]),
+      hint: toDisplayText(row[10]),
       starterCode: toText(row[28]),
       solutionCode: toText(row[27]),
       testCases
@@ -192,4 +192,8 @@ function parseProblemOrder(problemId: string, rowNumber: number) {
 function toText(value: unknown) {
   if (value === null || value === undefined) return "";
   return String(value).replace(/\r\n/g, "\n");
+}
+
+function toDisplayText(value: unknown) {
+  return toText(value).replace(/\\r\\n|\\n|\\r/g, "\n");
 }

@@ -2,6 +2,43 @@ import { NextResponse } from "next/server";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
 import type { Submission } from "@/lib/types";
 
+export async function GET(request: Request) {
+  const studentId = new URL(request.url).searchParams.get("studentId")?.trim();
+  if (!studentId) {
+    return NextResponse.json(
+      { ok: false, message: "학생 정보가 필요합니다." },
+      { status: 400 }
+    );
+  }
+
+  const supabase = createSupabaseAdmin();
+  if (!supabase) {
+    return NextResponse.json(
+      { ok: false, message: "제출 조회 서버 설정이 없습니다." },
+      { status: 500 }
+    );
+  }
+
+  const { data, error } = await supabase
+    .from("submissions")
+    .select("problem_id")
+    .eq("student_id", studentId)
+    .eq("status", "accepted");
+
+  if (error) {
+    console.error("[Submission list]", error);
+    return NextResponse.json(
+      { ok: false, message: "정답 기록을 불러오지 못했습니다.", code: error.code },
+      { status: 500 }
+    );
+  }
+
+  return NextResponse.json({
+    ok: true,
+    problemIds: [...new Set((data ?? []).map((submission) => submission.problem_id))]
+  });
+}
+
 export async function POST(request: Request) {
   const submission = (await request.json().catch(() => null)) as Submission | null;
   if (
