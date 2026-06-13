@@ -1369,12 +1369,12 @@ function HomeChoice({ onPractice, onSolve }: { onPractice: () => void; onSolve: 
         <button className="choiceButton" onClick={onPractice}>
           <Code2 size={34} />
           <strong>코딩 연습</strong>
-          <span>로그인 없이 코드를 써보고 바로 실행 결과를 확인합니다.</span>
+          <span>로그인 없이 코딩 연습</span>
         </button>
         <button className="choiceButton solve" onClick={onSolve}>
           <GraduationCap size={34} />
           <strong>문제 풀기</strong>
-          <span>학번과 이름으로 로그인하고 문제집을 차근차근 풉니다.</span>
+          <span>학번과 이름으로 로그인하고 문제 풀기</span>
         </button>
       </div>
     </section>
