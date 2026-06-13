@@ -352,10 +352,11 @@ button {
 }
 
 .practiceGrid {
+  align-items: start;
   display: grid;
   gap: 18px;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  min-height: 190px;
+  min-height: 340px;
 }
 
 .practiceSide,
@@ -1427,13 +1428,15 @@ pre {
 }
 
 .practiceGrid .idePane {
-  grid-template-rows: auto 170px;
+  align-self: start;
+  grid-template-rows: auto 340px;
 }
 
 .practiceGrid .cm-editor,
-.practiceGrid .cm-content {
-  max-height: 170px;
-  min-height: 170px;
+.practiceGrid .cm-content,
+.practiceGrid .cm-scroller {
+  height: 340px;
+  min-height: 340px;
 }
 
 .practiceGrid .cm-scroller {
