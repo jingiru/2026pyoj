@@ -20,7 +20,7 @@ export async function runPythonWithSkulpt(code: string, callbacks: SkulptCallbac
     },
     inputfun: (prompt: string) => callbacks.input(prompt),
     inputfunTakesPrompt: true,
-    execLimit: 5000
+    execLimit: 30000
   });
 
   try {

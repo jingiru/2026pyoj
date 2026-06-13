@@ -879,33 +879,28 @@ export default function Home() {
               <div className="terminal" aria-live="polite" style={{ fontSize: `${consoleFontSize}px` }}>
                 <div className="terminalScroll">
                   <pre>{consoleLines.join("\n")}</pre>
-                  {pendingPrompt !== null ? (
-                    <div className="terminalInputRow active">
-                      <span>{pendingPrompt}</span>
-                      <textarea
-                        value={consoleInput}
-                        ref={consoleInputRef}
-                        onChange={(event) => setConsoleInput(event.target.value)}
-                        onKeyDown={submitConsoleInput}
-                        placeholder="값을 입력하고 Enter"
-                        aria-label="콘솔 입력"
-                        rows={1}
-                      />
-                    </div>
-                  ) : (
-                    <div className="terminalHint">
-                      <strong>입력값</strong>
-                      {inputHistory.length === 0 ? (
-                        <span>아직 입력한 값이 없습니다.</span>
-                      ) : (
-                        inputHistory.map((item, index) => (
-                          <code key={`${item}-${index}`}>
-                            {index + 1}. {item || "(빈 값)"}
-                          </code>
-                        ))
-                      )}
-                    </div>
-                  )}
+                  <div className="terminalHint">
+                    <strong>입력값</strong>
+                    {inputHistory.map((item, index) => (
+                      <code key={`${item}-${index}`}>{item || "(빈 값)"}</code>
+                    ))}
+                    {pendingPrompt !== null ? (
+                      <div className="terminalInputRow active">
+                        <span>{pendingPrompt}</span>
+                        <textarea
+                          value={consoleInput}
+                          ref={consoleInputRef}
+                          onChange={(event) => setConsoleInput(event.target.value)}
+                          onKeyDown={submitConsoleInput}
+                          placeholder="값을 입력하고 Enter"
+                          aria-label="콘솔 입력"
+                          rows={1}
+                        />
+                      </div>
+                    ) : inputHistory.length === 0 ? (
+                      <span>아직 입력한 값이 없습니다.</span>
+                    ) : null}
+                  </div>
                 </div>
               </div>
             </aside>
@@ -1136,33 +1131,28 @@ export default function Home() {
                   >
                     <div className="terminalScroll">
                       <pre>{solveConsoleLines.join("\n")}</pre>
-                      {solvePendingPrompt !== null ? (
-                        <div className="terminalInputRow active">
-                          <span>{solvePendingPrompt}</span>
-                          <textarea
-                            value={solveConsoleInput}
-                            ref={solveConsoleInputRef}
-                            onChange={(event) => setSolveConsoleInput(event.target.value)}
-                            onKeyDown={submitSolveConsoleInput}
-                            placeholder="값을 입력하고 Enter"
-                            aria-label="문제 풀이 콘솔 입력"
-                            rows={1}
-                          />
-                        </div>
-                      ) : (
-                        <div className="terminalHint">
-                          <strong>입력값</strong>
-                          {solveInputHistory.length === 0 ? (
-                            <span>아직 입력한 값이 없습니다.</span>
-                          ) : (
-                            solveInputHistory.map((item, index) => (
-                              <code key={`${item}-${index}`}>
-                                {index + 1}. {item || "(빈 값)"}
-                              </code>
-                            ))
-                          )}
-                        </div>
-                      )}
+                      <div className="terminalHint">
+                        <strong>입력값</strong>
+                        {solveInputHistory.map((item, index) => (
+                          <code key={`${item}-${index}`}>{item || "(빈 값)"}</code>
+                        ))}
+                        {solvePendingPrompt !== null ? (
+                          <div className="terminalInputRow active">
+                            <span>{solvePendingPrompt}</span>
+                            <textarea
+                              value={solveConsoleInput}
+                              ref={solveConsoleInputRef}
+                              onChange={(event) => setSolveConsoleInput(event.target.value)}
+                              onKeyDown={submitSolveConsoleInput}
+                              placeholder="값을 입력하고 Enter"
+                              aria-label="문제 풀이 콘솔 입력"
+                              rows={1}
+                            />
+                          </div>
+                        ) : solveInputHistory.length === 0 ? (
+                          <span>아직 입력한 값이 없습니다.</span>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
                 </div>
