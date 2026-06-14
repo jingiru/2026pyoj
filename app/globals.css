@@ -2097,11 +2097,12 @@ kbd {
 }
 
 .rankCell {
-  align-items: center;
   color: #b45309 !important;
-  display: flex;
-  gap: 5px;
-  justify-content: center;
+}
+
+.rankCell svg {
+  margin-right: 5px;
+  vertical-align: -3px;
 }
 
 .scoreCell {
