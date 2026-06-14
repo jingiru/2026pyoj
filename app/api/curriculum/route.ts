@@ -1,8 +1,9 @@
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { loadCurriculum } from "@/lib/curriculum-server";
+import { hashGuestToken } from "@/lib/guest-identity";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const supabase = createSupabaseAdmin();
   if (!supabase) {
     return NextResponse.json(
@@ -12,7 +13,11 @@ export async function GET() {
   }
 
   try {
-    const curriculum = await loadCurriculum(supabase, true);
+    const guestToken = request.headers.get("x-pyoj-guest-token")?.trim();
+    const isGuest = guestToken
+      ? await isValidGuestToken(supabase, guestToken)
+      : false;
+    const curriculum = await loadCurriculum(supabase, !isGuest);
     return NextResponse.json({ ok: true, ...curriculum });
   } catch (error) {
     console.error("[Curriculum]", error);
@@ -21,4 +26,21 @@ export async function GET() {
       { status: 500 }
     );
   }
+}
+
+async function isValidGuestToken(
+  supabase: NonNullable<ReturnType<typeof createSupabaseAdmin>>,
+  guestToken: string
+) {
+  const { data, error } = await supabase
+    .from("students")
+    .select("id")
+    .eq("is_guest", true)
+    .eq("guest_token_hash", hashGuestToken(guestToken))
+    .maybeSingle();
+  if (error) {
+    console.error("[Curriculum guest verification]", error);
+    return false;
+  }
+  return Boolean(data);
 }

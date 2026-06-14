@@ -440,6 +440,7 @@ export default function Home() {
       setStoredValue(STUDENT_STORAGE_KEY, JSON.stringify(signedIn));
       setPersonalSubmissions(getLocalSubmissions(signedIn.id));
       void refreshSolvedProblems(signedIn.id);
+      void refreshCurriculum();
       setLoginOpen(false);
       navigateTo("solve");
       setNotice("");
@@ -459,6 +460,7 @@ export default function Home() {
       setStoredValue(STUDENT_STORAGE_KEY, JSON.stringify(guest));
       setPersonalSubmissions(getLocalSubmissions(guest.id));
       void refreshSolvedProblems(guest.id);
+      void refreshCurriculum();
       setLoginOpen(false);
       navigateTo("solve");
       setNotice("");
@@ -552,6 +554,7 @@ export default function Home() {
     setSolvedProblemIds(new Set());
     setResult(null);
     setNotice("");
+    void refreshCurriculum();
     navigateTo("home");
   }
 
@@ -608,7 +611,16 @@ export default function Home() {
 
   async function refreshCurriculum() {
     try {
-      const response = await fetch("/api/curriculum", { cache: "no-store" });
+      const savedStudent = getStoredStudent();
+      const headers: HeadersInit = {};
+      if (savedStudent?.is_guest) {
+        const guestToken = getStoredValue(GUEST_TOKEN_STORAGE_KEY);
+        if (guestToken) headers["x-pyoj-guest-token"] = guestToken;
+      }
+      const response = await fetch("/api/curriculum", {
+        cache: "no-store",
+        headers
+      });
       const data = (await response.json()) as {
         ok?: boolean;
         books?: ProblemBook[];
