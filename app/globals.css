@@ -2039,17 +2039,17 @@ kbd {
 .submissionMatrix th:nth-child(2),
 .submissionMatrix td:nth-child(2) {
   left: 56px;
-  min-width: 78px;
-  width: 78px;
+  min-width: 68px;
+  width: 68px;
   position: sticky;
   z-index: 2;
 }
 
 .submissionMatrix th:nth-child(3),
 .submissionMatrix td:nth-child(3) {
-  left: 134px;
-  min-width: 82px;
-  width: 82px;
+  left: 124px;
+  min-width: 72px;
+  width: 72px;
   position: sticky;
   z-index: 2;
 }
@@ -2062,11 +2062,11 @@ kbd {
 
 .submissionMatrix th:nth-child(n + 5),
 .submissionMatrix td:nth-child(n + 5) {
-  max-width: 38px;
-  min-width: 34px;
-  width: 34px;
-  padding-left: 3px;
-  padding-right: 3px;
+  max-width: 36px;
+  min-width: 32px;
+  width: 32px;
+  padding-left: 2px;
+  padding-right: 2px;
 }
 
 .submissionMatrix .subgroupTone0 {
