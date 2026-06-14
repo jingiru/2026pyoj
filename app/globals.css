@@ -1312,6 +1312,93 @@ pre {
   z-index: 30;
 }
 
+.geminiHelp {
+  align-items: flex-end;
+  bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: fixed;
+  right: 24px;
+  z-index: 29;
+}
+
+.geminiHelpBubble,
+.geminiHelpNotice {
+  animation: geminiHelpIn 260ms ease-out both;
+  background: var(--panel);
+  border: 1px solid color-mix(in srgb, var(--primary) 32%, var(--line));
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.16);
+  color: var(--ink);
+}
+
+.geminiHelpBubble {
+  border-radius: 14px 14px 3px 14px;
+  font-size: 15px;
+  font-weight: 800;
+  padding: 11px 14px;
+  position: relative;
+}
+
+.geminiHelpNotice {
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+  max-width: min(360px, calc(100vw - 32px));
+  padding: 11px 13px;
+}
+
+.geminiHelpButton {
+  align-items: center;
+  background:
+    linear-gradient(135deg, #2563eb 0%, #6366f1 48%, #a855f7 100%);
+  border: 3px solid color-mix(in srgb, var(--panel) 88%, transparent);
+  border-radius: 999px;
+  box-shadow:
+    0 12px 28px rgba(37, 99, 235, 0.32),
+    0 0 0 1px color-mix(in srgb, var(--primary) 28%, transparent);
+  color: #ffffff;
+  display: grid;
+  font-size: 10px;
+  font-weight: 800;
+  height: 68px;
+  line-height: 1;
+  place-content: center;
+  row-gap: 4px;
+  transition:
+    box-shadow 160ms ease,
+    transform 160ms ease;
+  width: 68px;
+}
+
+.geminiHelpButton:hover {
+  box-shadow:
+    0 16px 34px rgba(37, 99, 235, 0.4),
+    0 0 0 4px color-mix(in srgb, var(--primary) 15%, transparent);
+  transform: translateY(-2px);
+}
+
+.geminiHelpButton:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--primary) 38%, transparent);
+  outline-offset: 3px;
+}
+
+.geminiHelpButton span {
+  display: block;
+}
+
+@keyframes geminiHelpIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .submissionToast.closing {
   animation: submissionToastOut 300ms ease-in both;
 }
@@ -1441,6 +1528,18 @@ pre {
   to {
     opacity: 0;
     transform: translateX(calc(100% + 32px));
+  }
+}
+
+@media (max-width: 640px) {
+  .geminiHelp {
+    bottom: 16px;
+    right: 16px;
+  }
+
+  .geminiHelpButton {
+    height: 62px;
+    width: 62px;
   }
 }
 

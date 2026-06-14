@@ -202,6 +202,9 @@ export default function Home() {
   const [notice, setNotice] = useState("");
   const [result, setResult] = useState<JudgeResult | null>(null);
   const [isResultToastClosing, setIsResultToastClosing] = useState(false);
+  const [problemFailureCounts, setProblemFailureCounts] = useState<Record<string, number>>({});
+  const [latestJudgeResults, setLatestJudgeResults] = useState<Record<string, JudgeResult>>({});
+  const [geminiHelpNotice, setGeminiHelpNotice] = useState("");
   const [solvedProblemIds, setSolvedProblemIds] = useState<Set<string>>(() => new Set());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [autoAdvanceOnAccepted, setAutoAdvanceOnAccepted] = useState(false);
@@ -253,6 +256,13 @@ export default function Home() {
       window.clearTimeout(removeToast);
     };
   }, [result]);
+
+  useEffect(() => {
+    if (!geminiHelpNotice) return;
+
+    const timeout = window.setTimeout(() => setGeminiHelpNotice(""), 5000);
+    return () => window.clearTimeout(timeout);
+  }, [geminiHelpNotice]);
 
   useEffect(() => {
     if (!loginOpen && !teacherLoginOpen) return;
@@ -654,6 +664,12 @@ export default function Home() {
     try {
       const judged = await judgeProblemSubmission(selectedProblem, code);
       setResult(judged);
+      setLatestJudgeResults((current) => ({ ...current, [selectedProblem.id]: judged }));
+      setProblemFailureCounts((current) => ({
+        ...current,
+        [selectedProblem.id]:
+          judged.status === "accepted" ? 0 : (current[selectedProblem.id] ?? 0) + 1
+      }));
       await saveSubmission({
         student_id: student.id,
         problem_id: selectedProblem.id,
@@ -675,6 +691,23 @@ export default function Home() {
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  async function openGeminiHelp() {
+    window.open("https://gemini.google.com/", "_blank", "noopener,noreferrer");
+
+    const problemInfo = formatProblemForGemini(
+      selectedProblem,
+      code,
+      problemFailureCounts[selectedProblem.id] ?? 0,
+      latestJudgeResults[selectedProblem.id]
+    );
+    const copied = await copyTextToClipboard(problemInfo);
+    setGeminiHelpNotice(
+      copied
+        ? "문제 정보를 복사하였습니다. 붙여넣기(Ctrl+V) 후 질문을 작성해보세요."
+        : "Gemini를 열었습니다. 문제 정보 복사에 실패하여 직접 복사해 주세요."
+    );
   }
 
   async function runSolveCode() {
@@ -1209,6 +1242,26 @@ export default function Home() {
           onCurriculumChanged={refreshCurriculum}
           onLogout={() => void logoutTeacher()}
         />
+      )}
+
+      {screen === "solve" && (problemFailureCounts[selectedProblem.id] ?? 0) >= 3 && (
+        <aside className="geminiHelp" aria-label="Gemini 도움말">
+          <div className="geminiHelpBubble">제미나이에게 물어보세요!</div>
+          {geminiHelpNotice && (
+            <div className="geminiHelpNotice" role="status" aria-live="polite">
+              {geminiHelpNotice}
+            </div>
+          )}
+          <button
+            type="button"
+            className="geminiHelpButton"
+            onClick={() => void openGeminiHelp()}
+            aria-label="문제 정보를 복사하고 Gemini 새 탭 열기"
+          >
+            <Sparkles size={25} />
+            <span>AI 도움</span>
+          </button>
+        </aside>
       )}
 
       {result && (
@@ -3152,6 +3205,64 @@ function submissionResultClass(status: SubmissionStatus) {
   if (status === "accepted") return "accepted correct";
   if (status === "code_requirement_failed") return "codeRequirementFailed";
   return "failed incorrect";
+}
+
+function formatProblemForGemini(
+  problem: Problem,
+  code: string,
+  failureCount: number,
+  latestResult?: JudgeResult
+) {
+  const examples =
+    problem.examples.length > 0
+      ? problem.examples
+          .map(
+            (example, index) =>
+              `[예시 ${index + 1}]\n입력:\n${example.input || "(입력 없음)"}\n출력:\n${example.output}`
+          )
+          .join("\n\n")
+      : "(예시 없음)";
+  const judgeSummary = latestResult
+    ? `${submissionResultLabel(latestResult.status)} (${latestResult.passedCount}/${latestResult.totalCount} 통과)\n${latestResult.feedback}`
+    : "(채점 결과 없음)";
+
+  return [
+    "아래 파이썬 문제를 풀고 있습니다. 정답 코드를 바로 제시하기보다, 제 코드의 문제점을 설명하고 스스로 고칠 수 있도록 단계별 힌트를 주세요.",
+    "",
+    `[문제 제목]\n${problem.title}`,
+    `[문제]\n${problem.statement}`,
+    `[입력]\n${problem.inputDescription || "(입력 없음)"}`,
+    `[출력]\n${problem.outputDescription || "(출력 설명 없음)"}`,
+    `[입출력 예시]\n${examples}`,
+    problem.hint.trim() ? `[문제 힌트]\n${problem.hint}` : "",
+    `[현재 코드]\n\`\`\`python\n${code}\n\`\`\``,
+    `[최근 채점 결과]\n${judgeSummary}`,
+    `[현재까지 실패 횟수]\n${failureCount}회`
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+async function copyTextToClipboard(text: string) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    try {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      const copied = document.execCommand("copy");
+      textarea.remove();
+      return copied;
+    } catch {
+      return false;
+    }
+  }
 }
 
 function submissionResultLabel(status: SubmissionStatus) {
