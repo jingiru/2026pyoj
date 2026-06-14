@@ -27,6 +27,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   Code2,
   Download,
   Eye,
@@ -1886,6 +1887,14 @@ function TeacherDashboard({
       ),
     [students]
   );
+  const bookFilterValues = books.map((book) => book.id);
+  const subgroupFilterValues = ["all", ...bookProblemGroups.map((group) => group.id)];
+  const classFilterValues = ["all", ...classes];
+  const filteredStudents = students.filter(
+    (item) => classFilter === "all" || item.student_no.charAt(1) === classFilter
+  );
+  const studentFilterValues = ["all", ...filteredStudents.map((item) => item.id)];
+  const sortFilterValues = ["studentNo", "name", "submissions", "accuracy", "progress"];
   const studentRows = useMemo(() => {
     const rows = students.map((item) => {
       const statuses = displayedProblems.map((problem) =>
@@ -2049,6 +2058,11 @@ function TeacherDashboard({
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [overviewStudentId, selectedSubmission]);
 
+  function changeClassFilter(value: string) {
+    setClassFilter(value);
+    setStudentFilter("all");
+  }
+
   return (
     <section className="teacherView">
       <div className="dashboardHeader">
@@ -2076,68 +2090,103 @@ function TeacherDashboard({
           <div className="dashboardFilters">
             <label>
               <span>문제집</span>
-              <select value={selectedBook?.id ?? ""} onChange={(event) => setSelectedBookId(event.target.value)}>
-                {books.map((book) => (
-                  <option key={book.id} value={book.id}>
-                    {formatBookTitle(book)}
-                  </option>
-                ))}
-              </select>
+              <div className="filterSelectControl">
+                <select value={selectedBook?.id ?? ""} onChange={(event) => setSelectedBookId(event.target.value)}>
+                  {books.map((book) => (
+                    <option key={book.id} value={book.id}>
+                      {formatBookTitle(book)}
+                    </option>
+                  ))}
+                </select>
+                <FilterStepButtons
+                  label="문제집"
+                  values={bookFilterValues}
+                  value={selectedBook?.id ?? ""}
+                  onChange={setSelectedBookId}
+                />
+              </div>
             </label>
             <label>
               <span>소분류</span>
-              <select
-                className="subgroupSelect"
-                value={subgroupFilter}
-                onChange={(event) => setSubgroupFilter(event.target.value)}
-              >
-                <option value="all">전체</option>
-                {bookProblemGroups.map((group) => (
-                  <option key={group.id} value={group.id}>
-                    {group.code} {group.title}
-                  </option>
-                ))}
-              </select>
+              <div className="filterSelectControl">
+                <select
+                  className="subgroupSelect"
+                  value={subgroupFilter}
+                  onChange={(event) => setSubgroupFilter(event.target.value)}
+                >
+                  <option value="all">전체</option>
+                  {bookProblemGroups.map((group) => (
+                    <option key={group.id} value={group.id}>
+                      {group.code} {group.title}
+                    </option>
+                  ))}
+                </select>
+                <FilterStepButtons
+                  label="소분류"
+                  values={subgroupFilterValues}
+                  value={subgroupFilter}
+                  onChange={setSubgroupFilter}
+                />
+              </div>
             </label>
             <label>
               <span>학급</span>
-              <select
-                value={classFilter}
-                onChange={(event) => {
-                  setClassFilter(event.target.value);
-                  setStudentFilter("all");
-                }}
-              >
-                <option value="all">전체 학급</option>
-                {classes.map((classNo) => (
-                  <option key={classNo} value={classNo}>
-                    {classNo}반
-                  </option>
-                ))}
-              </select>
+              <div className="filterSelectControl">
+                <select
+                  value={classFilter}
+                  onChange={(event) => changeClassFilter(event.target.value)}
+                >
+                  <option value="all">전체</option>
+                  {classes.map((classNo) => (
+                    <option key={classNo} value={classNo}>
+                      {classNo}반
+                    </option>
+                  ))}
+                </select>
+                <FilterStepButtons
+                  label="학급"
+                  values={classFilterValues}
+                  value={classFilter}
+                  onChange={changeClassFilter}
+                />
+              </div>
             </label>
             <label>
               <span>학생</span>
-              <select value={studentFilter} onChange={(event) => setStudentFilter(event.target.value)}>
-                <option value="all">전체 학생</option>
-                {students
-                  .filter((item) => classFilter === "all" || item.student_no.charAt(1) === classFilter)
-                  .map((item) => (
+              <div className="filterSelectControl">
+                <select value={studentFilter} onChange={(event) => setStudentFilter(event.target.value)}>
+                  <option value="all">전체</option>
+                  {filteredStudents.map((item) => (
                     <option key={item.id} value={item.id}>
                       {item.student_no} {item.name}
                     </option>
                   ))}
-              </select>
+                </select>
+                <FilterStepButtons
+                  label="학생"
+                  values={studentFilterValues}
+                  value={studentFilter}
+                  onChange={setStudentFilter}
+                />
+              </div>
             </label>
             <label>
               <span>정렬</span>
-              <select value={sortBy} onChange={(event) => setSortBy(event.target.value)}>
-                <option value="studentNo">학번순</option>
-                <option value="name">가나다순</option>
-                <option value="submissions">제출개수순</option>
-                <option value="accuracy">정답률순</option>
-                <option value="progress">진행률순</option>
-              </select>
+              <div className="filterSelectControl">
+                <select value={sortBy} onChange={(event) => setSortBy(event.target.value)}>
+                  <option value="studentNo">학번</option>
+                  <option value="name">가나다</option>
+                  <option value="submissions">제출개수</option>
+                  <option value="accuracy">정답률</option>
+                  <option value="progress">진행률</option>
+                </select>
+                <FilterStepButtons
+                  label="정렬"
+                  values={sortFilterValues}
+                  value={sortBy}
+                  onChange={setSortBy}
+                />
+              </div>
             </label>
           </div>
         </div>
@@ -2444,6 +2493,43 @@ function Metric({ label, value }: { label: string; value: string }) {
       <span>{label}</span>
       <strong>{value}</strong>
     </div>
+  );
+}
+
+function FilterStepButtons({
+  label,
+  values,
+  value,
+  onChange
+}: {
+  label: string;
+  values: string[];
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const currentIndex = values.indexOf(value);
+
+  return (
+    <span className="filterStepButtons">
+      <button
+        type="button"
+        onClick={() => onChange(values[currentIndex - 1])}
+        disabled={currentIndex <= 0}
+        aria-label={`${label} 이전 항목`}
+        title={`${label} 이전 항목`}
+      >
+        <ChevronUp size={13} />
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange(values[currentIndex + 1])}
+        disabled={currentIndex < 0 || currentIndex >= values.length - 1}
+        aria-label={`${label} 다음 항목`}
+        title={`${label} 다음 항목`}
+      >
+        <ChevronDown size={13} />
+      </button>
+    </span>
   );
 }
 
