@@ -2,11 +2,24 @@ create extension if not exists "pgcrypto";
 
 create table if not exists public.students (
   id uuid primary key default gen_random_uuid(),
-  student_no text not null check (student_no ~ '^[0-9]{4}$'),
+  student_no text not null,
   name text not null check (char_length(trim(name)) >= 2),
+  is_guest boolean not null default false,
+  guest_token_hash text,
+  last_ip_hash text,
   created_at timestamptz not null default now(),
+  constraint students_student_no_check check (
+    (not is_guest and student_no ~ '^[0-9]{4}$')
+    or
+    (is_guest and student_no ~ '^비로그인-[A-F0-9]{12}$')
+  ),
   unique (student_no, name)
 );
+
+create unique index if not exists students_guest_token_hash_uidx
+on public.students(guest_token_hash)
+where guest_token_hash is not null;
+create index if not exists students_is_guest_idx on public.students(is_guest);
 
 create table if not exists public.problem_books (
   id text primary key,
@@ -80,7 +93,8 @@ create index if not exists submissions_problem_idx on public.submissions(problem
 create index if not exists submissions_created_at_idx on public.submissions(created_at desc);
 
 grant usage on schema public to anon, authenticated;
-grant select, insert on public.students to anon, authenticated;
+revoke select on public.students from anon, authenticated;
+grant insert on public.students to anon, authenticated;
 grant select on public.problem_books, public.problems, public.test_cases to anon, authenticated;
 revoke select on public.submissions from anon, authenticated;
 grant insert on public.submissions to anon, authenticated;

@@ -67,23 +67,39 @@ export async function findOrCreateStudent(studentNo: string, name: string) {
   return data.student;
 }
 
-export async function saveSubmission(submission: Submission) {
+export async function findOrCreateGuest(token: string) {
+  assertSupabaseEnvironment();
+  if (!supabase) return createLocalGuest(token);
+
+  const response = await fetch("/api/guest-session", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token })
+  });
+  const data = (await response.json()) as {
+    ok?: boolean;
+    student?: Student;
+    message?: string;
+    code?: string;
+  };
+  if (!response.ok || !data.ok || !data.student) {
+    throw new DataAccessError(data.message ?? "비로그인 정보를 저장하지 못했어요.", data.code);
+  }
+  return data.student;
+}
+
+export async function saveSubmission(submission: Submission, guestToken?: string) {
   assertSupabaseEnvironment();
   if (!supabase) {
-    const stored = readLocalSubmissions();
-    const next = {
-      ...submission,
-      id: crypto.randomUUID(),
-      created_at: new Date().toISOString()
-    };
-    localStorage.setItem("pyoj-submissions", JSON.stringify([next, ...stored]));
+    const next = createLocalSubmission(submission);
+    storeLocalSubmission(next);
     return next;
   }
 
   const response = await fetch("/api/submissions", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(submission)
+    body: JSON.stringify({ ...submission, guestToken })
   });
   const data = (await response.json()) as {
     ok?: boolean;
@@ -94,7 +110,12 @@ export async function saveSubmission(submission: Submission) {
   if (!response.ok || !data.ok || !data.submission) {
     throw new DataAccessError(data.message ?? "제출 기록을 저장하지 못했어요.", data.code);
   }
+  storeLocalSubmission(data.submission);
   return data.submission;
+}
+
+export function getLocalSubmissions(studentId: string): SubmissionWithStudent[] {
+  return readLocalSubmissions().filter((submission) => submission.student_id === studentId);
 }
 
 export async function listSubmissions(): Promise<SubmissionWithStudent[]> {
@@ -160,6 +181,38 @@ function createLocalStudent(studentNo: string, name: string): Student {
   };
   localStorage.setItem(key, JSON.stringify(student));
   return student;
+}
+
+function createLocalGuest(token: string): Student {
+  const stored = localStorage.getItem(`pyoj-guest-${token}`);
+  if (stored) return JSON.parse(stored) as Student;
+
+  const code = token.replace(/-/g, "").slice(0, 12).toUpperCase();
+  const student = {
+    id: crypto.randomUUID(),
+    student_no: `비로그인-${code}`,
+    name: `익명 ${code}`,
+    is_guest: true,
+    created_at: new Date().toISOString()
+  };
+  localStorage.setItem(`pyoj-guest-${token}`, JSON.stringify(student));
+  return student;
+}
+
+function createLocalSubmission(submission: Submission): SubmissionWithStudent {
+  return {
+    ...submission,
+    id: crypto.randomUUID(),
+    created_at: new Date().toISOString()
+  };
+}
+
+function storeLocalSubmission(submission: SubmissionWithStudent) {
+  const stored = readLocalSubmissions();
+  const withoutDuplicate = submission.id
+    ? stored.filter((item) => item.id !== submission.id)
+    : stored;
+  localStorage.setItem("pyoj-submissions", JSON.stringify([submission, ...withoutDuplicate].slice(0, 500)));
 }
 
 function readLocalSubmissions(): SubmissionWithStudent[] {

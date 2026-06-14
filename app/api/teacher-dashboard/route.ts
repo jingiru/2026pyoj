@@ -33,10 +33,13 @@ export async function GET(request: NextRequest) {
   ] = await Promise.all([
     supabase
       .from("submissions")
-      .select("*, students(student_no, name)")
+      .select("*, students(student_no, name, is_guest)")
       .order("created_at", { ascending: false })
       .range(0, 4999),
-    supabase.from("students").select("id, student_no, name, created_at").order("student_no")
+    supabase
+      .from("students")
+      .select("id, student_no, name, is_guest, created_at")
+      .order("student_no")
   ]);
 
   const error = submissionError ?? studentError;

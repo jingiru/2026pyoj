@@ -58,7 +58,9 @@ import {
 import { runPythonWithSkulpt } from "@/lib/skulpt-runner";
 import { checkCodeRequirements } from "@/lib/code-requirements";
 import {
+  findOrCreateGuest,
   findOrCreateStudent,
+  getLocalSubmissions,
   getDataErrorMessage,
   saveSubmission
 } from "@/lib/supabase";
@@ -105,6 +107,7 @@ const SELECTED_PROBLEM_STORAGE_KEY = "pyoj:selected-problem";
 const PROBLEM_CODE_STORAGE_PREFIX = "pyoj:problem-code:";
 const AUTO_ADVANCE_STORAGE_KEY = "pyoj:auto-advance-on-accepted";
 const STUDENT_STORAGE_KEY = "pyoj:student";
+const GUEST_TOKEN_STORAGE_KEY = "pyoj:guest-token";
 const DEFAULT_PROBLEM =
   fallbackProblems.find((problem) => problem.bookId === fallbackProblemBooks[0].id) ??
   fallbackProblems[0];
@@ -225,6 +228,8 @@ export default function Home() {
   const [problemListOpen, setProblemListOpen] = useState(true);
   const [expandedProblemGroups, setExpandedProblemGroups] = useState<Set<string>>(() => new Set());
   const [submissions, setSubmissions] = useState<SubmissionWithStudent[]>([]);
+  const [personalSubmissions, setPersonalSubmissions] = useState<SubmissionWithStudent[]>([]);
+  const [personalHistoryOpen, setPersonalHistoryOpen] = useState(false);
   const [teacherStudents, setTeacherStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(false);
   const [editorStorageReady, setEditorStorageReady] = useState(false);
@@ -371,6 +376,7 @@ export default function Home() {
       setStudentNo(savedStudent.student_no);
       setName(savedStudent.name);
       void refreshSolvedProblems(savedStudent.id);
+      setPersonalSubmissions(getLocalSubmissions(savedStudent.id));
     }
 
     const savedProblemId = getStoredValue(SELECTED_PROBLEM_STORAGE_KEY);
@@ -432,12 +438,32 @@ export default function Home() {
       const signedIn = await findOrCreateStudent(studentNo, name);
       setStudent(signedIn);
       setStoredValue(STUDENT_STORAGE_KEY, JSON.stringify(signedIn));
+      setPersonalSubmissions(getLocalSubmissions(signedIn.id));
       void refreshSolvedProblems(signedIn.id);
       setLoginOpen(false);
       navigateTo("solve");
       setNotice("");
     } catch (error) {
       setNotice(getDataErrorMessage(error, "로그인 중 문제가 생겼어요. Supabase 연결을 확인해주세요."));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function continueAsGuest() {
+    setLoading(true);
+    try {
+      const token = getOrCreateGuestToken();
+      const guest = await findOrCreateGuest(token);
+      setStudent(guest);
+      setStoredValue(STUDENT_STORAGE_KEY, JSON.stringify(guest));
+      setPersonalSubmissions(getLocalSubmissions(guest.id));
+      void refreshSolvedProblems(guest.id);
+      setLoginOpen(false);
+      navigateTo("solve");
+      setNotice("");
+    } catch (error) {
+      setNotice(getDataErrorMessage(error, "비로그인 모드를 시작하지 못했어요."));
     } finally {
       setLoading(false);
     }
@@ -521,6 +547,8 @@ export default function Home() {
   function logoutStudent() {
     setStudent(null);
     removeStoredValue(STUDENT_STORAGE_KEY);
+    setPersonalSubmissions([]);
+    setPersonalHistoryOpen(false);
     setSolvedProblemIds(new Set());
     setResult(null);
     setNotice("");
@@ -533,14 +561,29 @@ export default function Home() {
   }
 
   async function refreshSolvedProblems(studentId: string) {
+    const localProblemIds = getLocalSubmissions(studentId)
+      .filter((submission) => submission.status === "accepted")
+      .map((submission) => submission.problem_id);
     try {
-      const response = await fetch(`/api/submissions?studentId=${encodeURIComponent(studentId)}`, {
-        cache: "no-store"
+      const savedStudent = getStoredStudent();
+      const query = new URLSearchParams({ studentId });
+      const headers: HeadersInit = {};
+      if (savedStudent?.is_guest) {
+        const guestToken = getStoredValue(GUEST_TOKEN_STORAGE_KEY);
+        if (guestToken) headers["x-pyoj-guest-token"] = guestToken;
+      }
+      const response = await fetch(`/api/submissions?${query.toString()}`, {
+        cache: "no-store",
+        headers
       });
       const data = (await response.json()) as { ok?: boolean; problemIds?: string[] };
-      if (response.ok && data.ok) setSolvedProblemIds(new Set(data.problemIds ?? []));
+      if (response.ok && data.ok) {
+        setSolvedProblemIds(new Set([...(data.problemIds ?? []), ...localProblemIds]));
+      } else {
+        setSolvedProblemIds(new Set(localProblemIds));
+      }
     } catch {
-      setSolvedProblemIds(new Set());
+      setSolvedProblemIds(new Set(localProblemIds));
     }
   }
 
@@ -670,15 +713,19 @@ export default function Home() {
         [selectedProblem.id]:
           judged.status === "accepted" ? 0 : (current[selectedProblem.id] ?? 0) + 1
       }));
-      await saveSubmission({
-        student_id: student.id,
-        problem_id: selectedProblem.id,
-        code,
-        status: judged.status,
-        passed_count: judged.passedCount,
-        total_count: judged.totalCount,
-        feedback: judged.feedback
-      });
+      await saveSubmission(
+        {
+          student_id: student.id,
+          problem_id: selectedProblem.id,
+          code,
+          status: judged.status,
+          passed_count: judged.passedCount,
+          total_count: judged.totalCount,
+          feedback: judged.feedback
+        },
+        student.is_guest ? getStoredValue(GUEST_TOKEN_STORAGE_KEY) ?? undefined : undefined
+      );
+      setPersonalSubmissions(getLocalSubmissions(student.id));
       if (judged.status === "accepted") {
         setSolvedProblemIds((current) => new Set(current).add(selectedProblem.id));
         if (autoAdvanceOnAccepted && nextProblem) {
@@ -750,7 +797,10 @@ export default function Home() {
           stdout: solveRunOutputsRef.current.join(""),
           stderr: solveRunErrorsRef.current.join("\n"),
           status: solveRunErrorsRef.current.length > 0 ? "runtime_error" : "success",
-          executionTimeMs: performance.now() - startedAt
+          executionTimeMs: performance.now() - startedAt,
+          guestToken: student.is_guest
+            ? getStoredValue(GUEST_TOKEN_STORAGE_KEY) ?? undefined
+            : undefined
         });
       }
     }
@@ -795,6 +845,7 @@ export default function Home() {
     stderr: string;
     status: "success" | "runtime_error";
     executionTimeMs: number;
+    guestToken?: string;
   }) {
     try {
       const response = await fetch("/api/code-runs", {
@@ -1129,6 +1180,11 @@ export default function Home() {
                   <span>{student ? `${student.student_no} ${student.name}` : "로그인 후 제출 가능"}</span>
                 </div>
                 <div className="ideActions">
+                  {student && (
+                    <button className="ghostButton" onClick={() => setPersonalHistoryOpen(true)}>
+                      내 기록 {personalSubmissions.length}
+                    </button>
+                  )}
                   <button className="ghostButton" onClick={() => setCode(selectedProblem.starterCode)}>
                     <Play size={17} />
                     초기 코드
@@ -1333,7 +1389,60 @@ export default function Home() {
             <p className="helperText">
               처음이면 자동 등록되고, 다음부터 같은 학번과 이름으로 이어서 풀 수 있어요.
             </p>
+            <div className="guestLoginDivider">
+              <span>또는</span>
+            </div>
+            <button
+              type="button"
+              className="ghostButton wideButton guestContinueButton"
+              onClick={() => void continueAsGuest()}
+              disabled={loading}
+            >
+              로그인 없이 진행
+            </button>
+            <p className="helperText">
+              이 브라우저에 익명 식별 정보와 제출 기록이 저장됩니다.
+            </p>
           </div>
+        </div>
+      )}
+
+      {personalHistoryOpen && student && (
+        <div className="modalBackdrop" role="presentation" onMouseDown={() => setPersonalHistoryOpen(false)}>
+          <section
+            className="personalHistoryModal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="personal-history-title"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <button className="iconButton closeButton" onClick={() => setPersonalHistoryOpen(false)} aria-label="닫기">
+              <X size={18} />
+            </button>
+            <h2 id="personal-history-title">내 제출 및 채점 기록</h2>
+            <p className="helperText">{student.student_no} {student.name}</p>
+            {personalSubmissions.length === 0 ? (
+              <p className="empty">아직 제출 기록이 없습니다.</p>
+            ) : (
+              <div className="personalHistoryList">
+                {personalSubmissions.map((submission, index) => (
+                  <article key={submission.id ?? `${submission.created_at}-${index}`}>
+                    <div>
+                      <strong>{problemTitle(submission.problem_id, availableProblems)}</strong>
+                      <span>
+                        {submission.created_at
+                          ? new Date(submission.created_at).toLocaleString("ko-KR")
+                          : ""}
+                      </span>
+                    </div>
+                    <span className={`submissionResultBadge ${submission.status}`}>
+                      {submissionResultLabel(submission.status)} {submission.passed_count}/{submission.total_count}
+                    </span>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
         </div>
       )}
 
@@ -1935,16 +2044,21 @@ function TeacherDashboard({
   }, [submissions]);
   const classes = useMemo(
     () =>
-      [...new Set(students.map((item) => item.student_no.charAt(1)).filter(Boolean))].sort((a, b) =>
-        a.localeCompare(b, "ko")
-      ),
+      [
+        ...new Set(
+          students
+            .filter((item) => !item.is_guest)
+            .map((item) => item.student_no.charAt(1))
+            .filter(Boolean)
+        )
+      ].sort((a, b) => a.localeCompare(b, "ko")),
     [students]
   );
   const bookFilterValues = books.map((book) => book.id);
   const subgroupFilterValues = ["all", ...bookProblemGroups.map((group) => group.id)];
-  const classFilterValues = ["all", ...classes];
+  const classFilterValues = ["all", ...classes, "guest"];
   const filteredStudents = students.filter(
-    (item) => classFilter === "all" || item.student_no.charAt(1) === classFilter
+    (item) => matchesClassFilter(item, classFilter)
   );
   const studentFilterValues = ["all", ...filteredStudents.map((item) => item.id)];
   const sortFilterValues = ["studentNo", "name", "submissions", "accuracy", "progress"];
@@ -1960,7 +2074,7 @@ function TeacherDashboard({
       return { student: item, statuses, submitted, accepted, rate, progress };
     });
     const filtered = rows.filter(({ student }) => {
-      const matchesClass = classFilter === "all" || student.student_no.charAt(1) === classFilter;
+      const matchesClass = matchesClassFilter(student, classFilter);
       return matchesClass;
     });
     return filtered.sort((left, right) => {
@@ -2195,6 +2309,7 @@ function TeacherDashboard({
                       {classNo}반
                     </option>
                   ))}
+                  <option value="guest">비로그인</option>
                 </select>
                 <FilterStepButtons
                   label="학급"
@@ -3343,6 +3458,14 @@ function setStoredValue(key: string, value: string) {
   }
 }
 
+function getOrCreateGuestToken() {
+  const stored = getStoredValue(GUEST_TOKEN_STORAGE_KEY);
+  if (stored) return stored;
+  const token = crypto.randomUUID();
+  setStoredValue(GUEST_TOKEN_STORAGE_KEY, token);
+  return token;
+}
+
 function removeStoredValue(key: string) {
   try {
     localStorage.removeItem(key);
@@ -3368,4 +3491,10 @@ function getStoredStudent(): Student | null {
   } catch {
     return null;
   }
+}
+
+function matchesClassFilter(student: Student, classFilter: string) {
+  if (classFilter === "all") return true;
+  if (classFilter === "guest") return Boolean(student.is_guest);
+  return !student.is_guest && student.student_no.charAt(1) === classFilter;
 }

@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
+import { hashGuestToken } from "@/lib/guest-identity";
 import type { Submission } from "@/lib/types";
 
 export async function GET(request: Request) {
-  const studentId = new URL(request.url).searchParams.get("studentId")?.trim();
+  const url = new URL(request.url);
+  const studentId = url.searchParams.get("studentId")?.trim();
+  const guestToken = request.headers.get("x-pyoj-guest-token")?.trim();
   if (!studentId) {
     return NextResponse.json(
       { ok: false, message: "학생 정보가 필요합니다." },
@@ -17,6 +20,9 @@ export async function GET(request: Request) {
       { ok: false, message: "제출 조회 서버 설정이 없습니다." },
       { status: 500 }
     );
+  }
+  if (!(await canAccessStudent(supabase, studentId, guestToken))) {
+    return NextResponse.json({ ok: false, message: "제출 조회 권한이 없습니다." }, { status: 403 });
   }
 
   const { data, error } = await supabase
@@ -40,7 +46,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const submission = (await request.json().catch(() => null)) as Submission | null;
+  const submission = (await request.json().catch(() => null)) as
+    | (Submission & { guestToken?: string })
+    | null;
   if (
     !submission?.student_id ||
     !submission.problem_id ||
@@ -59,6 +67,9 @@ export async function POST(request: Request) {
       { ok: false, message: "제출 저장 서버 설정이 없습니다." },
       { status: 500 }
     );
+  }
+  if (!(await canAccessStudent(supabase, submission.student_id, submission.guestToken))) {
+    return NextResponse.json({ ok: false, message: "제출 저장 권한이 없습니다." }, { status: 403 });
   }
 
   const score =
@@ -94,4 +105,19 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({ ok: true, submission: data as Submission });
+}
+
+async function canAccessStudent(
+  supabase: NonNullable<ReturnType<typeof createSupabaseAdmin>>,
+  studentId: string,
+  guestToken?: string | null
+) {
+  const { data, error } = await supabase
+    .from("students")
+    .select("is_guest, guest_token_hash")
+    .eq("id", studentId)
+    .single();
+  if (error || !data) return false;
+  if (!data.is_guest) return true;
+  return Boolean(guestToken && data.guest_token_hash === hashGuestToken(guestToken));
 }

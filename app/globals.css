@@ -2460,6 +2460,72 @@ kbd {
   width: 100%;
 }
 
+.guestLoginDivider {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  font-size: 12px;
+  gap: 10px;
+  margin: 14px 0;
+}
+
+.guestLoginDivider::before,
+.guestLoginDivider::after {
+  background: var(--line);
+  content: "";
+  flex: 1;
+  height: 1px;
+}
+
+.guestContinueButton {
+  justify-content: center;
+}
+
+.personalHistoryModal {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.28);
+  color: var(--ink);
+  max-height: min(720px, calc(100vh - 36px));
+  max-width: 680px;
+  overflow: auto;
+  padding: 24px;
+  position: relative;
+  width: 100%;
+}
+
+.personalHistoryModal h2 {
+  margin: 0 40px 4px 0;
+}
+
+.personalHistoryList {
+  display: grid;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.personalHistoryList article {
+  align-items: center;
+  background: color-mix(in srgb, var(--panel) 82%, var(--bg));
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  padding: 12px;
+}
+
+.personalHistoryList article div {
+  display: grid;
+  gap: 4px;
+}
+
+.personalHistoryList article div span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .problemManager {
   margin-top: 12px;
 }

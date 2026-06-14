@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
 
   const { data: existing, error: selectError } = await supabase
     .from("students")
-    .select("id, student_no, name, created_at")
+    .select("id, student_no, name, is_guest, created_at")
     .eq("student_no", studentNo)
     .maybeSingle();
 
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
         login_count: await nextLoginCount(supabase, existing.id)
       })
       .eq("id", existing.id)
-      .select("id, student_no, name, created_at")
+      .select("id, student_no, name, is_guest, created_at")
       .single();
     await logAccess(
       supabase,
@@ -84,13 +84,13 @@ export async function POST(request: NextRequest) {
       last_login_at: new Date().toISOString(),
       login_count: 1
     })
-    .select("id, student_no, name, created_at")
+    .select("id, student_no, name, is_guest, created_at")
     .single();
 
   if (error?.code === "23505") {
     const { data: concurrentStudent, error: retryError } = await supabase
       .from("students")
-      .select("id, student_no, name, created_at")
+      .select("id, student_no, name, is_guest, created_at")
       .eq("student_no", studentNo)
       .single();
     if (!retryError) {

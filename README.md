@@ -5,7 +5,7 @@
 
 PyOJ Classroom은 중학생 파이썬 초급 수업을 위한 Online Judge 기반 학습 플랫폼입니다.
 
-- 학생: 학번 4자리와 이름으로 로그인, 문제 풀이, 코드 제출, 결과 확인
+- 학생: 학번 4자리와 이름으로 로그인하거나 비로그인으로 문제 풀이, 코드 제출, 결과 확인
 - 교사: 제출 기록 확인, 학급 대시보드, 문제 생성 흐름 확인
 - DB: Supabase PostgreSQL
 - 배포: Vercel
@@ -42,6 +42,11 @@ Vercel에서 새로 배포해야 클라이언트 번들에 값이 반영됩니�
 `NEXT_PUBLIC_` 접두사를 붙이지 마세요. 기존 Supabase 프로젝트는 SQL Editor에서
 `supabase/teacher_dashboard_security.sql`을 한 번 실행해 브라우저 anon 사용자의 제출 기록
 조회 권한을 제거합니다. 교사 대시보드는 인증된 서버 API가 service role로 조회합니다.
+
+비로그인 문제 풀이를 배포하기 전 기존 프로젝트에서는 SQL Editor에서
+`supabase/guest_access_migration.sql`을 한 번 실행하세요. 비로그인 사용자는 브라우저별
+임의 토큰으로 구분되며 IP 주소는 원문 대신 서버에서 해시한 보조 식별값만 저장됩니다.
+별도 해시 비밀값을 쓰려면 서버 환경변수 `GUEST_IP_HASH_SECRET`을 설정하세요.
 
 처음 설치하거나 문제 테이블이 비어 있는 프로젝트는 Supabase SQL Editor에서
 `supabase/seed_current_curriculum.sql`을 실행해 현재 앱의 문제집, 문제, 테스트케이스를

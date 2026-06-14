@@ -44,6 +44,7 @@ export type Student = {
   id: string;
   student_no: string;
   name: string;
+  is_guest?: boolean;
   created_at?: string;
 };
 
@@ -66,5 +67,5 @@ export type SubmissionStatus =
   | "code_requirement_failed";
 
 export type SubmissionWithStudent = Submission & {
-  students?: Pick<Student, "student_no" | "name"> | null;
+  students?: Pick<Student, "student_no" | "name" | "is_guest"> | null;
 };
