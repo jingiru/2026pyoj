@@ -45,8 +45,9 @@ Vercel에서 새로 배포해야 클라이언트 번들에 값이 반영됩니�
 
 비로그인 문제 풀이를 배포하기 전 기존 프로젝트에서는 SQL Editor에서
 `supabase/guest_access_migration.sql`을 한 번 실행하세요. 비로그인 사용자는 브라우저별
-임의 토큰으로 구분되며 IP 주소는 원문 대신 서버에서 해시한 보조 식별값만 저장됩니다.
-별도 해시 비밀값을 쓰려면 서버 환경변수 `GUEST_IP_HASH_SECRET`을 설정하세요.
+임의 토큰으로 구분되며 `students.guest_token`, `students.last_ip`에 토큰과 IP 주소가
+원문으로 저장됩니다. 두 값은 개인정보 및 게스트 접근 권한 정보이므로 students 테이블은
+브라우저 anon 역할에서 조회할 수 없도록 유지됩니다.
 
 처음 설치하거나 문제 테이블이 비어 있는 프로젝트는 Supabase SQL Editor에서
 `supabase/seed_current_curriculum.sql`을 실행해 현재 앱의 문제집, 문제, 테스트케이스를

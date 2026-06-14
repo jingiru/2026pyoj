@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
-import { hashGuestToken } from "@/lib/guest-identity";
 
 type CodeRunPayload = {
   studentId?: unknown;
@@ -42,14 +41,14 @@ export async function POST(request: Request) {
   }
   const { data: student } = await supabase
     .from("students")
-    .select("is_guest, guest_token_hash")
+    .select("is_guest, guest_token")
     .eq("id", body.studentId)
     .single();
   if (
     !student ||
     (student.is_guest &&
       (typeof body.guestToken !== "string" ||
-        student.guest_token_hash !== hashGuestToken(body.guestToken)))
+        student.guest_token !== body.guestToken))
   ) {
     return NextResponse.json({ ok: false, message: "실행 로그 저장 권한이 없습니다." }, { status: 403 });
   }

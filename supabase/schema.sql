@@ -5,8 +5,8 @@ create table if not exists public.students (
   student_no text not null,
   name text not null check (char_length(trim(name)) >= 2),
   is_guest boolean not null default false,
-  guest_token_hash text,
-  last_ip_hash text,
+  guest_token text,
+  last_ip text,
   created_at timestamptz not null default now(),
   constraint students_student_no_check check (
     (not is_guest and student_no ~ '^[0-9]{4}$')
@@ -16,9 +16,9 @@ create table if not exists public.students (
   unique (student_no, name)
 );
 
-create unique index if not exists students_guest_token_hash_uidx
-on public.students(guest_token_hash)
-where guest_token_hash is not null;
+create unique index if not exists students_guest_token_uidx
+on public.students(guest_token)
+where guest_token is not null;
 create index if not exists students_is_guest_idx on public.students(is_guest);
 
 create table if not exists public.problem_books (

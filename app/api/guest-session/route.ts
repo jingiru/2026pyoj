@@ -2,9 +2,7 @@ import { NextResponse } from "next/server";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
 import {
   getRequestIp,
-  guestDisplayCode,
-  hashGuestIp,
-  hashGuestToken
+  guestDisplayCode
 } from "@/lib/guest-identity";
 import type { Student } from "@/lib/types";
 
@@ -26,16 +24,15 @@ export async function POST(request: Request) {
     );
   }
 
-  const tokenHash = hashGuestToken(token);
-  const ipHash = hashGuestIp(getRequestIp(request));
-  const code = guestDisplayCode(tokenHash);
+  const ipAddress = getRequestIp(request);
+  const code = guestDisplayCode(token);
   const studentNo = `비로그인-${code}`;
   const name = `익명 ${code}`;
   const now = new Date().toISOString();
   const { data: existing, error: selectError } = await supabase
     .from("students")
     .select("id, student_no, name, is_guest, created_at")
-    .eq("guest_token_hash", tokenHash)
+    .eq("guest_token", token)
     .maybeSingle();
 
   if (selectError) return databaseError(selectError, "비로그인 정보를 조회하지 못했습니다.");
@@ -43,7 +40,7 @@ export async function POST(request: Request) {
   if (existing) {
     const { data, error } = await supabase
       .from("students")
-      .update({ last_login_at: now, last_ip_hash: ipHash })
+      .update({ last_login_at: now, last_ip: ipAddress })
       .eq("id", existing.id)
       .select("id, student_no, name, is_guest, created_at")
       .single();
@@ -57,8 +54,8 @@ export async function POST(request: Request) {
       student_no: studentNo,
       name,
       is_guest: true,
-      guest_token_hash: tokenHash,
-      last_ip_hash: ipHash,
+      guest_token: token,
+      last_ip: ipAddress,
       first_login_at: now,
       last_login_at: now,
       login_count: 1

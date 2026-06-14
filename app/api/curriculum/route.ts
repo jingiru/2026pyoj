@@ -1,6 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { loadCurriculum } from "@/lib/curriculum-server";
-import { hashGuestToken } from "@/lib/guest-identity";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
 
 export async function GET(request: NextRequest) {
@@ -36,7 +35,7 @@ async function isValidGuestToken(
     .from("students")
     .select("id")
     .eq("is_guest", true)
-    .eq("guest_token_hash", hashGuestToken(guestToken))
+    .eq("guest_token", guestToken)
     .maybeSingle();
   if (error) {
     console.error("[Curriculum guest verification]", error);

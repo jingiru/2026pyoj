@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
-import { hashGuestToken } from "@/lib/guest-identity";
 import type { Submission } from "@/lib/types";
 
 export async function GET(request: Request) {
@@ -114,10 +113,10 @@ async function canAccessStudent(
 ) {
   const { data, error } = await supabase
     .from("students")
-    .select("is_guest, guest_token_hash")
+    .select("is_guest, guest_token")
     .eq("id", studentId)
     .single();
   if (error || !data) return false;
   if (!data.is_guest) return true;
-  return Boolean(guestToken && data.guest_token_hash === hashGuestToken(guestToken));
+  return Boolean(guestToken && data.guest_token === guestToken);
 }
