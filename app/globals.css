@@ -1290,7 +1290,7 @@ pre {
 
 .solveIdeBody {
   display: grid;
-  grid-template-rows: auto auto;
+  grid-template-rows: auto 10px auto;
   min-height: 0;
   min-width: 0;
 }
@@ -1552,7 +1552,7 @@ pre {
 }
 
 .solveEditorSection {
-  border-bottom: 1px solid var(--line);
+  min-height: var(--solve-editor-height, 330px);
 }
 
 .solveSectionHeader {
@@ -1579,9 +1579,9 @@ pre {
 .solveEditorSection .cm-editor,
 .solveEditorSection .cm-content,
 .solveEditorSection .cm-scroller {
-  height: 330px;
-  max-height: 330px;
-  min-height: 330px;
+  height: var(--solve-editor-height, 330px);
+  max-height: var(--solve-editor-height, 330px);
+  min-height: var(--solve-editor-height, 330px);
 }
 
 .solveEditorSection .cm-content {
@@ -1590,6 +1590,43 @@ pre {
 
 .solveEditorSection .cm-scroller {
   overflow: auto;
+}
+
+.solvePaneResizer {
+  align-items: center;
+  background: color-mix(in srgb, var(--panel) 78%, var(--bg));
+  border-bottom: 1px solid var(--line);
+  border-top: 1px solid var(--line);
+  cursor: row-resize;
+  display: flex;
+  justify-content: center;
+  touch-action: none;
+  user-select: none;
+}
+
+.solvePaneResizer span {
+  background: color-mix(in srgb, var(--muted) 60%, transparent);
+  border-radius: 999px;
+  height: 3px;
+  transition: background 120ms ease, width 120ms ease;
+  width: 44px;
+}
+
+.solvePaneResizer:hover span,
+.solvePaneResizer:focus-visible span,
+.resizingSolvePane .solvePaneResizer span {
+  background: var(--primary);
+  width: 64px;
+}
+
+.solvePaneResizer:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+
+.resizingSolvePane {
+  cursor: row-resize;
+  user-select: none;
 }
 
 .solveTerminal {
@@ -2191,13 +2228,21 @@ kbd {
 }
 
 .submissionMatrix th:nth-child(4),
-.submissionMatrix td:nth-child(4) {
-  min-width: 44px;
-  width: 44px;
+.submissionMatrix td:nth-child(4),
+.submissionMatrix th:nth-child(5),
+.submissionMatrix td:nth-child(5) {
+  min-width: 52px;
+  width: 52px;
 }
 
-.submissionMatrix th:nth-child(n + 5),
-.submissionMatrix td:nth-child(n + 5) {
+.submissionMatrix th:nth-child(6),
+.submissionMatrix td:nth-child(6) {
+  min-width: 76px;
+  width: 76px;
+}
+
+.submissionMatrix th:nth-child(n + 7),
+.submissionMatrix td:nth-child(n + 7) {
   max-width: 36px;
   min-width: 32px;
   width: 32px;

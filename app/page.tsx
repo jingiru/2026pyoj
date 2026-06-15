@@ -50,7 +50,16 @@ import {
   Upload,
   X
 } from "lucide-react";
-import { FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import {
+  FormEvent,
+  KeyboardEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent
+} from "react";
 import {
   problemBooks as fallbackProblemBooks,
   problems as fallbackProblems
@@ -106,8 +115,11 @@ const PRACTICE_CODE_STORAGE_KEY = "pyoj:practice-code";
 const SELECTED_PROBLEM_STORAGE_KEY = "pyoj:selected-problem";
 const PROBLEM_CODE_STORAGE_PREFIX = "pyoj:problem-code:";
 const AUTO_ADVANCE_STORAGE_KEY = "pyoj:auto-advance-on-accepted";
+const SOLVE_EDITOR_HEIGHT_STORAGE_KEY = "pyoj:solve-editor-height";
 const STUDENT_STORAGE_KEY = "pyoj:student";
 const GUEST_TOKEN_STORAGE_KEY = "pyoj:guest-token";
+const DEFAULT_SOLVE_EDITOR_HEIGHT = 330;
+const MIN_SOLVE_EDITOR_HEIGHT = 180;
 const DEFAULT_PROBLEM =
   fallbackProblems.find((problem) => problem.bookId === fallbackProblemBooks[0].id) ??
   fallbackProblems[0];
@@ -224,6 +236,8 @@ export default function Home() {
   const solveRunInputsRef = useRef<string[]>([]);
   const solveRunOutputsRef = useRef<string[]>([]);
   const solveRunErrorsRef = useRef<string[]>([]);
+  const solveResizeRef = useRef<{ startY: number; startHeight: number } | null>(null);
+  const [solveEditorHeight, setSolveEditorHeight] = useState(DEFAULT_SOLVE_EDITOR_HEIGHT);
   const [bookSidebarOpen, setBookSidebarOpen] = useState(true);
   const [problemListOpen, setProblemListOpen] = useState(true);
   const [expandedProblemGroups, setExpandedProblemGroups] = useState<Set<string>>(() => new Set());
@@ -369,6 +383,10 @@ export default function Home() {
     const savedPracticeCode = getStoredValue(PRACTICE_CODE_STORAGE_KEY);
     if (savedPracticeCode !== null) setPracticeCode(savedPracticeCode);
     setAutoAdvanceOnAccepted(getStoredValue(AUTO_ADVANCE_STORAGE_KEY) === "true");
+    const savedSolveEditorHeight = Number(getStoredValue(SOLVE_EDITOR_HEIGHT_STORAGE_KEY));
+    if (Number.isFinite(savedSolveEditorHeight)) {
+      setSolveEditorHeight(Math.max(MIN_SOLVE_EDITOR_HEIGHT, savedSolveEditorHeight));
+    }
 
     const savedStudent = getStoredStudent();
     if (savedStudent) {
@@ -410,6 +428,11 @@ export default function Home() {
     if (!editorStorageReady) return;
     setStoredValue(AUTO_ADVANCE_STORAGE_KEY, String(autoAdvanceOnAccepted));
   }, [autoAdvanceOnAccepted, editorStorageReady]);
+
+  useEffect(() => {
+    if (!editorStorageReady) return;
+    setStoredValue(SOLVE_EDITOR_HEIGHT_STORAGE_KEY, String(solveEditorHeight));
+  }, [editorStorageReady, solveEditorHeight]);
 
   function navigateTo(nextScreen: Screen) {
     const url = new URL(window.location.href);
@@ -881,6 +904,45 @@ export default function Home() {
     setSolveConsoleInput("");
   }
 
+  function clampSolveEditorHeight(height: number) {
+    const maxHeight = Math.max(MIN_SOLVE_EDITOR_HEIGHT, window.innerHeight - 220);
+    return Math.min(maxHeight, Math.max(MIN_SOLVE_EDITOR_HEIGHT, height));
+  }
+
+  function startSolveResize(event: ReactPointerEvent<HTMLDivElement>) {
+    solveResizeRef.current = {
+      startY: event.clientY,
+      startHeight: solveEditorHeight
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    document.body.classList.add("resizingSolvePane");
+  }
+
+  function moveSolveResize(event: ReactPointerEvent<HTMLDivElement>) {
+    const resize = solveResizeRef.current;
+    if (!resize) return;
+    setSolveEditorHeight(
+      clampSolveEditorHeight(resize.startHeight + event.clientY - resize.startY)
+    );
+  }
+
+  function stopSolveResize(event: ReactPointerEvent<HTMLDivElement>) {
+    solveResizeRef.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    document.body.classList.remove("resizingSolvePane");
+  }
+
+  function resizeSolveEditorWithKeyboard(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+    event.preventDefault();
+    const change = event.shiftKey ? 40 : 10;
+    setSolveEditorHeight((height) =>
+      clampSolveEditorHeight(height + (event.key === "ArrowDown" ? change : -change))
+    );
+  }
+
   async function refreshDashboard() {
     setLoading(true);
     setNotice("");
@@ -1213,7 +1275,10 @@ export default function Home() {
                   </button>
                 </div>
               </div>
-              <div className="solveIdeBody">
+              <div
+                className="solveIdeBody"
+                style={{ "--solve-editor-height": `${solveEditorHeight}px` } as CSSProperties}
+              >
                 <div className="solveEditorSection">
                   <div className="solveSectionHeader">
                     <strong>코드 에디터</strong>
@@ -1234,6 +1299,22 @@ export default function Home() {
                     colorMode={colorMode}
                     fontSize={codeFontSize}
                   />
+                </div>
+                <div
+                  className="solvePaneResizer"
+                  role="separator"
+                  aria-label="코드 에디터와 출력 콘솔 높이 조절"
+                  aria-orientation="horizontal"
+                  aria-valuemin={MIN_SOLVE_EDITOR_HEIGHT}
+                  aria-valuenow={solveEditorHeight}
+                  tabIndex={0}
+                  onPointerDown={startSolveResize}
+                  onPointerMove={moveSolveResize}
+                  onPointerUp={stopSolveResize}
+                  onPointerCancel={stopSolveResize}
+                  onKeyDown={resizeSolveEditorWithKeyboard}
+                >
+                  <span />
                 </div>
                 <div className="solveConsoleSection">
                   <div className="solveSectionHeader">
@@ -2024,6 +2105,7 @@ function TeacherDashboard({
   const [classFilter, setClassFilter] = useState("all");
   const [studentFilter, setStudentFilter] = useState("all");
   const [sortBy, setSortBy] = useState("studentNo");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [subgroupFilter, setSubgroupFilter] = useState("all");
   const [selectedSubmission, setSelectedSubmission] = useState<SubmissionWithStudent | null>(null);
   const [overviewStudentId, setOverviewStudentId] = useState("");
@@ -2073,49 +2155,96 @@ function TeacherDashboard({
     (item) => matchesClassFilter(item, classFilter)
   );
   const studentFilterValues = ["all", ...filteredStudents.map((item) => item.id)];
-  const sortFilterValues = ["studentNo", "name", "submissions", "accuracy", "progress"];
+  const sortFilterValues = ["studentNo", "name", "submissions", "accepted", "speed"];
   const studentRows = useMemo(() => {
+    const displayedProblemIds = new Set(displayedProblems.map((problem) => problem.id));
+    const submissionsByStudent = new Map<string, SubmissionWithStudent[]>();
+    for (const submission of submissions) {
+      if (!displayedProblemIds.has(submission.problem_id)) continue;
+      const current = submissionsByStudent.get(submission.student_id) ?? [];
+      current.push(submission);
+      submissionsByStudent.set(submission.student_id, current);
+    }
+
     const rows = students.map((item) => {
       const statuses = displayedProblems.map((problem) =>
         dashboardSubmissionByStudentProblem.get(`${item.id}:${problem.id}`)
       );
-      const submitted = statuses.filter(Boolean).length;
+      const studentSubmissions = submissionsByStudent.get(item.id) ?? [];
+      const submitted = studentSubmissions.length;
       const accepted = statuses.filter((submission) => submission?.status === "accepted").length;
-      const rate = submitted === 0 ? 0 : accepted / submitted;
-      const progress = displayedProblems.length === 0 ? 0 : submitted / displayedProblems.length;
-      return { student: item, statuses, submitted, accepted, rate, progress };
+      const firstAcceptedAtByProblem = new Map<string, number>();
+      for (const submission of studentSubmissions) {
+        if (submission.status !== "accepted" || !submission.created_at) continue;
+        const acceptedAt = new Date(submission.created_at).getTime();
+        if (!Number.isFinite(acceptedAt)) continue;
+        const current = firstAcceptedAtByProblem.get(submission.problem_id);
+        if (current === undefined || acceptedAt < current) {
+          firstAcceptedAtByProblem.set(submission.problem_id, acceptedAt);
+        }
+      }
+
+      const firstProblemId = displayedProblems[0]?.id;
+      const speedStart = firstProblemId
+        ? firstAcceptedAtByProblem.get(firstProblemId)
+        : undefined;
+      const acceptedAfterStart =
+        speedStart === undefined
+          ? []
+          : [...firstAcceptedAtByProblem.values()].filter((acceptedAt) => acceptedAt >= speedStart);
+      const speedEnd =
+        acceptedAfterStart.length > 0 ? Math.max(...acceptedAfterStart) : undefined;
+      const speedMinutes =
+        speedStart !== undefined && speedEnd !== undefined ? (speedEnd - speedStart) / 60000 : 0;
+      const speed =
+        acceptedAfterStart.length >= 2 && speedMinutes > 0
+          ? (acceptedAfterStart.length - 1) / speedMinutes
+          : null;
+
+      return { student: item, statuses, submitted, accepted, speed };
     });
     const filtered = rows.filter(({ student }) => {
       const matchesClass = matchesClassFilter(student, classFilter);
       return matchesClass;
     });
     return filtered.sort((left, right) => {
-      if (sortBy === "name") return left.student.name.localeCompare(right.student.name, "ko");
-      if (sortBy === "submissions") return right.submitted - left.submitted;
-      if (sortBy === "accuracy") return right.rate - left.rate;
-      if (sortBy === "progress") return right.progress - left.progress;
-      return left.student.student_no.localeCompare(right.student.student_no, "ko", { numeric: true });
+      let comparison = 0;
+      if (sortBy === "name") {
+        comparison = left.student.name.localeCompare(right.student.name, "ko");
+      } else if (sortBy === "submissions") {
+        comparison = left.submitted - right.submitted;
+      } else if (sortBy === "accepted") {
+        comparison = left.accepted - right.accepted;
+      } else if (sortBy === "speed") {
+        if (left.speed === null && right.speed !== null) return 1;
+        if (left.speed !== null && right.speed === null) return -1;
+        comparison = (left.speed ?? 0) - (right.speed ?? 0);
+      } else {
+        comparison = left.student.student_no.localeCompare(right.student.student_no, "ko", {
+          numeric: true
+        });
+      }
+
+      if (comparison !== 0) return sortDirection === "asc" ? comparison : -comparison;
+      return left.student.student_no.localeCompare(right.student.student_no, "ko", {
+        numeric: true
+      });
     });
   }, [
     students,
     displayedProblems,
     dashboardSubmissionByStudentProblem,
+    submissions,
     classFilter,
-    sortBy
+    sortBy,
+    sortDirection
   ]);
   const displayedStudentRows =
     studentFilter === "all"
       ? studentRows
       : studentRows.filter(({ student }) => student.id === studentFilter);
   const rankByStudent = useMemo(() => {
-    const ranked = [...studentRows].sort(
-      (left, right) =>
-        right.accepted - left.accepted ||
-        right.rate - left.rate ||
-        right.submitted - left.submitted ||
-        left.student.student_no.localeCompare(right.student.student_no, "ko", { numeric: true })
-    );
-    return new Map(ranked.map((row, index) => [row.student.id, index + 1]));
+    return new Map(studentRows.map((row, index) => [row.student.id, index + 1]));
   }, [studentRows]);
   const selectedSubmissionHistory = selectedSubmission
     ? submissions.filter(
@@ -2355,10 +2484,10 @@ function TeacherDashboard({
               <div className="filterSelectControl">
                 <select value={sortBy} onChange={(event) => setSortBy(event.target.value)}>
                   <option value="studentNo">학번</option>
-                  <option value="name">가나다</option>
-                  <option value="submissions">제출개수</option>
-                  <option value="accuracy">정답률</option>
-                  <option value="progress">진행률</option>
+                  <option value="name">이름</option>
+                  <option value="submissions">제출수</option>
+                  <option value="accepted">정답수</option>
+                  <option value="speed">풀이속도</option>
                 </select>
                 <FilterStepButtons
                   label="정렬"
@@ -2367,6 +2496,16 @@ function TeacherDashboard({
                   onChange={setSortBy}
                 />
               </div>
+            </label>
+            <label>
+              <span>방향</span>
+              <select
+                value={sortDirection}
+                onChange={(event) => setSortDirection(event.target.value as "asc" | "desc")}
+              >
+                <option value="asc">오름차순</option>
+                <option value="desc">내림차순</option>
+              </select>
             </label>
           </div>
         </div>
@@ -2380,7 +2519,9 @@ function TeacherDashboard({
                   <th>순위</th>
                   <th>학번</th>
                   <th>이름</th>
-                  <th>점수</th>
+                  <th>정답수</th>
+                  <th>제출수</th>
+                  <th>풀이속도</th>
                   {displayedProblems.map((problem) => (
                     <th
                       className={`subgroupTone${subgroupToneByProblemId.get(problem.id) ?? 0}`}
@@ -2417,6 +2558,8 @@ function TeacherDashboard({
                       </button>
                     </th>
                     <td className="scoreCell">{row.accepted}</td>
+                    <td>{row.submitted}</td>
+                    <td>{row.speed === null ? "-" : `${row.speed.toFixed(2)}/분`}</td>
                     {row.statuses.map((submission, index) => (
                       <td
                         className={`subgroupTone${

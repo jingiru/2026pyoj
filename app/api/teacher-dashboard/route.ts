@@ -27,20 +27,31 @@ export async function GET(request: NextRequest) {
       detectSessionInUrl: false
     }
   });
-  const [
-    { data: submissionData, error: submissionError },
-    { data: studentData, error: studentError }
-  ] = await Promise.all([
-    supabase
+  const submissionPageSize = 1000;
+  const submissionData: SubmissionWithStudent[] = [];
+  let submissionError = null;
+
+  for (let from = 0; ; from += submissionPageSize) {
+    const { data, error } = await supabase
       .from("submissions")
       .select("*, students(student_no, name, is_guest)")
       .order("created_at", { ascending: false })
-      .range(0, 4999),
-    supabase
-      .from("students")
-      .select("id, student_no, name, is_guest, created_at")
-      .order("student_no")
-  ]);
+      .range(from, from + submissionPageSize - 1);
+
+    if (error) {
+      submissionError = error;
+      break;
+    }
+
+    const page = (data ?? []) as SubmissionWithStudent[];
+    submissionData.push(...page);
+    if (page.length < submissionPageSize) break;
+  }
+
+  const { data: studentData, error: studentError } = await supabase
+    .from("students")
+    .select("id, student_no, name, is_guest, created_at")
+    .order("student_no");
 
   const error = submissionError ?? studentError;
   if (error) {
@@ -62,7 +73,7 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     ok: true,
-    submissions: (submissionData ?? []) as SubmissionWithStudent[],
+    submissions: submissionData,
     students: (studentData ?? []) as Student[]
   });
 }
