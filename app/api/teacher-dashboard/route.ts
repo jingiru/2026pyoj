@@ -27,31 +27,50 @@ export async function GET(request: NextRequest) {
       detectSessionInUrl: false
     }
   });
+  const rawAfter = request.nextUrl.searchParams.get("after");
+  const after =
+    rawAfter && Number.isFinite(new Date(rawAfter).getTime())
+      ? new Date(rawAfter).toISOString()
+      : null;
   const submissionPageSize = 1000;
   const submissionData: SubmissionWithStudent[] = [];
   let submissionError = null;
 
-  for (let from = 0; ; from += submissionPageSize) {
+  if (after) {
     const { data, error } = await supabase
       .from("submissions")
       .select("*, students(student_no, name, is_guest)")
       .order("created_at", { ascending: false })
-      .range(from, from + submissionPageSize - 1);
+      .gt("created_at", after)
+      .limit(200);
 
-    if (error) {
-      submissionError = error;
-      break;
+    if (error) submissionError = error;
+    else submissionData.push(...((data ?? []) as SubmissionWithStudent[]));
+  } else {
+    for (let from = 0; ; from += submissionPageSize) {
+      const { data, error } = await supabase
+        .from("submissions")
+        .select("*, students(student_no, name, is_guest)")
+        .order("created_at", { ascending: false })
+        .range(from, from + submissionPageSize - 1);
+
+      if (error) {
+        submissionError = error;
+        break;
+      }
+
+      const page = (data ?? []) as SubmissionWithStudent[];
+      submissionData.push(...page);
+      if (page.length < submissionPageSize) break;
     }
-
-    const page = (data ?? []) as SubmissionWithStudent[];
-    submissionData.push(...page);
-    if (page.length < submissionPageSize) break;
   }
 
-  const { data: studentData, error: studentError } = await supabase
-    .from("students")
-    .select("id, student_no, name, is_guest, created_at")
-    .order("student_no");
+  const { data: studentData, error: studentError } = after
+    ? { data: [], error: null }
+    : await supabase
+        .from("students")
+        .select("id, student_no, name, is_guest, created_at")
+        .order("student_no");
 
   const error = submissionError ?? studentError;
   if (error) {

@@ -118,6 +118,8 @@ const AUTO_ADVANCE_STORAGE_KEY = "pyoj:auto-advance-on-accepted";
 const SOLVE_EDITOR_HEIGHT_STORAGE_KEY = "pyoj:solve-editor-height";
 const STUDENT_STORAGE_KEY = "pyoj:student";
 const GUEST_TOKEN_STORAGE_KEY = "pyoj:guest-token";
+const DASHBOARD_POLL_INTERVAL_MS = 7000;
+const DASHBOARD_BACKGROUND_POLL_INTERVAL_MS = 30000;
 const DEFAULT_SOLVE_EDITOR_HEIGHT = 330;
 const MIN_SOLVE_EDITOR_HEIGHT = 180;
 const DEFAULT_PROBLEM =
@@ -247,6 +249,8 @@ export default function Home() {
   const [teacherStudents, setTeacherStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(false);
   const [editorStorageReady, setEditorStorageReady] = useState(false);
+  const latestDashboardSubmissionAtRef = useRef<string | null>(null);
+  const dashboardRefreshInFlightRef = useRef(false);
 
   const dashboard = useMemo(() => {
     const accepted = submissions.filter((submission) => submission.status === "accepted").length;
@@ -378,6 +382,39 @@ export default function Home() {
   useEffect(() => {
     void refreshCurriculum();
   }, []);
+
+  useEffect(() => {
+    if (screen !== "teacher" || !isTeacherAuthenticated) return;
+
+    let stopped = false;
+    let timeoutId: number | undefined;
+
+    const scheduleNextRefresh = () => {
+      if (stopped) return;
+      const interval =
+        document.visibilityState === "hidden"
+          ? DASHBOARD_BACKGROUND_POLL_INTERVAL_MS
+          : DASHBOARD_POLL_INTERVAL_MS;
+      timeoutId = window.setTimeout(async () => {
+        await refreshDashboard({ incremental: true });
+        scheduleNextRefresh();
+      }, interval);
+    };
+
+    const handleVisibilityChange = () => {
+      if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+      if (document.visibilityState === "visible") void refreshDashboard({ incremental: true });
+      scheduleNextRefresh();
+    };
+
+    scheduleNextRefresh();
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      stopped = true;
+      if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [screen, isTeacherAuthenticated]);
 
   useEffect(() => {
     const savedPracticeCode = getStoredValue(PRACTICE_CODE_STORAGE_KEY);
@@ -558,6 +595,7 @@ export default function Home() {
       setIsTeacherAuthenticated(false);
       setSubmissions([]);
       setNotice("");
+      latestDashboardSubmissionAtRef.current = null;
       navigateTo("home");
     }
   }
@@ -943,11 +981,22 @@ export default function Home() {
     );
   }
 
-  async function refreshDashboard() {
-    setLoading(true);
-    setNotice("");
+  async function refreshDashboard(options: { incremental?: boolean } = {}) {
+    if (dashboardRefreshInFlightRef.current) return;
+
+    const incremental = options.incremental && Boolean(latestDashboardSubmissionAtRef.current);
+    dashboardRefreshInFlightRef.current = true;
+    if (!incremental) setLoading(true);
+    if (!incremental) setNotice("");
     try {
-      const response = await fetch("/api/teacher-dashboard", { cache: "no-store" });
+      const query = new URLSearchParams();
+      if (incremental && latestDashboardSubmissionAtRef.current) {
+        query.set("after", latestDashboardSubmissionAtRef.current);
+      }
+      const response = await fetch(
+        `/api/teacher-dashboard${query.toString() ? `?${query.toString()}` : ""}`,
+        { cache: "no-store" }
+      );
       const data = (await response.json()) as {
         ok?: boolean;
         submissions?: SubmissionWithStudent[];
@@ -960,6 +1009,7 @@ export default function Home() {
         setIsTeacherAuthenticated(false);
         setSubmissions([]);
         setTeacherStudents([]);
+        latestDashboardSubmissionAtRef.current = null;
         setTeacherLoginError("교사 로그인이 필요합니다.");
         setTeacherLoginOpen(true);
         navigateTo("home");
@@ -968,16 +1018,33 @@ export default function Home() {
 
       if (!response.ok || !data.ok) {
         const suffix = data.code ? ` (${data.code})` : "";
-        setNotice(`${data.message ?? "대시보드를 불러오지 못했습니다."}${suffix}`);
+        if (!incremental) {
+          setNotice(`${data.message ?? "대시보드를 불러오지 못했습니다."}${suffix}`);
+        }
         return;
       }
 
-      setSubmissions(data.submissions ?? []);
-      setTeacherStudents(data.students ?? []);
+      if (incremental) {
+        const nextSubmissions = data.submissions ?? [];
+        if (nextSubmissions.length > 0) {
+          setSubmissions((current) => {
+            const merged = mergeSubmissions(current, nextSubmissions);
+            latestDashboardSubmissionAtRef.current = getLatestSubmissionCreatedAt(merged);
+            return merged;
+          });
+          setTeacherStudents((current) => mergeStudentsFromSubmissions(current, nextSubmissions));
+        }
+      } else {
+        const nextSubmissions = data.submissions ?? [];
+        setSubmissions(nextSubmissions);
+        setTeacherStudents(data.students ?? []);
+        latestDashboardSubmissionAtRef.current = getLatestSubmissionCreatedAt(nextSubmissions);
+      }
     } catch {
-      setNotice("대시보드 데이터를 불러오지 못했습니다.");
+      if (!incremental) setNotice("대시보드 데이터를 불러오지 못했습니다.");
     } finally {
-      setLoading(false);
+      dashboardRefreshInFlightRef.current = false;
+      if (!incremental) setLoading(false);
     }
   }
 
@@ -1472,7 +1539,7 @@ export default function Home() {
               </label>
               <label>
                 이름
-                <input placeholder="예: 민수" value={name} onChange={(event) => setName(event.target.value)} />
+                <input placeholder="예: 진기루" value={name} onChange={(event) => setName(event.target.value)} />
               </label>
               <button className="primaryButton wideButton" disabled={loading}>
                 <CheckCircle2 size={18} />
@@ -2078,6 +2145,62 @@ async function judgeProblemSubmission(problem: Problem, code: string): Promise<J
 
 function normalizeJudgeOutput(value: string) {
   return value.replace(/\r\n/g, "\n").trim();
+}
+
+function getSubmissionMergeKey(submission: SubmissionWithStudent) {
+  return (
+    submission.id ??
+    `${submission.student_id}:${submission.problem_id}:${submission.created_at ?? ""}:${submission.status}`
+  );
+}
+
+function mergeSubmissions(
+  current: SubmissionWithStudent[],
+  incoming: SubmissionWithStudent[]
+) {
+  const byKey = new Map<string, SubmissionWithStudent>();
+  for (const submission of [...current, ...incoming]) {
+    byKey.set(getSubmissionMergeKey(submission), submission);
+  }
+  return [...byKey.values()].sort((left, right) => {
+    const leftTime = left.created_at ? new Date(left.created_at).getTime() : 0;
+    const rightTime = right.created_at ? new Date(right.created_at).getTime() : 0;
+    return rightTime - leftTime;
+  });
+}
+
+function mergeStudentsFromSubmissions(
+  current: Student[],
+  submissions: SubmissionWithStudent[]
+) {
+  const byId = new Map(current.map((student) => [student.id, student]));
+  for (const submission of submissions) {
+    if (byId.has(submission.student_id) || !submission.students) continue;
+    byId.set(submission.student_id, {
+      id: submission.student_id,
+      student_no: submission.students.student_no,
+      name: submission.students.name,
+      is_guest: submission.students.is_guest
+    });
+  }
+  return [...byId.values()].sort(
+    (left, right) =>
+      left.student_no.localeCompare(right.student_no, "ko") ||
+      left.name.localeCompare(right.name, "ko")
+  );
+}
+
+function getLatestSubmissionCreatedAt(submissions: SubmissionWithStudent[]) {
+  let latest: string | null = null;
+  let latestTime = Number.NEGATIVE_INFINITY;
+  for (const submission of submissions) {
+    if (!submission.created_at) continue;
+    const time = new Date(submission.created_at).getTime();
+    if (!Number.isFinite(time) || time <= latestTime) continue;
+    latest = submission.created_at;
+    latestTime = time;
+  }
+  return latest;
 }
 
 function TeacherDashboard({
