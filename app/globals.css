@@ -2649,6 +2649,47 @@ kbd {
   margin-left: auto;
 }
 
+.bulkVisibilityFieldset {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+  margin: 0 0 0 auto;
+  min-width: 260px;
+  padding: 10px 12px;
+}
+
+.bulkVisibilityFieldset legend {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  padding: 0 5px;
+}
+
+.bulkVisibilityModes,
+.bulkClassOptions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+}
+
+.bulkVisibilityModes label,
+.bulkClassOptions label {
+  align-items: center;
+  color: var(--ink);
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 700;
+  gap: 5px;
+  min-width: auto;
+}
+
+.bulkVisibilityModes input,
+.bulkClassOptions input {
+  height: 15px;
+  width: 15px;
+}
+
 .bookVisibilityActions button:disabled {
   cursor: not-allowed;
   opacity: 0.5;
@@ -3078,6 +3119,11 @@ kbd {
   }
 
   .bookVisibilityActions {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .bulkVisibilityFieldset {
     margin-left: 0;
     width: 100%;
   }

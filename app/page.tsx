@@ -3020,6 +3020,8 @@ function TeacherProblemManager({
   const [managerOpen, setManagerOpen] = useState(false);
   const [managerBookId, setManagerBookId] = useState(books[0]?.id ?? "");
   const [managerSubgroupFilter, setManagerSubgroupFilter] = useState("all");
+  const [bulkVisibilityScope, setBulkVisibilityScope] = useState<NonNullable<Problem["visibilityScope"]>>("all");
+  const [bulkVisibleClassIds, setBulkVisibleClassIds] = useState<string[]>([CLASS_VISIBILITY_OPTIONS[0]]);
   const importFileRef = useRef<HTMLInputElement>(null);
   const selectedManagedBook =
     managedBooks.find((book) => book.id === managerBookId) ?? managedBooks[0];
@@ -3173,13 +3175,23 @@ function TeacherProblemManager({
 
   async function setBookVisibility(isPublished: boolean) {
     if (!selectedManagedBook || bulkVisibilitySaving) return;
+    if (isPublished && bulkVisibilityScope === "classes" && bulkVisibleClassIds.length === 0) {
+      setManagerError("전체 공개할 학급을 1개 이상 선택해주세요.");
+      return;
+    }
     setBulkVisibilitySaving(true);
     setManagerError("");
+    const visibleClassIds = bulkVisibilityScope === "classes" ? bulkVisibleClassIds : [];
     try {
       const response = await fetch("/api/teacher-problems", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bookId: selectedManagedBook.id, isPublished, visibilityScope: "all", visibleClassIds: [] })
+        body: JSON.stringify({
+          bookId: selectedManagedBook.id,
+          isPublished,
+          visibilityScope: bulkVisibilityScope,
+          visibleClassIds
+        })
       });
       const data = (await response.json()) as { ok?: boolean; message?: string; code?: string };
       if (!response.ok || !data.ok) {
@@ -3240,6 +3252,22 @@ function TeacherProblemManager({
 
   function updateProblem<K extends keyof Problem>(key: K, value: Problem[K]) {
     setEditingProblem((problem) => (problem ? { ...problem, [key]: value } : problem));
+  }
+
+  function updateBulkVisibilityScope(scope: NonNullable<Problem["visibilityScope"]>) {
+    setBulkVisibilityScope(scope);
+    if (scope === "classes" && bulkVisibleClassIds.length === 0) {
+      setBulkVisibleClassIds([CLASS_VISIBILITY_OPTIONS[0]]);
+    }
+  }
+
+  function toggleBulkVisibleClass(classId: string) {
+    setBulkVisibleClassIds((current) => {
+      const selected = new Set(current);
+      if (selected.has(classId)) selected.delete(classId);
+      else selected.add(classId);
+      return CLASS_VISIBILITY_OPTIONS.filter((option) => selected.has(option));
+    });
   }
 
   function updateVisibilityScope(scope: NonNullable<Problem["visibilityScope"]>) {
@@ -3375,6 +3403,43 @@ function TeacherProblemManager({
               {filteredManagedProblems.length}문제 · 전체 {selectedManagedProblems.length}문제 중{" "}
               {publishedManagedProblemCount}문제 공개
             </span>
+            <fieldset className="bulkVisibilityFieldset">
+              <legend>일괄 공개 범위</legend>
+              <div className="bulkVisibilityModes">
+                <label>
+                  <input
+                    type="radio"
+                    name="bulkVisibilityScope"
+                    checked={bulkVisibilityScope === "all"}
+                    onChange={() => updateBulkVisibilityScope("all")}
+                  />
+                  전체 학급
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    name="bulkVisibilityScope"
+                    checked={bulkVisibilityScope === "classes"}
+                    onChange={() => updateBulkVisibilityScope("classes")}
+                  />
+                  특정 학급
+                </label>
+              </div>
+              {bulkVisibilityScope === "classes" && (
+                <div className="bulkClassOptions">
+                  {CLASS_VISIBILITY_OPTIONS.map((classId) => (
+                    <label key={classId}>
+                      <input
+                        type="checkbox"
+                        checked={bulkVisibleClassIds.includes(classId)}
+                        onChange={() => toggleBulkVisibleClass(classId)}
+                      />
+                      {classId}반
+                    </label>
+                  ))}
+                </div>
+              )}
+            </fieldset>
             <div className="bookVisibilityActions">
               <button
                 className="managerActionButton visibilityButton published"
@@ -3382,10 +3447,14 @@ function TeacherProblemManager({
                 disabled={
                   bulkVisibilitySaving ||
                   selectedManagedProblems.length === 0 ||
-                  (selectedManagedBook?.isPublished !== false &&
-                    publishedManagedProblemCount === selectedManagedProblems.length)
+                  (bulkVisibilityScope === "classes" && bulkVisibleClassIds.length === 0)
                 }
                 onClick={() => void setBookVisibility(true)}
+                title={
+                  bulkVisibilityScope === "classes"
+                    ? `${bulkVisibleClassIds.map((classId) => `${classId}반`).join(", ")}에 전체 공개`
+                    : "전체 학급에 전체 공개"
+                }
               >
                 <Eye size={16} />
                 {bulkVisibilitySaving ? "처리 중" : "전체 공개"}
