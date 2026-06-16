@@ -125,6 +125,7 @@ const MIN_SOLVE_EDITOR_HEIGHT = 180;
 const DEFAULT_PROBLEM =
   fallbackProblems.find((problem) => problem.bookId === fallbackProblemBooks[0].id) ??
   fallbackProblems[0];
+const CLASS_VISIBILITY_OPTIONS = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
 
 const sublimeDarkHighlight = HighlightStyle.define([
   { tag: tags.comment, color: "#75715e", fontStyle: "italic" },
@@ -500,7 +501,7 @@ export default function Home() {
       setStoredValue(STUDENT_STORAGE_KEY, JSON.stringify(signedIn));
       setPersonalSubmissions(getLocalSubmissions(signedIn.id));
       void refreshSolvedProblems(signedIn.id);
-      void refreshCurriculum();
+      void refreshCurriculum(signedIn);
       setLoginOpen(false);
       navigateTo("solve");
       setNotice("");
@@ -520,7 +521,7 @@ export default function Home() {
       setStoredValue(STUDENT_STORAGE_KEY, JSON.stringify(guest));
       setPersonalSubmissions(getLocalSubmissions(guest.id));
       void refreshSolvedProblems(guest.id);
-      void refreshCurriculum();
+      void refreshCurriculum(guest);
       setLoginOpen(false);
       navigateTo("solve");
       setNotice("");
@@ -670,13 +671,15 @@ export default function Home() {
     resetSolveConsole();
   }
 
-  async function refreshCurriculum() {
+  async function refreshCurriculum(studentOverride?: Student | null) {
     try {
-      const savedStudent = getStoredStudent();
+      const savedStudent = studentOverride ?? getStoredStudent();
       const headers: HeadersInit = {};
       if (savedStudent?.is_guest) {
         const guestToken = getStoredValue(GUEST_TOKEN_STORAGE_KEY);
         if (guestToken) headers["x-pyoj-guest-token"] = guestToken;
+      } else if (savedStudent?.id) {
+        headers["x-pyoj-student-id"] = savedStudent.id;
       }
       const response = await fetch("/api/curriculum", {
         cache: "no-store",
@@ -3003,7 +3006,9 @@ function TeacherProblemManager({
     codeRequirements: [],
     examples: [],
     testCases: [{ input: "", output: "", isSample: false }],
-    isPublished: true
+    isPublished: true,
+    visibilityScope: "all",
+    visibleClassIds: []
   });
   const [editingProblem, setEditingProblem] = useState<Problem | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -3131,13 +3136,27 @@ function TeacherProblemManager({
     const isPublished = problem.isPublished === false;
     setManagerError("");
     setManagedProblems((items) =>
-      items.map((item) => (item.id === problem.id ? { ...item, isPublished } : item))
+      items.map((item) =>
+        item.id === problem.id
+          ? {
+              ...item,
+              isPublished,
+              visibilityScope: isPublished ? item.visibilityScope ?? "all" : item.visibilityScope,
+              visibleClassIds: item.visibleClassIds ?? []
+            }
+          : item
+      )
     );
     try {
       const response = await fetch("/api/teacher-problems", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: problem.id, isPublished })
+        body: JSON.stringify({
+          id: problem.id,
+          isPublished,
+          visibilityScope: problem.visibilityScope ?? "all",
+          visibleClassIds: problem.visibleClassIds ?? []
+        })
       });
       const data = (await response.json()) as { ok?: boolean; message?: string; code?: string };
       if (!response.ok || !data.ok) {
@@ -3160,7 +3179,7 @@ function TeacherProblemManager({
       const response = await fetch("/api/teacher-problems", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bookId: selectedManagedBook.id, isPublished })
+        body: JSON.stringify({ bookId: selectedManagedBook.id, isPublished, visibilityScope: "all", visibleClassIds: [] })
       });
       const data = (await response.json()) as { ok?: boolean; message?: string; code?: string };
       if (!response.ok || !data.ok) {
@@ -3221,6 +3240,40 @@ function TeacherProblemManager({
 
   function updateProblem<K extends keyof Problem>(key: K, value: Problem[K]) {
     setEditingProblem((problem) => (problem ? { ...problem, [key]: value } : problem));
+  }
+
+  function updateVisibilityScope(scope: NonNullable<Problem["visibilityScope"]>) {
+    setEditingProblem((problem) =>
+      problem
+        ? {
+            ...problem,
+            isPublished: true,
+            visibilityScope: scope,
+            visibleClassIds:
+              scope === "classes"
+                ? problem.visibleClassIds && problem.visibleClassIds.length > 0
+                  ? problem.visibleClassIds
+                  : [CLASS_VISIBILITY_OPTIONS[0]]
+                : []
+          }
+        : problem
+    );
+  }
+
+  function toggleVisibleClass(classId: string) {
+    setEditingProblem((problem) => {
+      if (!problem) return problem;
+      const current = new Set(problem.visibleClassIds ?? []);
+      if (current.has(classId)) current.delete(classId);
+      else current.add(classId);
+      const visibleClassIds = CLASS_VISIBILITY_OPTIONS.filter((option) => current.has(option));
+      return {
+        ...problem,
+        visibleClassIds,
+        visibilityScope: "classes",
+        isPublished: true
+      };
+    });
   }
 
   function updateTestCase<K extends keyof TestCase>(
@@ -3372,7 +3425,7 @@ function TeacherProblemManager({
               title={problem.isPublished === false ? "학생에게 공개" : "비공개로 전환"}
             >
               {problem.isPublished === false ? <EyeOff size={16} /> : <Eye size={16} />}
-              {problem.isPublished === false ? "비공개" : "공개"}
+              {formatVisibilityLabel(problem)}
             </button>
             <button className="managerActionButton editButton" onClick={() => openEdit(problem)}>
               <Pencil size={16} />
@@ -3471,14 +3524,52 @@ function TeacherProblemManager({
                 힌트
                 <textarea value={editingProblem.hint} onChange={(event) => updateProblem("hint", event.target.value)} />
               </label>
-              <label className="publishToggle">
-                <input
-                  type="checkbox"
-                  checked={editingProblem.isPublished !== false}
-                  onChange={(event) => updateProblem("isPublished", event.target.checked)}
-                />
-                학생에게 공개
-              </label>
+              <fieldset className="visibilityFieldset">
+                <legend>공개 범위</legend>
+                <div className="visibilityModeOptions">
+                  <label className="publishToggle">
+                    <input
+                      type="radio"
+                      name="visibility"
+                      checked={editingProblem.isPublished === false}
+                      onChange={() => updateProblem("isPublished", false)}
+                    />
+                    비공개
+                  </label>
+                  <label className="publishToggle">
+                    <input
+                      type="radio"
+                      name="visibility"
+                      checked={editingProblem.isPublished !== false && (editingProblem.visibilityScope ?? "all") === "all"}
+                      onChange={() => updateVisibilityScope("all")}
+                    />
+                    전체 학급 공개
+                  </label>
+                  <label className="publishToggle">
+                    <input
+                      type="radio"
+                      name="visibility"
+                      checked={editingProblem.isPublished !== false && editingProblem.visibilityScope === "classes"}
+                      onChange={() => updateVisibilityScope("classes")}
+                    />
+                    특정 학급 공개
+                  </label>
+                </div>
+                {editingProblem.isPublished !== false && editingProblem.visibilityScope === "classes" && (
+                  <div className="classVisibilityOptions">
+                    {CLASS_VISIBILITY_OPTIONS.map((classId) => (
+                      <label key={classId} className="classVisibilityOption">
+                        <input
+                          type="checkbox"
+                          checked={(editingProblem.visibleClassIds ?? []).includes(classId)}
+                          onChange={() => toggleVisibleClass(classId)}
+                        />
+                        {classId}반
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </fieldset>
               <div className="testCaseEditor">
                 <div className="problemManagerHeader">
                   <h3>테스트케이스</h3>
@@ -3675,6 +3766,17 @@ function ImportResultItem({ label, value }: { label: string; value: number }) {
 
 function problemTitle(problemId: string, problems: Problem[]) {
   return problems.find((problem) => problem.id === problemId)?.title ?? problemId;
+}
+
+function formatVisibilityLabel(problem: Problem) {
+  if (problem.isPublished === false) return "비공개";
+  if (problem.visibilityScope === "classes") {
+    const classes = (problem.visibleClassIds ?? [])
+      .filter((classId) => CLASS_VISIBILITY_OPTIONS.includes(classId))
+      .map((classId) => `${classId}반`);
+    return classes.length > 0 ? `${classes.join(", ")} 공개` : "학급 미지정";
+  }
+  return "전체 공개";
 }
 
 function formatBookTitle(book: ProblemBook) {

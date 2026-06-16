@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { CodeRequirement, Problem, ProblemBook } from "./types";
+import type { CodeRequirement, Problem, ProblemBook, ProblemVisibilityScope } from "./types";
 
 type ProblemRow = {
   id: string;
@@ -13,6 +13,8 @@ type ProblemRow = {
   code_requirements: CodeRequirement[] | null;
   sort_order: number;
   is_published: boolean;
+  visibility_scope: ProblemVisibilityScope | null;
+  visible_class_ids: string[] | null;
   test_cases?: Array<{
     input: string;
     expected_output: string;
@@ -21,7 +23,11 @@ type ProblemRow = {
   }>;
 };
 
-export async function loadCurriculum(supabase: SupabaseClient, publishedOnly: boolean) {
+export async function loadCurriculum(
+  supabase: SupabaseClient,
+  publishedOnly: boolean,
+  studentClassId?: string | null
+) {
   let bookQuery = supabase
     .from("problem_books")
     .select("id, title, description, sort_order, is_published")
@@ -29,7 +35,7 @@ export async function loadCurriculum(supabase: SupabaseClient, publishedOnly: bo
   let problemQuery = supabase
     .from("problems")
     .select(
-      "id, book_id, title, statement, input_description, output_description, starter_code, hint, code_requirements, sort_order, is_published, test_cases(input, expected_output, is_sample, sort_order)"
+      "id, book_id, title, statement, input_description, output_description, starter_code, hint, code_requirements, sort_order, is_published, visibility_scope, visible_class_ids, test_cases(input, expected_output, is_sample, sort_order)"
     )
     .order("sort_order")
     .order("id");
@@ -37,6 +43,9 @@ export async function loadCurriculum(supabase: SupabaseClient, publishedOnly: bo
   if (publishedOnly) {
     bookQuery = bookQuery.eq("is_published", true);
     problemQuery = problemQuery.eq("is_published", true);
+    problemQuery = studentClassId
+      ? problemQuery.or(`visibility_scope.eq.all,visible_class_ids.cs.["${studentClassId}"]`)
+      : problemQuery.eq("visibility_scope", "all");
   }
 
   const [{ data: bookRows, error: bookError }, { data: problemRows, error: problemError }] =
@@ -76,7 +85,9 @@ export async function loadCurriculum(supabase: SupabaseClient, publishedOnly: bo
         isSample: testCase.is_sample
       })),
       showExample: cases.length > 1 && samples.length > 0,
-      isPublished: problem.is_published
+      isPublished: problem.is_published,
+      visibilityScope: problem.visibility_scope ?? "all",
+      visibleClassIds: problem.visible_class_ids ?? []
     };
   });
 

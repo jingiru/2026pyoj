@@ -13,10 +13,12 @@ export async function GET(request: NextRequest) {
 
   try {
     const guestToken = request.headers.get("x-pyoj-guest-token")?.trim();
+    const studentId = request.headers.get("x-pyoj-student-id")?.trim();
     const isGuest = guestToken
       ? await isValidGuestToken(supabase, guestToken)
       : false;
-    const curriculum = await loadCurriculum(supabase, !isGuest);
+    const studentClassId = !isGuest && studentId ? await getStudentClassId(supabase, studentId) : null;
+    const curriculum = await loadCurriculum(supabase, !isGuest, studentClassId);
     return NextResponse.json({ ok: true, ...curriculum });
   } catch (error) {
     console.error("[Curriculum]", error);
@@ -25,6 +27,23 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+async function getStudentClassId(
+  supabase: NonNullable<ReturnType<typeof createSupabaseAdmin>>,
+  studentId: string
+) {
+  const { data, error } = await supabase
+    .from("students")
+    .select("student_no, is_guest")
+    .eq("id", studentId)
+    .maybeSingle();
+  if (error) {
+    console.error("[Curriculum student verification]", error);
+    return null;
+  }
+  if (!data || data.is_guest || !/^\d{4}$/.test(data.student_no)) return null;
+  return data.student_no.charAt(1);
 }
 
 async function isValidGuestToken(

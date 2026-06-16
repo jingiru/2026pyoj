@@ -13,7 +13,11 @@ export type Problem = {
   hint: string;
   codeRequirements?: CodeRequirement[];
   isPublished?: boolean;
+  visibilityScope?: ProblemVisibilityScope;
+  visibleClassIds?: string[];
 };
+
+export type ProblemVisibilityScope = "all" | "classes";
 
 export type CodeRequirement =
   | { type: "print_arguments"; minCount: number }

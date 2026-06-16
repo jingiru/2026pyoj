@@ -41,7 +41,7 @@ export async function POST(request: Request) {
   }
   const { data: student } = await supabase
     .from("students")
-    .select("is_guest, guest_token")
+    .select("student_no, is_guest, guest_token")
     .eq("id", body.studentId)
     .single();
   if (
@@ -51,6 +51,9 @@ export async function POST(request: Request) {
         student.guest_token !== body.guestToken))
   ) {
     return NextResponse.json({ ok: false, message: "실행 로그 저장 권한이 없습니다." }, { status: 403 });
+  }
+  if (!(await canAccessProblem(supabase, student, body.problemId))) {
+    return NextResponse.json({ ok: false, message: "이 학급에 공개된 문제가 아닙니다." }, { status: 403 });
   }
 
   const executionTimeMs =
@@ -82,4 +85,21 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({ ok: true, id: data.id });
+}
+
+async function canAccessProblem(
+  supabase: NonNullable<ReturnType<typeof createSupabaseAdmin>>,
+  student: { student_no: string; is_guest: boolean },
+  problemId: string
+) {
+  if (student.is_guest) return true;
+  const { data: problem, error } = await supabase
+    .from("problems")
+    .select("is_published, visibility_scope, visible_class_ids")
+    .eq("id", problemId)
+    .single();
+  if (error || !problem || !problem.is_published) return false;
+  if (problem.visibility_scope !== "classes") return true;
+  if (!/^\d{4}$/.test(student.student_no)) return false;
+  return Array.isArray(problem.visible_class_ids) && problem.visible_class_ids.includes(student.student_no.charAt(1));
 }

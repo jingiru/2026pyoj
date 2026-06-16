@@ -2866,6 +2866,46 @@ kbd {
   width: 18px;
 }
 
+.visibilityFieldset {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 14px;
+}
+
+.visibilityFieldset legend {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+  padding: 0 6px;
+}
+
+.visibilityModeOptions,
+.classVisibilityOptions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.classVisibilityOption {
+  align-items: center;
+  background: color-mix(in srgb, var(--panel) 78%, var(--bg));
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  display: inline-flex !important;
+  font-weight: 700;
+  gap: 7px;
+  min-height: 36px;
+  padding: 8px 10px;
+}
+
+.classVisibilityOption input {
+  height: 16px;
+  width: 16px;
+}
+
 .testCaseEditor {
   border-top: 1px solid var(--line);
   display: grid;

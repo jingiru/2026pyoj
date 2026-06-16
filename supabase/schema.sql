@@ -27,9 +27,14 @@ create table if not exists public.problem_books (
   description text not null default '',
   sort_order integer not null default 0,
   is_published boolean not null default true,
+  visibility_scope text not null default 'all' check (visibility_scope in ('all', 'classes')),
+  visible_class_ids jsonb not null default '[]'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+create index if not exists problems_visibility_scope_idx on public.problems(visibility_scope);
+create index if not exists problems_visible_class_ids_gin_idx on public.problems using gin(visible_class_ids);
 
 create table if not exists public.problems (
   id text primary key,

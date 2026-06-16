@@ -2,11 +2,13 @@ import { type NextRequest, NextResponse } from "next/server";
 import { loadCurriculum } from "@/lib/curriculum-server";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
 import { isTeacherRequestAuthenticated } from "@/lib/teacher-auth";
-import type { Problem } from "@/lib/types";
+import type { Problem, ProblemVisibilityScope } from "@/lib/types";
 
 type ProblemPayload = Omit<Problem, "examples" | "testCases"> & {
   testCases: Array<{ input: string; output: string; isSample?: boolean }>;
 };
+
+const CLASS_ID_PATTERN = /^[0-9]$/;
 
 export async function GET(request: NextRequest) {
   const authError = authenticate(request);
@@ -54,13 +56,23 @@ export async function PATCH(request: NextRequest) {
     id?: string;
     bookId?: string;
     isPublished?: boolean;
+    visibilityScope?: ProblemVisibilityScope;
+    visibleClassIds?: string[];
   } | null;
   if ((!payload?.id && !payload?.bookId) || typeof payload.isPublished !== "boolean") {
     return NextResponse.json({ ok: false, message: "공개 상태 변경값을 확인해주세요." }, { status: 400 });
   }
+  const visibility = normalizeVisibility(payload);
+  if (!visibility.ok) return visibility.response;
 
   const supabase = createSupabaseAdmin()!;
   const updatedAt = new Date().toISOString();
+  const visibilityUpdate = payload.isPublished
+    ? {
+        visibility_scope: visibility.visibilityScope,
+        visible_class_ids: visibility.visibleClassIds
+      }
+    : {};
   if (payload.bookId) {
     const { data: currentBook, error: currentBookError } = await supabase
       .from("problem_books")
@@ -79,7 +91,11 @@ export async function PATCH(request: NextRequest) {
 
     const { error: problemsError } = await supabase
       .from("problems")
-      .update({ is_published: payload.isPublished, updated_at: updatedAt })
+      .update({
+        is_published: payload.isPublished,
+        ...visibilityUpdate,
+        updated_at: updatedAt
+      })
       .eq("book_id", payload.bookId);
     if (problemsError) {
       await supabase
@@ -94,7 +110,11 @@ export async function PATCH(request: NextRequest) {
 
   const { error } = await supabase
     .from("problems")
-    .update({ is_published: payload.isPublished, updated_at: updatedAt })
+    .update({
+      is_published: payload.isPublished,
+      ...visibilityUpdate,
+      updated_at: updatedAt
+    })
     .eq("id", payload.id!);
   if (error) return databaseError(error, "공개 상태를 변경하지 못했습니다.");
   return NextResponse.json({ ok: true });
@@ -117,6 +137,8 @@ export async function DELETE(request: NextRequest) {
 async function saveProblem(problem: ProblemPayload, updating: boolean) {
   const supabase = createSupabaseAdmin()!;
   const shouldPublish = problem.isPublished ?? true;
+  const visibility = normalizeVisibility(problem);
+  if (!visibility.ok) return visibility.response;
   const problemRow = {
     id: problem.id,
     book_id: problem.bookId,
@@ -129,6 +151,8 @@ async function saveProblem(problem: ProblemPayload, updating: boolean) {
     code_requirements: problem.codeRequirements ?? [],
     sort_order: problem.order,
     is_published: false,
+    visibility_scope: visibility.visibilityScope,
+    visible_class_ids: visibility.visibleClassIds,
     updated_at: new Date().toISOString()
   };
   const query = updating
@@ -205,4 +229,32 @@ function authenticate(request: NextRequest) {
 function databaseError(error: { code?: string; message: string }, message: string) {
   console.error("[Teacher problems]", error);
   return NextResponse.json({ ok: false, message, code: error.code }, { status: 500 });
+}
+
+function normalizeVisibility(payload: {
+  visibilityScope?: ProblemVisibilityScope;
+  visibleClassIds?: string[];
+}) {
+  const visibilityScope = payload.visibilityScope ?? "all";
+  if (visibilityScope !== "all" && visibilityScope !== "classes") {
+    return {
+      ok: false as const,
+      response: NextResponse.json({ ok: false, message: "공개 범위를 확인해주세요." }, { status: 400 })
+    };
+  }
+
+  const visibleClassIds =
+    visibilityScope === "classes"
+      ? [...new Set(payload.visibleClassIds ?? [])]
+          .map((classId) => classId.trim())
+          .filter((classId) => CLASS_ID_PATTERN.test(classId))
+      : [];
+  if (visibilityScope === "classes" && visibleClassIds.length === 0) {
+    return {
+      ok: false as const,
+      response: NextResponse.json({ ok: false, message: "공개할 학급을 1개 이상 선택해주세요." }, { status: 400 })
+    };
+  }
+
+  return { ok: true as const, visibilityScope, visibleClassIds };
 }

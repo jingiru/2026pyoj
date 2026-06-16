@@ -70,6 +70,9 @@ export async function POST(request: Request) {
   if (!(await canAccessStudent(supabase, submission.student_id, submission.guestToken))) {
     return NextResponse.json({ ok: false, message: "제출 저장 권한이 없습니다." }, { status: 403 });
   }
+  if (!(await canAccessProblem(supabase, submission.student_id, submission.problem_id))) {
+    return NextResponse.json({ ok: false, message: "이 학급에 공개된 문제가 아닙니다." }, { status: 403 });
+  }
 
   const score =
     submission.total_count === 0
@@ -119,4 +122,32 @@ async function canAccessStudent(
   if (error || !data) return false;
   if (!data.is_guest) return true;
   return Boolean(guestToken && data.guest_token === guestToken);
+}
+
+async function canAccessProblem(
+  supabase: NonNullable<ReturnType<typeof createSupabaseAdmin>>,
+  studentId: string,
+  problemId: string
+) {
+  const [{ data: student, error: studentError }, { data: problem, error: problemError }] =
+    await Promise.all([
+      supabase
+        .from("students")
+        .select("student_no, is_guest")
+        .eq("id", studentId)
+        .single(),
+      supabase
+        .from("problems")
+        .select("is_published, visibility_scope, visible_class_ids")
+        .eq("id", problemId)
+        .single()
+    ]);
+
+  if (studentError || problemError || !student || !problem) return false;
+  if (student.is_guest) return true;
+  if (!problem.is_published) return false;
+  if (problem.visibility_scope !== "classes") return true;
+  if (!/^\d{4}$/.test(student.student_no)) return false;
+  const classId = student.student_no.charAt(1);
+  return Array.isArray(problem.visible_class_ids) && problem.visible_class_ids.includes(classId);
 }
