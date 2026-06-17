@@ -122,6 +122,11 @@ const DASHBOARD_POLL_INTERVAL_MS = 7000;
 const DASHBOARD_BACKGROUND_POLL_INTERVAL_MS = 30000;
 const DEFAULT_SOLVE_EDITOR_HEIGHT = 330;
 const MIN_SOLVE_EDITOR_HEIGHT = 180;
+const DEFAULT_PRACTICE_EDITOR_WIDTH = 50;
+const MIN_PRACTICE_EDITOR_WIDTH = 28;
+const MAX_PRACTICE_EDITOR_WIDTH = 72;
+const DEFAULT_PRACTICE_EDITOR_HEIGHT = 420;
+const MIN_PRACTICE_EDITOR_HEIGHT = 220;
 const DEFAULT_PROBLEM =
   fallbackProblems.find((problem) => problem.bookId === fallbackProblemBooks[0].id) ??
   fallbackProblems[0];
@@ -239,6 +244,16 @@ export default function Home() {
   const solveRunInputsRef = useRef<string[]>([]);
   const solveRunOutputsRef = useRef<string[]>([]);
   const solveRunErrorsRef = useRef<string[]>([]);
+  const practiceResizeRef = useRef<{
+    startX: number;
+    startY: number;
+    startWidth: number;
+    startHeight: number;
+    containerWidth: number;
+  } | null>(null);
+  const [practiceEditorWidth, setPracticeEditorWidth] = useState(DEFAULT_PRACTICE_EDITOR_WIDTH);
+  const [practiceEditorHeight, setPracticeEditorHeight] = useState(DEFAULT_PRACTICE_EDITOR_HEIGHT);
+  const [isPracticeStacked, setIsPracticeStacked] = useState(false);
   const solveResizeRef = useRef<{ startY: number; startHeight: number } | null>(null);
   const [solveEditorHeight, setSolveEditorHeight] = useState(DEFAULT_SOLVE_EDITOR_HEIGHT);
   const [bookSidebarOpen, setBookSidebarOpen] = useState(true);
@@ -268,6 +283,15 @@ export default function Home() {
   useEffect(() => {
     if (solvePendingPrompt !== null) solveConsoleInputRef.current?.focus();
   }, [solvePendingPrompt]);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 1120px)");
+    const syncPracticeLayout = () => setIsPracticeStacked(mediaQuery.matches);
+
+    syncPracticeLayout();
+    mediaQuery.addEventListener("change", syncPracticeLayout);
+    return () => mediaQuery.removeEventListener("change", syncPracticeLayout);
+  }, []);
 
   useEffect(() => {
     if (!result) return;
@@ -718,6 +742,64 @@ export default function Home() {
     setConsoleInput("");
   }
 
+  function clampPracticeEditorWidth(width: number) {
+    return Math.min(MAX_PRACTICE_EDITOR_WIDTH, Math.max(MIN_PRACTICE_EDITOR_WIDTH, width));
+  }
+
+  function clampPracticeEditorHeight(height: number) {
+    const maxHeight = Math.max(MIN_PRACTICE_EDITOR_HEIGHT, window.innerHeight - 220);
+    return Math.min(maxHeight, Math.max(MIN_PRACTICE_EDITOR_HEIGHT, height));
+  }
+
+  function startPracticeResize(event: ReactPointerEvent<HTMLDivElement>) {
+    practiceResizeRef.current = {
+      startX: event.clientX,
+      startY: event.clientY,
+      startWidth: practiceEditorWidth,
+      startHeight: practiceEditorHeight,
+      containerWidth: event.currentTarget.parentElement?.getBoundingClientRect().width ?? window.innerWidth
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    document.body.classList.add("resizingPracticePane");
+  }
+
+  function movePracticeResize(event: ReactPointerEvent<HTMLDivElement>) {
+    const resize = practiceResizeRef.current;
+    if (!resize) return;
+    const widthDelta = resize.containerWidth > 0 ? ((event.clientX - resize.startX) / resize.containerWidth) * 100 : 0;
+
+    setPracticeEditorWidth(clampPracticeEditorWidth(resize.startWidth + widthDelta));
+    setPracticeEditorHeight(clampPracticeEditorHeight(resize.startHeight + event.clientY - resize.startY));
+  }
+
+  function stopPracticeResize(event: ReactPointerEvent<HTMLDivElement>) {
+    practiceResizeRef.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    document.body.classList.remove("resizingPracticePane");
+  }
+
+  function resizePracticeEditorWithKeyboard(event: KeyboardEvent<HTMLDivElement>) {
+    const horizontalKeys = event.key === "ArrowLeft" || event.key === "ArrowRight";
+    const verticalKeys = event.key === "ArrowUp" || event.key === "ArrowDown";
+    if ((!isPracticeStacked && !horizontalKeys) || (isPracticeStacked && !verticalKeys)) return;
+
+    event.preventDefault();
+    const change = event.shiftKey ? 8 : 2;
+    if (isPracticeStacked) {
+      const heightChange = event.shiftKey ? 40 : 10;
+      setPracticeEditorHeight((height) =>
+        clampPracticeEditorHeight(height + (event.key === "ArrowDown" ? heightChange : -heightChange))
+      );
+      return;
+    }
+
+    setPracticeEditorWidth((width) =>
+      clampPracticeEditorWidth(width + (event.key === "ArrowRight" ? change : -change))
+    );
+  }
+
   async function runPractice() {
     if (isPracticeRunning) return;
     setIsPracticeRunning(true);
@@ -1075,7 +1157,15 @@ export default function Home() {
             <span className="pill">코딩 연습</span>
             <h1>파이썬 연습을 위한 통합 개발 환경(IDE)</h1>
           </div>
-          <div className="practiceGrid">
+          <div
+            className="practiceGrid"
+            style={
+              {
+                "--practice-editor-width": `${practiceEditorWidth}%`,
+                "--practice-editor-height": `${practiceEditorHeight}px`
+              } as CSSProperties
+            }
+          >
             <article className="idePane">
               <div className="ideHeader">
                 <div>
@@ -1109,6 +1199,23 @@ export default function Home() {
                 fontSize={codeFontSize}
               />
             </article>
+            <div
+              className="practicePaneResizer"
+              role="separator"
+              aria-label="코드 에디터와 콘솔 창 크기 조절"
+              aria-orientation={isPracticeStacked ? "horizontal" : "vertical"}
+              aria-valuemin={isPracticeStacked ? MIN_PRACTICE_EDITOR_HEIGHT : MIN_PRACTICE_EDITOR_WIDTH}
+              aria-valuemax={isPracticeStacked ? undefined : MAX_PRACTICE_EDITOR_WIDTH}
+              aria-valuenow={isPracticeStacked ? practiceEditorHeight : practiceEditorWidth}
+              tabIndex={0}
+              onPointerDown={startPracticeResize}
+              onPointerMove={movePracticeResize}
+              onPointerUp={stopPracticeResize}
+              onPointerCancel={stopPracticeResize}
+              onKeyDown={resizePracticeEditorWithKeyboard}
+            >
+              <span />
+            </div>
             <aside className="consolePane">
               <div className="consoleHeader">
                 <strong>콘솔</strong>
