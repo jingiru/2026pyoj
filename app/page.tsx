@@ -803,6 +803,11 @@ export default function Home() {
     );
   }
 
+  function resetPracticePaneSize() {
+    setPracticeEditorWidth(DEFAULT_PRACTICE_EDITOR_WIDTH);
+    setPracticeEditorHeight(DEFAULT_PRACTICE_EDITOR_HEIGHT);
+  }
+
   async function runPractice() {
     if (isPracticeRunning) return;
     setIsPracticeRunning(true);
@@ -1217,6 +1222,7 @@ export default function Home() {
               onPointerMove={movePracticeResize}
               onPointerUp={stopPracticeResize}
               onPointerCancel={stopPracticeResize}
+              onDoubleClick={resetPracticePaneSize}
               onKeyDown={resizePracticeEditorWithKeyboard}
             >
               <span />

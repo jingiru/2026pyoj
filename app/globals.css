@@ -1712,13 +1712,13 @@ pre {
 .practiceGrid .cm-editor,
 .practiceGrid .cm-content,
 .practiceGrid .cm-scroller {
-  height: 420px;
-  max-height: 420px;
-  min-height: 0;
+  height: auto;
+  max-height: none;
+  min-height: 340px;
 }
 
 .practiceGrid .cm-scroller {
-  overflow: auto;
+  overflow: visible;
 }
 
 .cm-scroller {
@@ -3055,7 +3055,7 @@ kbd {
   .practiceGrid .cm-editor,
   .practiceGrid .cm-content,
   .practiceGrid .cm-scroller {
-    height: 100%;
+    height: auto;
     max-height: none;
   }
 
