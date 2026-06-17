@@ -121,7 +121,10 @@ const GUEST_TOKEN_STORAGE_KEY = "pyoj:guest-token";
 const DASHBOARD_POLL_INTERVAL_MS = 7000;
 const DASHBOARD_BACKGROUND_POLL_INTERVAL_MS = 30000;
 const DEFAULT_SOLVE_EDITOR_HEIGHT = 330;
-const MIN_SOLVE_EDITOR_HEIGHT = 180;
+const MIN_SOLVE_EDITOR_HEIGHT = 56;
+const MIN_SOLVE_CONSOLE_HEIGHT = 143;
+const SOLVE_EDITOR_HEADER_HEIGHT = 54;
+const SOLVE_RESIZER_HEIGHT = 10;
 const DEFAULT_PRACTICE_EDITOR_WIDTH = 50;
 const MIN_PRACTICE_EDITOR_WIDTH = 0;
 const MAX_PRACTICE_EDITOR_WIDTH = 100;
@@ -256,7 +259,8 @@ export default function Home() {
   const [practiceEditorWidth, setPracticeEditorWidth] = useState(DEFAULT_PRACTICE_EDITOR_WIDTH);
   const [practiceEditorHeight, setPracticeEditorHeight] = useState(DEFAULT_PRACTICE_EDITOR_HEIGHT);
   const [isPracticeStacked, setIsPracticeStacked] = useState(false);
-  const solveResizeRef = useRef<{ startY: number; startHeight: number } | null>(null);
+  const solveResizeRef = useRef<{ startY: number; startHeight: number; containerHeight: number } | null>(null);
+  const solveIdeBodyRef = useRef<HTMLDivElement | null>(null);
   const [solveEditorHeight, setSolveEditorHeight] = useState(DEFAULT_SOLVE_EDITOR_HEIGHT);
   const [bookSidebarOpen, setBookSidebarOpen] = useState(true);
   const [problemListOpen, setProblemListOpen] = useState(true);
@@ -449,7 +453,7 @@ export default function Home() {
     setAutoAdvanceOnAccepted(getStoredValue(AUTO_ADVANCE_STORAGE_KEY) === "true");
     const savedSolveEditorHeight = Number(getStoredValue(SOLVE_EDITOR_HEIGHT_STORAGE_KEY));
     if (Number.isFinite(savedSolveEditorHeight)) {
-      setSolveEditorHeight(Math.max(MIN_SOLVE_EDITOR_HEIGHT, savedSolveEditorHeight));
+      setSolveEditorHeight(clampSolveEditorHeight(savedSolveEditorHeight));
     }
 
     const savedStudent = getStoredStudent();
@@ -1035,15 +1039,22 @@ export default function Home() {
     setSolveConsoleInput("");
   }
 
-  function clampSolveEditorHeight(height: number) {
-    const maxHeight = Math.max(MIN_SOLVE_EDITOR_HEIGHT, window.innerHeight - 220);
+  function clampSolveEditorHeight(height: number, containerHeight?: number) {
+    const availableHeight =
+      containerHeight ?? solveIdeBodyRef.current?.getBoundingClientRect().height ?? window.innerHeight - 220;
+    const maxHeight = Math.max(
+      MIN_SOLVE_EDITOR_HEIGHT,
+      availableHeight - SOLVE_EDITOR_HEADER_HEIGHT - SOLVE_RESIZER_HEIGHT - MIN_SOLVE_CONSOLE_HEIGHT
+    );
     return Math.min(maxHeight, Math.max(MIN_SOLVE_EDITOR_HEIGHT, height));
   }
 
   function startSolveResize(event: ReactPointerEvent<HTMLDivElement>) {
+    const containerHeight = solveIdeBodyRef.current?.getBoundingClientRect().height ?? window.innerHeight - 220;
     solveResizeRef.current = {
       startY: event.clientY,
-      startHeight: solveEditorHeight
+      startHeight: solveEditorHeight,
+      containerHeight
     };
     event.currentTarget.setPointerCapture(event.pointerId);
     document.body.classList.add("resizingSolvePane");
@@ -1053,7 +1064,7 @@ export default function Home() {
     const resize = solveResizeRef.current;
     if (!resize) return;
     setSolveEditorHeight(
-      clampSolveEditorHeight(resize.startHeight + event.clientY - resize.startY)
+      clampSolveEditorHeight(resize.startHeight + event.clientY - resize.startY, resize.containerHeight)
     );
   }
 
@@ -1465,6 +1476,7 @@ export default function Home() {
               </div>
               <div
                 className="solveIdeBody"
+                ref={solveIdeBodyRef}
                 style={{ "--solve-editor-height": `${solveEditorHeight}px` } as CSSProperties}
               >
                 <div className="solveEditorSection">
