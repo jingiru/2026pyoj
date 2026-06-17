@@ -123,10 +123,11 @@ const DASHBOARD_BACKGROUND_POLL_INTERVAL_MS = 30000;
 const DEFAULT_SOLVE_EDITOR_HEIGHT = 330;
 const MIN_SOLVE_EDITOR_HEIGHT = 180;
 const DEFAULT_PRACTICE_EDITOR_WIDTH = 50;
-const MIN_PRACTICE_EDITOR_WIDTH = 28;
-const MAX_PRACTICE_EDITOR_WIDTH = 72;
-const DEFAULT_PRACTICE_EDITOR_HEIGHT = 420;
-const MIN_PRACTICE_EDITOR_HEIGHT = 220;
+const MIN_PRACTICE_EDITOR_WIDTH = 0;
+const MAX_PRACTICE_EDITOR_WIDTH = 100;
+const DEFAULT_PRACTICE_EDITOR_HEIGHT = 50;
+const MIN_PRACTICE_EDITOR_HEIGHT = 0;
+const MAX_PRACTICE_EDITOR_HEIGHT = 100;
 const DEFAULT_PROBLEM =
   fallbackProblems.find((problem) => problem.bookId === fallbackProblemBooks[0].id) ??
   fallbackProblems[0];
@@ -250,6 +251,7 @@ export default function Home() {
     startWidth: number;
     startHeight: number;
     containerWidth: number;
+    containerHeight: number;
   } | null>(null);
   const [practiceEditorWidth, setPracticeEditorWidth] = useState(DEFAULT_PRACTICE_EDITOR_WIDTH);
   const [practiceEditorHeight, setPracticeEditorHeight] = useState(DEFAULT_PRACTICE_EDITOR_HEIGHT);
@@ -747,17 +749,18 @@ export default function Home() {
   }
 
   function clampPracticeEditorHeight(height: number) {
-    const maxHeight = Math.max(MIN_PRACTICE_EDITOR_HEIGHT, window.innerHeight - 220);
-    return Math.min(maxHeight, Math.max(MIN_PRACTICE_EDITOR_HEIGHT, height));
+    return Math.min(MAX_PRACTICE_EDITOR_HEIGHT, Math.max(MIN_PRACTICE_EDITOR_HEIGHT, height));
   }
 
   function startPracticeResize(event: ReactPointerEvent<HTMLDivElement>) {
+    const containerRect = event.currentTarget.parentElement?.getBoundingClientRect();
     practiceResizeRef.current = {
       startX: event.clientX,
       startY: event.clientY,
       startWidth: practiceEditorWidth,
       startHeight: practiceEditorHeight,
-      containerWidth: event.currentTarget.parentElement?.getBoundingClientRect().width ?? window.innerWidth
+      containerWidth: containerRect?.width ?? window.innerWidth,
+      containerHeight: containerRect?.height ?? window.innerHeight
     };
     event.currentTarget.setPointerCapture(event.pointerId);
     document.body.classList.add("resizingPracticePane");
@@ -767,9 +770,10 @@ export default function Home() {
     const resize = practiceResizeRef.current;
     if (!resize) return;
     const widthDelta = resize.containerWidth > 0 ? ((event.clientX - resize.startX) / resize.containerWidth) * 100 : 0;
+    const heightDelta = resize.containerHeight > 0 ? ((event.clientY - resize.startY) / resize.containerHeight) * 100 : 0;
 
     setPracticeEditorWidth(clampPracticeEditorWidth(resize.startWidth + widthDelta));
-    setPracticeEditorHeight(clampPracticeEditorHeight(resize.startHeight + event.clientY - resize.startY));
+    setPracticeEditorHeight(clampPracticeEditorHeight(resize.startHeight + heightDelta));
   }
 
   function stopPracticeResize(event: ReactPointerEvent<HTMLDivElement>) {
@@ -788,9 +792,8 @@ export default function Home() {
     event.preventDefault();
     const change = event.shiftKey ? 8 : 2;
     if (isPracticeStacked) {
-      const heightChange = event.shiftKey ? 40 : 10;
       setPracticeEditorHeight((height) =>
-        clampPracticeEditorHeight(height + (event.key === "ArrowDown" ? heightChange : -heightChange))
+        clampPracticeEditorHeight(height + (event.key === "ArrowDown" ? change : -change))
       );
       return;
     }
@@ -1161,8 +1164,10 @@ export default function Home() {
             className="practiceGrid"
             style={
               {
-                "--practice-editor-width": `${practiceEditorWidth}%`,
-                "--practice-editor-height": `${practiceEditorHeight}px`
+                "--practice-editor-share": `${practiceEditorWidth}fr`,
+                "--practice-console-share": `${100 - practiceEditorWidth}fr`,
+                "--practice-editor-height-share": `${practiceEditorHeight}fr`,
+                "--practice-console-height-share": `${100 - practiceEditorHeight}fr`
               } as CSSProperties
             }
           >
@@ -1205,7 +1210,7 @@ export default function Home() {
               aria-label="코드 에디터와 콘솔 창 크기 조절"
               aria-orientation={isPracticeStacked ? "horizontal" : "vertical"}
               aria-valuemin={isPracticeStacked ? MIN_PRACTICE_EDITOR_HEIGHT : MIN_PRACTICE_EDITOR_WIDTH}
-              aria-valuemax={isPracticeStacked ? undefined : MAX_PRACTICE_EDITOR_WIDTH}
+              aria-valuemax={isPracticeStacked ? MAX_PRACTICE_EDITOR_HEIGHT : MAX_PRACTICE_EDITOR_WIDTH}
               aria-valuenow={isPracticeStacked ? practiceEditorHeight : practiceEditorWidth}
               tabIndex={0}
               onPointerDown={startPracticeResize}
