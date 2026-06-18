@@ -2364,6 +2364,11 @@ function TeacherDashboard({
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [subgroupFilter, setSubgroupFilter] = useState("all");
   const [selectedSubmission, setSelectedSubmission] = useState<SubmissionWithStudent | null>(null);
+  const [selectedSubmissionHistory, setSelectedSubmissionHistory] = useState<
+    SubmissionWithStudent[]
+  >([]);
+  const [submissionHistoryLoading, setSubmissionHistoryLoading] = useState(false);
+  const submissionHistoryRequestRef = useRef(0);
   const [overviewStudentId, setOverviewStudentId] = useState("");
   const selectedBook = books.find((book) => book.id === selectedBookId) ?? books[0];
   const bookProblems = problems
@@ -2502,13 +2507,45 @@ function TeacherDashboard({
   const rankByStudent = useMemo(() => {
     return new Map(studentRows.map((row, index) => [row.student.id, index + 1]));
   }, [studentRows]);
-  const selectedSubmissionHistory = selectedSubmission
-    ? submissions.filter(
-        (submission) =>
-          submission.student_id === selectedSubmission.student_id &&
-          submission.problem_id === selectedSubmission.problem_id
-      )
-    : [];
+  async function openSubmission(submission: SubmissionWithStudent) {
+    const requestId = submissionHistoryRequestRef.current + 1;
+    submissionHistoryRequestRef.current = requestId;
+    setSelectedSubmission(submission);
+    setSelectedSubmissionHistory([]);
+    setSubmissionHistoryLoading(true);
+    try {
+      const query = new URLSearchParams({
+        studentId: submission.student_id,
+        problemId: submission.problem_id
+      });
+      const response = await fetch(`/api/teacher-dashboard?${query.toString()}`, {
+        cache: "no-store"
+      });
+      const data = (await response.json()) as {
+        ok?: boolean;
+        submissions?: SubmissionWithStudent[];
+      };
+      if (!response.ok || !data.ok) return;
+      if (submissionHistoryRequestRef.current !== requestId) return;
+
+      const history = data.submissions ?? [];
+      setSelectedSubmissionHistory(history);
+      const selected =
+        history.find((item) => item.id === submission.id) ?? history[0] ?? submission;
+      setSelectedSubmission(selected);
+    } finally {
+      if (submissionHistoryRequestRef.current === requestId) {
+        setSubmissionHistoryLoading(false);
+      }
+    }
+  }
+
+  function closeSubmission() {
+    submissionHistoryRequestRef.current += 1;
+    setSelectedSubmission(null);
+    setSelectedSubmissionHistory([]);
+    setSubmissionHistoryLoading(false);
+  }
   const overviewStudent = overviewStudentId
     ? students.find((student) => student.id === overviewStudentId)
     : undefined;
@@ -2597,7 +2634,11 @@ function TeacherDashboard({
   useEffect(() => {
     if (!selectedSubmission) return;
     const closeOnEscape = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "Escape") setSelectedSubmission(null);
+      if (event.key !== "Escape") return;
+      submissionHistoryRequestRef.current += 1;
+      setSelectedSubmission(null);
+      setSelectedSubmissionHistory([]);
+      setSubmissionHistoryLoading(false);
     };
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
@@ -2826,7 +2867,7 @@ function TeacherDashboard({
                         {submission ? (
                           <button
                             className={`submissionStatus ${submissionResultClass(submission.status)}`}
-                            onClick={() => setSelectedSubmission(submission)}
+                            onClick={() => void openSubmission(submission)}
                             title={submissionResultLabel(submission.status)}
                             aria-label={`${displayedProblems[index].title} ${submissionResultLabel(submission.status)}`}
                           >
@@ -2984,7 +3025,7 @@ function TeacherDashboard({
                                   disabled={!submission}
                                   title={`${problem.title}: ${label}`}
                                   aria-label={`${problem.title} ${label}`}
-                                  onClick={() => submission && setSelectedSubmission(submission)}
+                                  onClick={() => submission && void openSubmission(submission)}
                                 >
                                   {Number(formatProblemNumber(problem))}
                                 </button>
@@ -3002,7 +3043,7 @@ function TeacherDashboard({
         </div>
       )}
       {selectedSubmission && (
-        <div className="modalBackdrop" role="presentation" onMouseDown={() => setSelectedSubmission(null)}>
+        <div className="modalBackdrop" role="presentation" onMouseDown={closeSubmission}>
           <div
             className="submissionCodeModal"
             role="dialog"
@@ -3010,7 +3051,7 @@ function TeacherDashboard({
             aria-labelledby="submission-code-title"
             onMouseDown={(event) => event.stopPropagation()}
           >
-            <button className="iconButton closeButton" onClick={() => setSelectedSubmission(null)} aria-label="닫기">
+            <button className="iconButton closeButton" onClick={closeSubmission} aria-label="닫기">
               <X size={18} />
             </button>
             <span className={`submissionResultBadge ${selectedSubmission.status}`}>
@@ -3029,6 +3070,7 @@ function TeacherDashboard({
             <div className="submissionHistoryLayout">
               <aside className="submissionHistoryList">
                 <strong>과거 제출 이력</strong>
+                {submissionHistoryLoading && <small>제출 이력을 불러오는 중...</small>}
                 {selectedSubmissionHistory.map((submission, index) => (
                   <button
                     type="button"
@@ -3048,7 +3090,11 @@ function TeacherDashboard({
                   </button>
                 ))}
               </aside>
-              <pre className="submittedCode">{selectedSubmission.code}</pre>
+              <pre className="submittedCode">
+                {submissionHistoryLoading
+                  ? "제출 코드를 불러오는 중..."
+                  : selectedSubmission.code ?? "제출 코드를 불러오지 못했습니다."}
+              </pre>
             </div>
           </div>
         </div>
