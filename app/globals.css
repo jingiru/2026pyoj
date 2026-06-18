@@ -1337,10 +1337,10 @@ pre {
 .solveIdeBody {
   display: grid;
   grid-template-rows:
-    minmax(110px, calc(var(--solve-editor-height, 330px) + 54px))
+    minmax(210px, calc(var(--solve-editor-height, 156px) + 54px))
     10px
     minmax(143px, 1fr);
-  height: clamp(263px, calc(100dvh - 170px), 760px);
+  height: clamp(363px, calc(100dvh - 170px), 760px);
   min-height: 0;
   min-width: 0;
 }
