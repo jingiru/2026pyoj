@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
 
   if (error) {
     await logAccess(supabase, request, studentNo, name, "login_failure", null, error.message);
-    return dataErrorResponse(error, "학생 정보를 저장하지 못했습니다.");
+    return dataErrorResponse(error, "현재 신규 학생 등록은 불가능합니다");
   }
   await logAccess(supabase, request, studentNo, name, "login_success", data.id, null);
   return NextResponse.json({ ok: true, student: data as Student });
