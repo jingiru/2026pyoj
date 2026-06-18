@@ -5,7 +5,7 @@ import "./globals.css";
 const GOOGLE_ANALYTICS_ID = "G-YDYDN37XX6";
 
 export const metadata: Metadata = {
-  title: "PyOJ Classroom",
+  title: "JingiruPY for Beginners",
   description: "파이썬 초급 Online Judge 학습 플랫폼"
 };
 
