@@ -64,6 +64,11 @@ import {
   problemBooks as fallbackProblemBooks,
   problems as fallbackProblems
 } from "@/lib/problems";
+import {
+  CLASS_VISIBILITY_OPTIONS,
+  formatClassLabel,
+  getStudentClassId
+} from "@/lib/student-class";
 import { runPythonWithSkulpt } from "@/lib/skulpt-runner";
 import { checkCodeRequirements } from "@/lib/code-requirements";
 import {
@@ -134,8 +139,6 @@ const MAX_PRACTICE_EDITOR_HEIGHT = 100;
 const DEFAULT_PROBLEM =
   fallbackProblems.find((problem) => problem.bookId === fallbackProblemBooks[0].id) ??
   fallbackProblems[0];
-const CLASS_VISIBILITY_OPTIONS = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
-
 const sublimeDarkHighlight = HighlightStyle.define([
   { tag: tags.comment, color: "#75715e", fontStyle: "italic" },
   { tag: [tags.keyword, tags.controlKeyword, tags.operatorKeyword], color: "#f92672" },
@@ -2403,10 +2406,10 @@ function TeacherDashboard({
         ...new Set(
           students
             .filter((item) => !item.is_guest)
-            .map((item) => item.student_no.charAt(1))
-            .filter(Boolean)
+            .map((item) => getStudentClassId(item.student_no))
+            .filter((classId): classId is string => Boolean(classId))
         )
-      ].sort((a, b) => a.localeCompare(b, "ko")),
+      ].sort((a, b) => a.localeCompare(b, "ko", { numeric: true })),
     [students]
   );
   const bookFilterValues = books.map((book) => book.id);
@@ -2744,7 +2747,7 @@ function TeacherDashboard({
                   <option value="all">전체</option>
                   {classes.map((classNo) => (
                     <option key={classNo} value={classNo}>
-                      {classNo}반
+                      {formatClassLabel(classNo)}
                     </option>
                   ))}
                   <option value="guest">비로그인</option>
@@ -3610,7 +3613,7 @@ function TeacherProblemManager({
                         checked={bulkVisibleClassIds.includes(classId)}
                         onChange={() => toggleBulkVisibleClass(classId)}
                       />
-                      {classId}반
+                      {formatClassLabel(classId)}
                     </label>
                   ))}
                 </div>
@@ -3628,7 +3631,7 @@ function TeacherProblemManager({
                 onClick={() => void setBookVisibility(true)}
                 title={
                   bulkVisibilityScope === "classes"
-                    ? `${bulkVisibleClassIds.map((classId) => `${classId}반`).join(", ")}에 전체 공개`
+                    ? `${bulkVisibleClassIds.map(formatClassLabel).join(", ")}에 전체 공개`
                     : "전체 학급에 전체 공개"
                 }
               >
@@ -3809,7 +3812,7 @@ function TeacherProblemManager({
                           checked={(editingProblem.visibleClassIds ?? []).includes(classId)}
                           onChange={() => toggleVisibleClass(classId)}
                         />
-                        {classId}반
+                        {formatClassLabel(classId)}
                       </label>
                     ))}
                   </div>
@@ -4018,7 +4021,7 @@ function formatVisibilityLabel(problem: Problem) {
   if (problem.visibilityScope === "classes") {
     const classes = (problem.visibleClassIds ?? [])
       .filter((classId) => CLASS_VISIBILITY_OPTIONS.includes(classId))
-      .map((classId) => `${classId}반`);
+      .map(formatClassLabel);
     return classes.length > 0 ? `${classes.join(", ")} 공개` : "학급 미지정";
   }
   return "전체 공개";
@@ -4121,5 +4124,5 @@ function getStoredStudent(): Student | null {
 function matchesClassFilter(student: Student, classFilter: string) {
   if (classFilter === "all") return true;
   if (classFilter === "guest") return Boolean(student.is_guest);
-  return !student.is_guest && student.student_no.charAt(1) === classFilter;
+  return !student.is_guest && getStudentClassId(student.student_no) === classFilter;
 }

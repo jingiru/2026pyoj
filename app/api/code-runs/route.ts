@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
+import { getStudentClassId } from "@/lib/student-class";
 
 type CodeRunPayload = {
   studentId?: unknown;
@@ -100,6 +101,6 @@ async function canAccessProblem(
     .single();
   if (error || !problem || !problem.is_published) return false;
   if (problem.visibility_scope !== "classes") return true;
-  if (!/^\d{4}$/.test(student.student_no)) return false;
-  return Array.isArray(problem.visible_class_ids) && problem.visible_class_ids.includes(student.student_no.charAt(1));
+  const classId = getStudentClassId(student.student_no);
+  return Boolean(classId && Array.isArray(problem.visible_class_ids) && problem.visible_class_ids.includes(classId));
 }

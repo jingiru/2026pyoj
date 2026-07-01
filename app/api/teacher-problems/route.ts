@@ -1,14 +1,13 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { loadCurriculum } from "@/lib/curriculum-server";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
+import { CLASS_VISIBILITY_OPTIONS } from "@/lib/student-class";
 import { isTeacherRequestAuthenticated } from "@/lib/teacher-auth";
 import type { Problem, ProblemVisibilityScope } from "@/lib/types";
 
 type ProblemPayload = Omit<Problem, "examples" | "testCases"> & {
   testCases: Array<{ input: string; output: string; isSample?: boolean }>;
 };
-
-const CLASS_ID_PATTERN = /^[0-9]$/;
 
 export async function GET(request: NextRequest) {
   const authError = authenticate(request);
@@ -247,7 +246,7 @@ function normalizeVisibility(payload: {
     visibilityScope === "classes"
       ? [...new Set(payload.visibleClassIds ?? [])]
           .map((classId) => classId.trim())
-          .filter((classId) => CLASS_ID_PATTERN.test(classId))
+          .filter((classId) => CLASS_VISIBILITY_OPTIONS.includes(classId))
       : [];
   if (visibilityScope === "classes" && visibleClassIds.length === 0) {
     return {

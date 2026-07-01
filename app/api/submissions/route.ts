@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
+import { getStudentClassId } from "@/lib/student-class";
 import type { Submission } from "@/lib/types";
 
 export async function GET(request: Request) {
@@ -147,7 +148,6 @@ async function canAccessProblem(
   if (student.is_guest) return true;
   if (!problem.is_published) return false;
   if (problem.visibility_scope !== "classes") return true;
-  if (!/^\d{4}$/.test(student.student_no)) return false;
-  const classId = student.student_no.charAt(1);
-  return Array.isArray(problem.visible_class_ids) && problem.visible_class_ids.includes(classId);
+  const classId = getStudentClassId(student.student_no);
+  return Boolean(classId && Array.isArray(problem.visible_class_ids) && problem.visible_class_ids.includes(classId));
 }

@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { loadCurriculum } from "@/lib/curriculum-server";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
+import { getStudentClassId as getClassIdFromStudentNo } from "@/lib/student-class";
 
 export async function GET(request: NextRequest) {
   const supabase = createSupabaseAdmin();
@@ -42,8 +43,8 @@ async function getStudentClassId(
     console.error("[Curriculum student verification]", error);
     return null;
   }
-  if (!data || data.is_guest || !/^\d{4}$/.test(data.student_no)) return null;
-  return data.student_no.charAt(1);
+  if (!data || data.is_guest) return null;
+  return getClassIdFromStudentNo(data.student_no);
 }
 
 async function isValidGuestToken(
