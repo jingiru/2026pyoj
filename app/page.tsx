@@ -90,6 +90,7 @@ import type { ProblemImportResult } from "@/lib/problem-import-types";
 
 type Screen = "home" | "practice" | "solve" | "teacher";
 type ColorMode = "light" | "dark";
+type TeacherDashboardScope = { bookId: string; classId: string };
 type JudgeResult = {
   status: SubmissionStatus;
   passedCount: number;
@@ -123,6 +124,9 @@ const AUTO_ADVANCE_STORAGE_KEY = "pyoj:auto-advance-on-accepted";
 const SOLVE_EDITOR_HEIGHT_STORAGE_KEY = "pyoj:solve-editor-height";
 const STUDENT_STORAGE_KEY = "pyoj:student";
 const GUEST_TOKEN_STORAGE_KEY = "pyoj:guest-token";
+const TEACHER_DASHBOARD_BOOK_STORAGE_KEY = "pyoj:teacher-dashboard-book";
+const TEACHER_DASHBOARD_CLASS_STORAGE_KEY = "pyoj:teacher-dashboard-class";
+const DEFAULT_TEACHER_DASHBOARD_CLASS_ID = "1";
 const DASHBOARD_POLL_INTERVAL_MS = 7000;
 const DASHBOARD_BACKGROUND_POLL_INTERVAL_MS = 30000;
 const DEFAULT_SOLVE_EDITOR_HEIGHT = 156;
@@ -272,10 +276,16 @@ export default function Home() {
   const [personalSubmissions, setPersonalSubmissions] = useState<SubmissionWithStudent[]>([]);
   const [personalHistoryOpen, setPersonalHistoryOpen] = useState(false);
   const [teacherStudents, setTeacherStudents] = useState<Student[]>([]);
+  const [teacherDashboardBookId, setTeacherDashboardBookId] = useState("");
+  const [teacherDashboardClassId, setTeacherDashboardClassId] = useState(
+    DEFAULT_TEACHER_DASHBOARD_CLASS_ID
+  );
   const [loading, setLoading] = useState(false);
   const [editorStorageReady, setEditorStorageReady] = useState(false);
   const latestDashboardSubmissionAtRef = useRef<string | null>(null);
   const dashboardRefreshInFlightRef = useRef(false);
+  const dashboardRequestIdRef = useRef(0);
+  const teacherDashboardScopeRef = useRef<TeacherDashboardScope>({ bookId: "", classId: "" });
 
   const dashboard = useMemo(() => {
     const accepted = submissions.filter((submission) => submission.status === "accepted").length;
@@ -1088,15 +1098,35 @@ export default function Home() {
     );
   }
 
-  async function refreshDashboard(options: { incremental?: boolean } = {}) {
-    if (dashboardRefreshInFlightRef.current) return;
+  async function refreshDashboard(
+    options: { incremental?: boolean; bookId?: string; classId?: string } = {}
+  ) {
+    if (options.incremental && dashboardRefreshInFlightRef.current) return;
 
+    const storedBookId = getStoredValue(TEACHER_DASHBOARD_BOOK_STORAGE_KEY)?.trim() ?? "";
+    const storedClassId = normalizeTeacherDashboardClassId(
+      getStoredValue(TEACHER_DASHBOARD_CLASS_STORAGE_KEY)
+    );
+    const requestedScope = {
+      bookId: options.bookId ?? (teacherDashboardScopeRef.current.bookId || storedBookId),
+      classId:
+        options.classId ?? (teacherDashboardScopeRef.current.classId || storedClassId)
+    };
     const incremental = options.incremental && Boolean(latestDashboardSubmissionAtRef.current);
+    const requestId = dashboardRequestIdRef.current + 1;
+    dashboardRequestIdRef.current = requestId;
     dashboardRefreshInFlightRef.current = true;
-    if (!incremental) setLoading(true);
-    if (!incremental) setNotice("");
+    if (!incremental) {
+      teacherDashboardScopeRef.current = requestedScope;
+      setTeacherDashboardBookId(requestedScope.bookId);
+      setTeacherDashboardClassId(requestedScope.classId);
+      latestDashboardSubmissionAtRef.current = null;
+      setLoading(true);
+      setNotice("");
+    }
     try {
-      const query = new URLSearchParams();
+      const query = new URLSearchParams({ classId: requestedScope.classId });
+      if (requestedScope.bookId) query.set("bookId", requestedScope.bookId);
       if (incremental && latestDashboardSubmissionAtRef.current) {
         query.set("after", latestDashboardSubmissionAtRef.current);
       }
@@ -1108,9 +1138,12 @@ export default function Home() {
         ok?: boolean;
         submissions?: SubmissionWithStudent[];
         students?: Student[];
+        scope?: TeacherDashboardScope;
         message?: string;
         code?: string;
       };
+
+      if (requestId !== dashboardRequestIdRef.current) return;
 
       if (response.status === 401) {
         setIsTeacherAuthenticated(false);
@@ -1142,17 +1175,46 @@ export default function Home() {
           setTeacherStudents((current) => mergeStudentsFromSubmissions(current, nextSubmissions));
         }
       } else {
+        const resolvedScope = data.scope ?? requestedScope;
         const nextSubmissions = data.submissions ?? [];
+        teacherDashboardScopeRef.current = resolvedScope;
+        setTeacherDashboardBookId(resolvedScope.bookId);
+        setTeacherDashboardClassId(resolvedScope.classId);
+        setStoredValue(TEACHER_DASHBOARD_BOOK_STORAGE_KEY, resolvedScope.bookId);
+        setStoredValue(TEACHER_DASHBOARD_CLASS_STORAGE_KEY, resolvedScope.classId);
         setSubmissions(nextSubmissions);
         setTeacherStudents(data.students ?? []);
         latestDashboardSubmissionAtRef.current = getLatestSubmissionCreatedAt(nextSubmissions);
       }
     } catch {
-      if (!incremental) setNotice("대시보드 데이터를 불러오지 못했습니다.");
+      if (!incremental && requestId === dashboardRequestIdRef.current) {
+        setNotice("대시보드 데이터를 불러오지 못했습니다.");
+      }
     } finally {
-      dashboardRefreshInFlightRef.current = false;
-      if (!incremental) setLoading(false);
+      if (requestId === dashboardRequestIdRef.current) {
+        dashboardRefreshInFlightRef.current = false;
+        if (!incremental) setLoading(false);
+      }
     }
+  }
+
+  function changeTeacherDashboardScope(bookId: string, classId: string) {
+    const nextScope = { bookId, classId: normalizeTeacherDashboardClassId(classId) };
+    if (
+      nextScope.bookId === teacherDashboardScopeRef.current.bookId &&
+      nextScope.classId === teacherDashboardScopeRef.current.classId
+    ) {
+      return;
+    }
+
+    teacherDashboardScopeRef.current = nextScope;
+    setTeacherDashboardBookId(nextScope.bookId);
+    setTeacherDashboardClassId(nextScope.classId);
+    setStoredValue(TEACHER_DASHBOARD_BOOK_STORAGE_KEY, nextScope.bookId);
+    setStoredValue(TEACHER_DASHBOARD_CLASS_STORAGE_KEY, nextScope.classId);
+    setSubmissions([]);
+    latestDashboardSubmissionAtRef.current = null;
+    void refreshDashboard(nextScope);
   }
 
   return (
@@ -1590,7 +1652,10 @@ export default function Home() {
           students={teacherStudents}
           books={availableBooks}
           problems={availableProblems}
-          onRefresh={refreshDashboard}
+          selectedBookId={teacherDashboardBookId}
+          classFilter={teacherDashboardClassId}
+          onScopeChange={changeTeacherDashboardScope}
+          onRefresh={() => void refreshDashboard()}
           onCurriculumChanged={refreshCurriculum}
           onLogout={() => void logoutTeacher()}
         />
@@ -2346,6 +2411,9 @@ function TeacherDashboard({
   students,
   books,
   problems,
+  selectedBookId,
+  classFilter,
+  onScopeChange,
   onRefresh,
   onCurriculumChanged,
   onLogout
@@ -2356,12 +2424,13 @@ function TeacherDashboard({
   students: Student[];
   books: ProblemBook[];
   problems: Problem[];
+  selectedBookId: string;
+  classFilter: string;
+  onScopeChange: (bookId: string, classId: string) => void;
   onRefresh: () => void;
   onCurriculumChanged: () => Promise<void>;
   onLogout: () => void;
 }) {
-  const [selectedBookId, setSelectedBookId] = useState(books[0]?.id ?? "");
-  const [classFilter, setClassFilter] = useState("all");
   const [studentFilter, setStudentFilter] = useState("all");
   const [sortBy, setSortBy] = useState("studentNo");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
@@ -2412,9 +2481,17 @@ function TeacherDashboard({
       ].sort((a, b) => a.localeCompare(b, "ko", { numeric: true })),
     [students]
   );
+  const classOptions = useMemo(() => {
+    if (classFilter === "all" || classFilter === "guest" || classes.includes(classFilter)) {
+      return classes;
+    }
+    return [...classes, classFilter].sort((a, b) =>
+      a.localeCompare(b, "ko", { numeric: true })
+    );
+  }, [classes, classFilter]);
   const bookFilterValues = books.map((book) => book.id);
   const subgroupFilterValues = ["all", ...bookProblemGroups.map((group) => group.id)];
-  const classFilterValues = ["all", ...classes, "guest"];
+  const classFilterValues = ["all", ...classOptions, "guest"];
   const filteredStudents = students.filter(
     (item) => matchesClassFilter(item, classFilter)
   );
@@ -2667,8 +2744,13 @@ function TeacherDashboard({
   }, [overviewStudentId, selectedSubmission]);
 
   function changeClassFilter(value: string) {
-    setClassFilter(value);
     setStudentFilter("all");
+    onScopeChange(selectedBook?.id ?? "", value);
+  }
+
+  function changeDashboardBook(value: string) {
+    setStudentFilter("all");
+    onScopeChange(value, classFilter);
   }
 
   return (
@@ -2699,7 +2781,10 @@ function TeacherDashboard({
             <label>
               <span>문제집</span>
               <div className="filterSelectControl">
-                <select value={selectedBook?.id ?? ""} onChange={(event) => setSelectedBookId(event.target.value)}>
+                <select
+                  value={selectedBook?.id ?? ""}
+                  onChange={(event) => changeDashboardBook(event.target.value)}
+                >
                   {books.map((book) => (
                     <option key={book.id} value={book.id}>
                       {formatBookTitle(book)}
@@ -2710,7 +2795,7 @@ function TeacherDashboard({
                   label="문제집"
                   values={bookFilterValues}
                   value={selectedBook?.id ?? ""}
-                  onChange={setSelectedBookId}
+                  onChange={changeDashboardBook}
                 />
               </div>
             </label>
@@ -2745,7 +2830,7 @@ function TeacherDashboard({
                   onChange={(event) => changeClassFilter(event.target.value)}
                 >
                   <option value="all">전체</option>
-                  {classes.map((classNo) => (
+                  {classOptions.map((classNo) => (
                     <option key={classNo} value={classNo}>
                       {formatClassLabel(classNo)}
                     </option>
@@ -4076,6 +4161,18 @@ function getStoredValue(key: string) {
   } catch {
     return null;
   }
+}
+
+function normalizeTeacherDashboardClassId(value: string | null) {
+  const normalized = value?.trim();
+  if (
+    normalized === "all" ||
+    normalized === "guest" ||
+    CLASS_VISIBILITY_OPTIONS.includes(normalized ?? "")
+  ) {
+    return normalized!;
+  }
+  return DEFAULT_TEACHER_DASHBOARD_CLASS_ID;
 }
 
 function setStoredValue(key: string, value: string) {
