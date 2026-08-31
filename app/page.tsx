@@ -2442,6 +2442,7 @@ function TeacherDashboard({
   const [submissionHistoryLoading, setSubmissionHistoryLoading] = useState(false);
   const submissionHistoryRequestRef = useRef(0);
   const [overviewStudentId, setOverviewStudentId] = useState("");
+  const [previewProblemId, setPreviewProblemId] = useState("");
   const selectedBook = books.find((book) => book.id === selectedBookId) ?? books[0];
   const bookProblems = problems
     .filter((problem) => problem.bookId === selectedBook?.id)
@@ -2451,6 +2452,17 @@ function TeacherDashboard({
     subgroupFilter === "all"
       ? bookProblems
       : bookProblemGroups.find((group) => group.id === subgroupFilter)?.problems ?? bookProblems;
+  const previewProblemIndex = displayedProblems.findIndex(
+    (problem) => problem.id === previewProblemId
+  );
+  const previewProblem =
+    previewProblemIndex >= 0 ? displayedProblems[previewProblemIndex] : undefined;
+  const previousPreviewProblem =
+    previewProblemIndex > 0 ? displayedProblems[previewProblemIndex - 1] : undefined;
+  const nextPreviewProblem =
+    previewProblemIndex >= 0 && previewProblemIndex < displayedProblems.length - 1
+      ? displayedProblems[previewProblemIndex + 1]
+      : undefined;
   const subgroupToneByProblemId = useMemo(() => {
     const tones = new Map<string, number>();
     bookProblemGroups.forEach((group, groupIndex) => {
@@ -2729,6 +2741,24 @@ function TeacherDashboard({
   }, [selectedBookId]);
 
   useEffect(() => {
+    if (!previewProblem) return;
+    const handlePreviewKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setPreviewProblemId("");
+      } else if (event.key === "ArrowLeft" && previousPreviewProblem) {
+        setPreviewProblemId(previousPreviewProblem.id);
+      } else if (event.key === "ArrowRight" && nextPreviewProblem) {
+        setPreviewProblemId(nextPreviewProblem.id);
+      } else {
+        return;
+      }
+      event.preventDefault();
+    };
+    window.addEventListener("keydown", handlePreviewKeyDown);
+    return () => window.removeEventListener("keydown", handlePreviewKeyDown);
+  }, [previewProblem, previousPreviewProblem, nextPreviewProblem]);
+
+  useEffect(() => {
     if (overviewStudentId && !students.some((student) => student.id === overviewStudentId)) {
       setOverviewStudentId("");
     }
@@ -2912,7 +2942,15 @@ function TeacherDashboard({
                       className={`subgroupTone${subgroupToneByProblemId.get(problem.id) ?? 0}`}
                       key={problem.id}
                     >
-                      {Number(formatProblemNumber(problem))}
+                      <button
+                        className="problemNumberButton"
+                        type="button"
+                        title={`${problem.title} 문제 보기`}
+                        aria-label={`${Number(formatProblemNumber(problem))}번 ${problem.title} 문제 보기`}
+                        onClick={() => setPreviewProblemId(problem.id)}
+                      >
+                        {Number(formatProblemNumber(problem))}
+                      </button>
                     </th>
                   ))}
                 </tr>
@@ -3187,7 +3225,114 @@ function TeacherDashboard({
           </div>
         </div>
       )}
+      {previewProblem && (
+        <TeacherProblemPreviewModal
+          problem={previewProblem}
+          previousProblem={previousPreviewProblem}
+          nextProblem={nextPreviewProblem}
+          onPrevious={() => previousPreviewProblem && setPreviewProblemId(previousPreviewProblem.id)}
+          onNext={() => nextPreviewProblem && setPreviewProblemId(nextPreviewProblem.id)}
+          onClose={() => setPreviewProblemId("")}
+        />
+      )}
     </section>
+  );
+}
+
+function TeacherProblemPreviewModal({
+  problem,
+  previousProblem,
+  nextProblem,
+  onPrevious,
+  onNext,
+  onClose
+}: {
+  problem: Problem;
+  previousProblem?: Problem;
+  nextProblem?: Problem;
+  onPrevious: () => void;
+  onNext: () => void;
+  onClose: () => void;
+}) {
+  const problemNumber = Number(formatProblemNumber(problem));
+
+  return (
+    <div className="modalBackdrop" role="presentation" onMouseDown={onClose}>
+      <article
+        className="problemPreviewModal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="teacher-problem-preview-title"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <button className="iconButton closeButton" type="button" onClick={onClose} aria-label="닫기">
+          <X size={18} />
+        </button>
+        <header className="problemPreviewHeader">
+          <div>
+            <span className="problemPreviewNumber">문항 {problemNumber}</span>
+            <h2 id="teacher-problem-preview-title">{problem.title}</h2>
+          </div>
+          <nav className="problemNavigation" aria-label="문항 이동">
+            <button
+              type="button"
+              className="problemNavigationButton"
+              disabled={!previousProblem}
+              onClick={onPrevious}
+              aria-label="이전 문제"
+              title={previousProblem ? `이전 문제: ${previousProblem.title}` : "첫 문제입니다."}
+            >
+              <ChevronLeft size={19} />
+            </button>
+            <button
+              type="button"
+              className="problemNavigationButton"
+              disabled={!nextProblem}
+              onClick={onNext}
+              aria-label="다음 문제"
+              title={nextProblem ? `다음 문제: ${nextProblem.title}` : "마지막 문제입니다."}
+            >
+              <ChevronRight size={19} />
+            </button>
+          </nav>
+        </header>
+        <ProblemBlock title="문제" body={problem.statement} />
+        <div className="descriptionGrid">
+          <ProblemBlock title="입력" body={problem.inputDescription} />
+          <ProblemBlock title="출력" body={problem.outputDescription} />
+        </div>
+        {problem.testCases.length > 1 &&
+          problem.showExample !== false &&
+          problem.examples.length > 0 && (
+            <div className="exampleBox">
+              <h2>예시</h2>
+              <div className="exampleList">
+                {problem.examples.map((example, index) => (
+                  <section className="exampleCase" key={index}>
+                    {problem.examples.length > 1 && <h3>예시 {index + 1}</h3>}
+                    <div className="ioGrid">
+                      <div>
+                        <strong>입력</strong>
+                        <pre>{example.input || "입력 없음"}</pre>
+                      </div>
+                      <div>
+                        <strong>출력</strong>
+                        <pre>{example.output}</pre>
+                      </div>
+                    </div>
+                  </section>
+                ))}
+              </div>
+            </div>
+          )}
+        {problem.hint.trim() && (
+          <div className="hint">
+            <Lightbulb size={18} />
+            {problem.hint}
+          </div>
+        )}
+      </article>
+    </div>
   );
 }
 
