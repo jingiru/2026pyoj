@@ -2404,6 +2404,16 @@ function getLatestSubmissionCreatedAt(submissions: SubmissionWithStudent[]) {
   return latest;
 }
 
+function compareSubmissionsChronologically(
+  left: SubmissionWithStudent,
+  right: SubmissionWithStudent
+) {
+  const leftTime = left.created_at ? new Date(left.created_at).getTime() : 0;
+  const rightTime = right.created_at ? new Date(right.created_at).getTime() : 0;
+  if (leftTime !== rightTime) return leftTime - rightTime;
+  return (left.id ?? "").localeCompare(right.id ?? "");
+}
+
 function TeacherDashboard({
   dashboard,
   loading,
@@ -2481,6 +2491,23 @@ function TeacherDashboard({
     }
     return representative;
   }, [submissions]);
+  const acceptedAttemptByStudentProblem = useMemo(() => {
+    const submissionsByStudentProblem = new Map<string, SubmissionWithStudent[]>();
+    for (const submission of submissions) {
+      const key = `${submission.student_id}:${submission.problem_id}`;
+      const attempts = submissionsByStudentProblem.get(key) ?? [];
+      attempts.push(submission);
+      submissionsByStudentProblem.set(key, attempts);
+    }
+
+    const acceptedAttempts = new Map<string, number>();
+    for (const [key, attempts] of submissionsByStudentProblem) {
+      attempts.sort(compareSubmissionsChronologically);
+      const acceptedIndex = attempts.findIndex((submission) => submission.status === "accepted");
+      if (acceptedIndex >= 0) acceptedAttempts.set(key, acceptedIndex + 1);
+    }
+    return acceptedAttempts;
+  }, [submissions]);
   const classes = useMemo(
     () =>
       [
@@ -2523,6 +2550,9 @@ function TeacherDashboard({
       const statuses = displayedProblems.map((problem) =>
         dashboardSubmissionByStudentProblem.get(`${item.id}:${problem.id}`)
       );
+      const acceptedAttempts = displayedProblems.map((problem) =>
+        acceptedAttemptByStudentProblem.get(`${item.id}:${problem.id}`)
+      );
       const studentSubmissions = submissionsByStudent.get(item.id) ?? [];
       const submitted = studentSubmissions.length;
       const accepted = statuses.filter((submission) => submission?.status === "accepted").length;
@@ -2554,7 +2584,7 @@ function TeacherDashboard({
           ? (acceptedAfterStart.length - 1) / speedMinutes
           : null;
 
-      return { student: item, statuses, submitted, accepted, speed };
+      return { student: item, statuses, acceptedAttempts, submitted, accepted, speed };
     });
     const filtered = rows.filter(({ student }) => {
       const matchesClass = matchesClassFilter(student, classFilter);
@@ -2587,6 +2617,7 @@ function TeacherDashboard({
     students,
     displayedProblems,
     dashboardSubmissionByStudentProblem,
+    acceptedAttemptByStudentProblem,
     submissions,
     classFilter,
     sortBy,
@@ -2983,27 +3014,42 @@ function TeacherDashboard({
                     <td className="scoreCell">{row.accepted}</td>
                     <td>{row.submitted}</td>
                     <td>{row.speed === null ? "-" : `${row.speed.toFixed(2)}/분`}</td>
-                    {row.statuses.map((submission, index) => (
-                      <td
-                        className={`subgroupTone${
-                          subgroupToneByProblemId.get(displayedProblems[index].id) ?? 0
-                        }`}
-                        key={displayedProblems[index].id}
-                      >
-                        {submission ? (
-                          <button
-                            className={`submissionStatus ${submissionResultClass(submission.status)}`}
-                            onClick={() => void openSubmission(submission)}
-                            title={submissionResultLabel(submission.status)}
-                            aria-label={`${displayedProblems[index].title} ${submissionResultLabel(submission.status)}`}
-                          >
-                            {submission.status === "accepted" ? "O" : "X"}
-                          </button>
-                        ) : (
-                          <span className="notSubmitted" aria-label="미제출" />
-                        )}
-                      </td>
-                    ))}
+                    {row.statuses.map((submission, index) => {
+                      const problem = displayedProblems[index];
+                      const acceptedAttempt = row.acceptedAttempts[index];
+                      const resultLabel = submission
+                        ? submission.status === "accepted" && acceptedAttempt
+                          ? `${acceptedAttempt}번의 시도 끝에 정답`
+                          : submissionResultLabel(submission.status)
+                        : "미제출";
+                      return (
+                        <td
+                          className={`subgroupTone${
+                            subgroupToneByProblemId.get(problem.id) ?? 0
+                          }`}
+                          key={problem.id}
+                        >
+                          {submission ? (
+                            <button
+                              className={`submissionStatus ${submissionResultClass(submission.status)}`}
+                              onClick={() => void openSubmission(submission)}
+                              title={resultLabel}
+                              aria-label={`${problem.title} ${resultLabel}`}
+                            >
+                              {submission.status === "accepted" ? (
+                                <span className="acceptedAttemptBadge" aria-hidden="true">
+                                  {acceptedAttempt}
+                                </span>
+                              ) : (
+                                "X"
+                              )}
+                            </button>
+                          ) : (
+                            <span className="notSubmitted" aria-label="미제출" />
+                          )}
+                        </td>
+                      );
+                    })}
                   </tr>
                 ))}
               </tbody>
