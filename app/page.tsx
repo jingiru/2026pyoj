@@ -3038,7 +3038,7 @@ function TeacherDashboard({
                             >
                               {submission.status === "accepted" ? (
                                 <span className="acceptedAttemptBadge" aria-hidden="true">
-                                  {acceptedAttempt}
+                                  {acceptedAttempt && acceptedAttempt > 1 ? acceptedAttempt : null}
                                 </span>
                               ) : (
                                 "X"
