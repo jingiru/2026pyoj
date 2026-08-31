@@ -24,3 +24,12 @@ export function getStudentClassId(studentNo: string) {
 export function formatClassLabel(classId: string) {
   return classId.startsWith("M") ? classId : `${classId}반`;
 }
+
+export function getStudentGradeClassId(studentNo: string) {
+  if (!/^\d{4}$/.test(studentNo)) return null;
+  return `${studentNo.charAt(0)}-${studentNo.charAt(1)}`;
+}
+
+export function isStudentGradeClassId(classId: string) {
+  return /^[1-9]-[1-9]$/.test(classId);
+}

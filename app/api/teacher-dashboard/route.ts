@@ -1,15 +1,14 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { isTeacherRequestAuthenticated } from "@/lib/teacher-auth";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
-import { CLASS_VISIBILITY_OPTIONS, getStudentClassId } from "@/lib/student-class";
+import { getStudentGradeClassId, isStudentGradeClassId } from "@/lib/student-class";
 import type { Student, SubmissionWithStudent } from "@/lib/types";
 
 const DASHBOARD_SUBMISSION_COLUMNS =
   "id, student_id, problem_id, status, passed_count, total_count, created_at, students(student_no, name, is_guest)";
 const SUBMISSION_HISTORY_COLUMNS =
   "id, student_id, problem_id, code, status, passed_count, total_count, feedback, created_at, students(student_no, name, is_guest)";
-const DEFAULT_DASHBOARD_CLASS_ID = "1";
-const DASHBOARD_CLASS_IDS = new Set(["all", "guest", ...CLASS_VISIBILITY_OPTIONS]);
+const DEFAULT_DASHBOARD_CLASS_ID = "all";
 
 export async function GET(request: NextRequest) {
   if (!isTeacherRequestAuthenticated(request)) {
@@ -60,7 +59,11 @@ export async function GET(request: NextRequest) {
   const requestedClassId =
     request.nextUrl.searchParams.get("classId")?.trim() || DEFAULT_DASHBOARD_CLASS_ID;
 
-  if (!DASHBOARD_CLASS_IDS.has(requestedClassId)) {
+  if (
+    requestedClassId !== "all" &&
+    requestedClassId !== "guest" &&
+    !isStudentGradeClassId(requestedClassId)
+  ) {
     return NextResponse.json(
       { ok: false, message: "올바른 학급을 선택해주세요." },
       { status: 400 }
@@ -167,7 +170,7 @@ export async function GET(request: NextRequest) {
 function matchesDashboardClass(student: Student, classId: string) {
   if (classId === "all") return true;
   if (classId === "guest") return Boolean(student.is_guest);
-  return !student.is_guest && getStudentClassId(student.student_no) === classId;
+  return !student.is_guest && getStudentGradeClassId(student.student_no) === classId;
 }
 
 function dashboardError(error: {

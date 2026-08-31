@@ -67,7 +67,8 @@ import {
 import {
   CLASS_VISIBILITY_OPTIONS,
   formatClassLabel,
-  getStudentClassId
+  getStudentGradeClassId,
+  isStudentGradeClassId
 } from "@/lib/student-class";
 import { runPythonWithSkulpt } from "@/lib/skulpt-runner";
 import { checkCodeRequirements } from "@/lib/code-requirements";
@@ -126,7 +127,7 @@ const STUDENT_STORAGE_KEY = "pyoj:student";
 const GUEST_TOKEN_STORAGE_KEY = "pyoj:guest-token";
 const TEACHER_DASHBOARD_BOOK_STORAGE_KEY = "pyoj:teacher-dashboard-book";
 const TEACHER_DASHBOARD_CLASS_STORAGE_KEY = "pyoj:teacher-dashboard-class";
-const DEFAULT_TEACHER_DASHBOARD_CLASS_ID = "1";
+const DEFAULT_TEACHER_DASHBOARD_CLASS_ID = "all";
 const DASHBOARD_POLL_INTERVAL_MS = 7000;
 const DASHBOARD_BACKGROUND_POLL_INTERVAL_MS = 30000;
 const DEFAULT_SOLVE_EDITOR_HEIGHT = 156;
@@ -2514,7 +2515,7 @@ function TeacherDashboard({
         ...new Set(
           students
             .filter((item) => !item.is_guest)
-            .map((item) => getStudentClassId(item.student_no))
+            .map((item) => getStudentGradeClassId(item.student_no))
             .filter((classId): classId is string => Boolean(classId))
         )
       ].sort((a, b) => a.localeCompare(b, "ko", { numeric: true })),
@@ -2893,7 +2894,7 @@ function TeacherDashboard({
                   <option value="all">전체</option>
                   {classOptions.map((classNo) => (
                     <option key={classNo} value={classNo}>
-                      {formatClassLabel(classNo)}
+                      {classNo}
                     </option>
                   ))}
                   <option value="guest">비로그인</option>
@@ -4363,7 +4364,7 @@ function normalizeTeacherDashboardClassId(value: string | null) {
   if (
     normalized === "all" ||
     normalized === "guest" ||
-    CLASS_VISIBILITY_OPTIONS.includes(normalized ?? "")
+    isStudentGradeClassId(normalized ?? "")
   ) {
     return normalized!;
   }
@@ -4416,5 +4417,5 @@ function getStoredStudent(): Student | null {
 function matchesClassFilter(student: Student, classFilter: string) {
   if (classFilter === "all") return true;
   if (classFilter === "guest") return Boolean(student.is_guest);
-  return !student.is_guest && getStudentClassId(student.student_no) === classFilter;
+  return !student.is_guest && getStudentGradeClassId(student.student_no) === classFilter;
 }
