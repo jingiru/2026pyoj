@@ -8,7 +8,7 @@ const DASHBOARD_SUBMISSION_COLUMNS =
   "id, student_id, problem_id, status, passed_count, total_count, created_at, students(student_no, name, is_guest)";
 const SUBMISSION_HISTORY_COLUMNS =
   "id, student_id, problem_id, code, status, passed_count, total_count, feedback, created_at, students(student_no, name, is_guest)";
-const DEFAULT_DASHBOARD_CLASS_ID = "all";
+const DEFAULT_DASHBOARD_CLASS_ID = "2-1";
 
 export async function GET(request: NextRequest) {
   if (!isTeacherRequestAuthenticated(request)) {
