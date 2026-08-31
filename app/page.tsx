@@ -1704,13 +1704,21 @@ export default function Home() {
           </button>
           <div className="submissionToastTitle">
             {result.status === "accepted" && <CheckCircle2 size={21} />}
-            <strong>{result.status === "accepted" ? "성공" : "채점 결과"}</strong>
+            <strong>
+              {result.status === "accepted"
+                ? "성공"
+                : result.status === "code_requirement_failed"
+                  ? "코드 조건 미충족"
+                  : "채점 결과"}
+            </strong>
           </div>
           <p>
             총 {result.totalCount}개의 테스트 케이스 중 <b>{result.passedCount}개</b>를 통과했습니다.
           </p>
           {result.status === "code_requirement_failed" && (
-            <p className="codeRequirementNotice">문제에서 요구하는 코드의 조건을 다시 확인하세요.</p>
+            <p className="codeRequirementNotice">
+              테스트 케이스는 통과했지만, {result.feedback}
+            </p>
           )}
           <button type="button" className="submissionToastConfirm" onClick={dismissResultToast}>
             확인
@@ -2318,10 +2326,10 @@ async function judgeProblemSubmission(problem: Problem, code: string): Promise<J
   if (outputAccepted && !requirementResult.passed) {
     return {
       status: "code_requirement_failed",
-      passedCount: 0,
+      passedCount,
       totalCount: cases.length,
       feedback: requirementResult.feedback,
-      cases: cases.map((testCase) => ({ ...testCase, passed: false }))
+      cases
     };
   }
 

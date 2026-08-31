@@ -22,6 +22,7 @@ export type ProblemVisibilityScope = "all" | "classes";
 export type CodeRequirement =
   | { type: "print_arguments"; minCount: number }
   | { type: "operators"; values: Array<"+" | "-" | "*" | "/" | "//" | "%"> }
+  | { type: "forbidden_keywords"; values: Array<"if"> }
   | { type: "assigned_output" }
   | { type: "reassignment" }
   | { type: "for_range" }

@@ -18,6 +18,7 @@ type Assignment = {
 type CodeFacts = {
   printCalls: ParsedNode[];
   assignments: Assignment[];
+  keywords: Set<string>;
   source: string;
 };
 
@@ -83,6 +84,18 @@ function checkRequirement(
         : `출력값을 만드는 계산에 ${missing
             .map((value) => `\`${value}\``)
             .join(", ")} 연산자를 사용해주세요.`;
+    }
+
+    case "forbidden_keywords": {
+      const used = requirement.values.filter((keyword) =>
+        facts.keywords.has(keyword)
+      );
+
+      return used.length === 0
+        ? ""
+        : `${used
+            .map((keyword) => `\`${keyword}\``)
+            .join(", ")}를 사용하지 말고 순차 구조만으로 풀어주세요.`;
     }
 
     case "assigned_output":
@@ -180,8 +193,13 @@ function collectFacts(
 ): CodeFacts {
   const printCalls: ParsedNode[] = [];
   const assignments: Assignment[] = [];
+  const keywords = new Set<string>();
 
   walk(tree, (node) => {
+    if (node.name === "if") {
+      keywords.add(node.name);
+    }
+
     if (
       node.name === "CallExpression" &&
       callName(node, source) === "print"
@@ -215,6 +233,7 @@ function collectFacts(
   return {
     printCalls,
     assignments,
+    keywords,
     source
   };
 }
