@@ -3037,9 +3037,13 @@ function TeacherDashboard({
                               aria-label={`${problem.title} ${resultLabel}`}
                             >
                               {submission.status === "accepted" ? (
-                                <span className="acceptedAttemptBadge" aria-hidden="true">
-                                  {acceptedAttempt && acceptedAttempt > 1 ? acceptedAttempt : null}
-                                </span>
+                                acceptedAttempt && acceptedAttempt > 1 ? (
+                                  <span className="acceptedAttemptBadge" aria-hidden="true">
+                                    {acceptedAttempt}
+                                  </span>
+                                ) : (
+                                  "O"
+                                )
                               ) : (
                                 "X"
                               )}
