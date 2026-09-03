@@ -250,12 +250,12 @@ export default function Home() {
   const [solveInputHistory, setSolveInputHistory] = useState<string[]>([]);
   const [solvePendingPrompt, setSolvePendingPrompt] = useState<string | null>(null);
   const [isSolveRunning, setIsSolveRunning] = useState(false);
+  const solveRunIdRef = useRef(0);
+  const solveRunAbortControllerRef = useRef<AbortController | null>(null);
   const solveInputResolverRef = useRef<((value: string) => void) | null>(null);
   const solveQueuedInputsRef = useRef<string[]>([]);
   const solveConsoleInputRef = useRef<HTMLTextAreaElement | null>(null);
   const solveRunInputsRef = useRef<string[]>([]);
-  const solveRunOutputsRef = useRef<string[]>([]);
-  const solveRunErrorsRef = useRef<string[]>([]);
   const practiceResizeRef = useRef<{
     startX: number;
     startY: number;
@@ -303,6 +303,17 @@ export default function Home() {
   useEffect(() => {
     if (solvePendingPrompt !== null) solveConsoleInputRef.current?.focus();
   }, [solvePendingPrompt]);
+
+  useEffect(() => {
+    if (screen !== "solve") cancelSolveRun();
+  }, [screen]);
+
+  useEffect(
+    () => () => {
+      solveRunAbortControllerRef.current?.abort();
+    },
+    []
+  );
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(max-width: 1120px)");
@@ -708,6 +719,7 @@ export default function Home() {
   function changeProblem(problemId: string) {
     const problem = availableProblems.find((item) => item.id === problemId) ?? availableProblems[0];
     if (!problem) return;
+    cancelSolveRun();
     setSelectedProblemId(problem.id);
     setSelectedBookId(problem.bookId);
     setCode(getSavedProblemCode(problem.id) ?? problem.starterCode);
@@ -942,47 +954,59 @@ export default function Home() {
   }
 
   async function runSolveCode() {
-    if (isSolveRunning) return;
+    if (solveRunAbortControllerRef.current) return;
+    const runId = ++solveRunIdRef.current;
+    const abortController = new AbortController();
+    const runInputs: string[] = [];
+    const runOutputs: string[] = [];
+    const runErrors: string[] = [];
     const startedAt = performance.now();
     const codeSnapshot = code;
+    const problemIdSnapshot = selectedProblem.id;
+    const studentSnapshot = student;
+    solveRunAbortControllerRef.current = abortController;
     setIsSolveRunning(true);
     setResult(null);
     setSolvePendingPrompt(null);
     setSolveConsoleInput("");
     setSolveInputHistory([]);
     solveQueuedInputsRef.current = [];
-    solveRunInputsRef.current = [];
-    solveRunOutputsRef.current = [];
-    solveRunErrorsRef.current = [];
+    solveRunInputsRef.current = runInputs;
     setSolveConsoleLines([]);
 
     try {
       await runPythonWithSkulpt(codeSnapshot, {
         output: (text) => {
-          solveRunOutputsRef.current.push(text);
+          if (solveRunIdRef.current !== runId) return;
+          runOutputs.push(text);
           setSolveConsoleLines((lines) => appendConsoleText(lines, text));
         },
         error: (text) => {
-          solveRunErrorsRef.current.push(text);
+          if (solveRunIdRef.current !== runId) return;
+          runErrors.push(text);
           setSolveConsoleLines((lines) => [...lines, text]);
         },
-        input: requestSolveConsoleInput
-      });
+        input: (prompt) => requestSolveConsoleInput(prompt, runId)
+      }, { signal: abortController.signal });
     } finally {
-      solveInputResolverRef.current = null;
-      setSolvePendingPrompt(null);
-      setIsSolveRunning(false);
-      if (student) {
+      const isCurrentRun = solveRunIdRef.current === runId;
+      if (isCurrentRun) {
+        solveRunAbortControllerRef.current = null;
+        solveInputResolverRef.current = null;
+        setSolvePendingPrompt(null);
+        setIsSolveRunning(false);
+      }
+      if (studentSnapshot && !abortController.signal.aborted) {
         await saveCodeRunLog({
-          studentId: student.id,
-          problemId: selectedProblem.id,
+          studentId: studentSnapshot.id,
+          problemId: problemIdSnapshot,
           code: codeSnapshot,
-          stdin: solveRunInputsRef.current.join("\n"),
-          stdout: solveRunOutputsRef.current.join(""),
-          stderr: solveRunErrorsRef.current.join("\n"),
-          status: solveRunErrorsRef.current.length > 0 ? "runtime_error" : "success",
+          stdin: runInputs.join("\n"),
+          stdout: runOutputs.join(""),
+          stderr: runErrors.join("\n"),
+          status: runErrors.length > 0 ? "runtime_error" : "success",
           executionTimeMs: performance.now() - startedAt,
-          guestToken: student.is_guest
+          guestToken: studentSnapshot.is_guest
             ? getStoredValue(GUEST_TOKEN_STORAGE_KEY) ?? undefined
             : undefined
         });
@@ -990,7 +1014,8 @@ export default function Home() {
     }
   }
 
-  function requestSolveConsoleInput(prompt: string) {
+  function requestSolveConsoleInput(prompt: string, runId: number) {
+    if (solveRunIdRef.current !== runId) return new Promise<string>(() => undefined);
     const queuedValue = solveQueuedInputsRef.current.shift();
     if (queuedValue !== undefined) {
       solveRunInputsRef.current.push(queuedValue);
@@ -1002,6 +1027,18 @@ export default function Home() {
       solveInputResolverRef.current = resolve;
       setSolvePendingPrompt(prompt);
     });
+  }
+
+  function cancelSolveRun() {
+    const abortController = solveRunAbortControllerRef.current;
+    if (!abortController) return;
+    solveRunIdRef.current += 1;
+    solveRunAbortControllerRef.current = null;
+    solveInputResolverRef.current = null;
+    abortController.abort();
+    setSolvePendingPrompt(null);
+    setSolveConsoleInput("");
+    setIsSolveRunning(false);
   }
 
   function submitSolveConsoleInput(event: KeyboardEvent<HTMLTextAreaElement>) {
