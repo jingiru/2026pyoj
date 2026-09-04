@@ -123,6 +123,8 @@ const SELECTED_PROBLEM_STORAGE_KEY = "pyoj:selected-problem";
 const PROBLEM_CODE_STORAGE_PREFIX = "pyoj:problem-code:";
 const AUTO_ADVANCE_STORAGE_KEY = "pyoj:auto-advance-on-accepted";
 const SOLVE_EDITOR_HEIGHT_STORAGE_KEY = "pyoj:solve-editor-height";
+const SOLVE_CODE_FONT_SIZE_STORAGE_KEY = "pyoj:solve-code-font-size";
+const SOLVE_CONSOLE_FONT_SIZE_STORAGE_KEY = "pyoj:solve-console-font-size";
 const STUDENT_STORAGE_KEY = "pyoj:student";
 const GUEST_TOKEN_STORAGE_KEY = "pyoj:guest-token";
 const TEACHER_DASHBOARD_BOOK_STORAGE_KEY = "pyoj:teacher-dashboard-book";
@@ -478,6 +480,10 @@ export default function Home() {
     const savedPracticeCode = getStoredValue(PRACTICE_CODE_STORAGE_KEY);
     if (savedPracticeCode !== null) setPracticeCode(savedPracticeCode);
     setAutoAdvanceOnAccepted(getStoredValue(AUTO_ADVANCE_STORAGE_KEY) === "true");
+    const savedCodeFontSize = getStoredFontSize(SOLVE_CODE_FONT_SIZE_STORAGE_KEY);
+    if (savedCodeFontSize !== null) setCodeFontSize(savedCodeFontSize);
+    const savedConsoleFontSize = getStoredFontSize(SOLVE_CONSOLE_FONT_SIZE_STORAGE_KEY);
+    if (savedConsoleFontSize !== null) setConsoleFontSize(savedConsoleFontSize);
     const savedSolveEditorHeight = Number(getStoredValue(SOLVE_EDITOR_HEIGHT_STORAGE_KEY));
     if (Number.isFinite(savedSolveEditorHeight)) {
       setSolveEditorHeight(clampSolveEditorHeight(savedSolveEditorHeight));
@@ -528,6 +534,12 @@ export default function Home() {
     if (!editorStorageReady) return;
     setStoredValue(SOLVE_EDITOR_HEIGHT_STORAGE_KEY, String(solveEditorHeight));
   }, [editorStorageReady, solveEditorHeight]);
+
+  useEffect(() => {
+    if (!editorStorageReady) return;
+    setStoredValue(SOLVE_CODE_FONT_SIZE_STORAGE_KEY, String(codeFontSize));
+    setStoredValue(SOLVE_CONSOLE_FONT_SIZE_STORAGE_KEY, String(consoleFontSize));
+  }, [codeFontSize, consoleFontSize, editorStorageReady]);
 
   function navigateTo(nextScreen: Screen) {
     const url = new URL(window.location.href);
@@ -4404,6 +4416,11 @@ function getStoredValue(key: string) {
   } catch {
     return null;
   }
+}
+
+function getStoredFontSize(key: string) {
+  const value = Number(getStoredValue(key));
+  return Number.isInteger(value) && value >= 12 && value <= 60 ? value : null;
 }
 
 function normalizeTeacherDashboardClassId(value: string | null) {
