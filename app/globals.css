@@ -523,7 +523,9 @@ button {
   font-size: inherit;
   line-height: 1.6;
   min-height: 0;
+  overflow-wrap: anywhere;
   padding: 0;
+  white-space: pre-wrap;
 }
 
 .terminalInputRow {
