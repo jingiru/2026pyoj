@@ -197,6 +197,16 @@ button {
   opacity: 0.6;
 }
 
+.runButton.stopButton {
+  background: color-mix(in srgb, var(--rose) 14%, var(--panel));
+  border-color: color-mix(in srgb, var(--rose) 42%, var(--line));
+  color: color-mix(in srgb, var(--rose) 82%, var(--ink));
+}
+
+.runButton.stopButton:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--rose) 23%, var(--panel));
+}
+
 .resetCodeButton {
   align-items: center;
   background: color-mix(in srgb, #f43f5e 12%, var(--panel));

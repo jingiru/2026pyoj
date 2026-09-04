@@ -10,6 +10,12 @@ type SkulptRunOptions = {
 };
 
 const DEFAULT_TIME_LIMIT_MS = 30000;
+const EXECUTION_SLICE_MS = 50;
+
+type SkulptSuspension = {
+  data: { promise: Promise<unknown>; result?: unknown; error?: unknown };
+  resume: () => unknown;
+};
 
 export async function runPythonWithSkulpt(
   code: string,
@@ -21,25 +27,34 @@ export async function runPythonWithSkulpt(
   const Sk = (module as any).default ?? module;
   const timeLimitMs = options.timeLimitMs ?? DEFAULT_TIME_LIMIT_MS;
   const cancellationError = new Error("PYOJ_SKULPT_RUN_CANCELLED");
-  let interruptInput: (reason: unknown) => void = () => undefined;
+  let interruptRun: (reason: unknown) => void = () => undefined;
   let interruptionReason: unknown;
-  const inputInterruption = new Promise<never>((_, reject) => {
-    interruptInput = (reason) => {
+  const runInterruption = new Promise<never>((_, reject) => {
+    interruptRun = (reason) => {
       if (interruptionReason !== undefined) return;
       interruptionReason = reason;
       reject(reason);
     };
   });
-  // This promise is only consumed while input() is waiting. Mark it handled for
-  // programs that finish without requesting input.
-  void inputInterruption.catch(() => undefined);
-  const abortRun = () => interruptInput(cancellationError);
+  // Some programs finish without ever suspending on a promise.
+  void runInterruption.catch(() => undefined);
+  const abortRun = () => interruptRun(cancellationError);
 
   if (options.signal?.aborted) return;
   options.signal?.addEventListener("abort", abortRun, { once: true });
-  const timeoutId = window.setTimeout(() => {
-    interruptInput(new Sk.builtin.TimeLimitError(Sk.timeoutMsg()));
+  const timeoutId = globalThis.setTimeout(() => {
+    interruptRun(new Sk.builtin.TimeLimitError(Sk.timeoutMsg()));
   }, timeLimitMs);
+
+  const resumeUnlessCancelled = (suspension: SkulptSuspension) => {
+    if (options.signal?.aborted) throw cancellationError;
+    return suspension.resume();
+  };
+
+  const yieldToBrowser = (suspension: SkulptSuspension) =>
+    new Promise<void>((resolve) => globalThis.setTimeout(resolve, 0)).then(() =>
+      resumeUnlessCancelled(suspension)
+    );
 
   Sk.configure({
     __future__: Sk.python3,
@@ -52,14 +67,35 @@ export async function runPythonWithSkulpt(
     },
     inputfun: (prompt: string) => {
       if (interruptionReason !== undefined) return Promise.reject(interruptionReason);
-      return Promise.race([callbacks.input(prompt), inputInterruption]);
+      return callbacks.input(prompt);
     },
     inputfunTakesPrompt: true,
-    execLimit: timeLimitMs
+    execLimit: timeLimitMs,
+    // Let the browser paint the stop button and receive clicks during loops.
+    yieldLimit: EXECUTION_SLICE_MS
   });
 
   try {
-    await Sk.misceval.asyncToPromise(() => Sk.importMainWithBody("<stdin>", false, code, true));
+    await Sk.misceval.asyncToPromise(
+      () => Sk.importMainWithBody("<stdin>", false, code, true),
+      {
+        "Sk.promise": (suspension: SkulptSuspension) =>
+          Promise.race([suspension.data.promise, runInterruption]).then(
+            (value) => {
+              suspension.data.result = value;
+              return resumeUnlessCancelled(suspension);
+            },
+            (error) => {
+              // Cancellation must not resume Python, even inside try/except.
+              // TimeLimitError still resumes through Skulpt to retain its line number.
+              suspension.data.error = error;
+              return resumeUnlessCancelled(suspension);
+            }
+          ),
+        "Sk.yield": yieldToBrowser,
+        "Sk.delay": yieldToBrowser
+      }
+    );
   } catch (error) {
     const nativeError =
       typeof error === "object" && error !== null && "nativeError" in error
@@ -69,7 +105,7 @@ export async function runPythonWithSkulpt(
       callbacks.error(error instanceof Error ? error.toString() : String(error));
     }
   } finally {
-    window.clearTimeout(timeoutId);
+    globalThis.clearTimeout(timeoutId);
     options.signal?.removeEventListener("abort", abortRun);
   }
 }

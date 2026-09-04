@@ -45,6 +45,7 @@ import {
   Plus,
   Send,
   Sparkles,
+  Square,
   Trophy,
   Trash2,
   Upload,
@@ -1579,10 +1580,14 @@ export default function Home() {
                     <Play size={17} />
                     초기 코드
                   </button>
-                  <button className="runButton" onClick={() => void runSolveCode()} disabled={isSolveRunning}>
-                    <Play size={17} />
-                    {isSolveRunning ? "실행 중" : "실행"}
-                    <kbd className="compactShortcut">Shift + Enter</kbd>
+                  <button
+                    type="button"
+                    className={`runButton${isSolveRunning ? " stopButton" : ""}`}
+                    onClick={() => isSolveRunning ? cancelSolveRun() : void runSolveCode()}
+                  >
+                    {isSolveRunning ? <Square size={17} fill="currentColor" /> : <Play size={17} />}
+                    {isSolveRunning ? "실행중지" : "실행"}
+                    {!isSolveRunning && <kbd className="compactShortcut">Shift + Enter</kbd>}
                   </button>
                   <button className="primaryButton" onClick={() => void submitCode()} disabled={isSubmitting}>
                     <Send size={17} />
