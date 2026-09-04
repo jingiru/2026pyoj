@@ -221,6 +221,8 @@ export default function Home() {
       : undefined;
   const [code, setCode] = useState(DEFAULT_PROBLEM.starterCode);
   const [practiceCode, setPracticeCode] = useState("print()");
+  const [practiceCodeFontSize, setPracticeCodeFontSize] = useState(30);
+  const [practiceConsoleFontSize, setPracticeConsoleFontSize] = useState(30);
   const [codeFontSize, setCodeFontSize] = useState(15);
   const [consoleFontSize, setConsoleFontSize] = useState(15);
   const [consoleLines, setConsoleLines] = useState<string[]>([
@@ -1298,11 +1300,11 @@ export default function Home() {
                 <div className="ideActions">
                   <FontSizeControl
                     label="코드 글자 크기"
-                    value={codeFontSize}
-                    onDecreaseLarge={() => setCodeFontSize((size) => Math.max(12, size - 10))}
-                    onDecrease={() => setCodeFontSize((size) => Math.max(12, size - 1))}
-                    onIncrease={() => setCodeFontSize((size) => Math.min(60, size + 1))}
-                    onIncreaseLarge={() => setCodeFontSize((size) => Math.min(60, size + 10))}
+                    value={practiceCodeFontSize}
+                    onDecreaseLarge={() => setPracticeCodeFontSize((size) => Math.max(12, size - 10))}
+                    onDecrease={() => setPracticeCodeFontSize((size) => Math.max(12, size - 1))}
+                    onIncrease={() => setPracticeCodeFontSize((size) => Math.min(60, size + 1))}
+                    onIncreaseLarge={() => setPracticeCodeFontSize((size) => Math.min(60, size + 10))}
                   />
                   <button className="resetCodeButton" onClick={resetPracticeCode}>
                     <Trash2 size={17} />
@@ -1320,7 +1322,7 @@ export default function Home() {
                 onChange={setPracticeCode}
                 onRun={runPractice}
                 colorMode={colorMode}
-                fontSize={codeFontSize}
+                fontSize={practiceCodeFontSize}
               />
             </article>
             <div
@@ -1351,16 +1353,16 @@ export default function Home() {
                   </button>
                   <FontSizeControl
                     label="콘솔 글자 크기"
-                    value={consoleFontSize}
-                    onDecreaseLarge={() => setConsoleFontSize((size) => Math.max(12, size - 10))}
-                    onDecrease={() => setConsoleFontSize((size) => Math.max(12, size - 1))}
-                    onIncrease={() => setConsoleFontSize((size) => Math.min(60, size + 1))}
-                    onIncreaseLarge={() => setConsoleFontSize((size) => Math.min(60, size + 10))}
+                    value={practiceConsoleFontSize}
+                    onDecreaseLarge={() => setPracticeConsoleFontSize((size) => Math.max(12, size - 10))}
+                    onDecrease={() => setPracticeConsoleFontSize((size) => Math.max(12, size - 1))}
+                    onIncrease={() => setPracticeConsoleFontSize((size) => Math.min(60, size + 1))}
+                    onIncreaseLarge={() => setPracticeConsoleFontSize((size) => Math.min(60, size + 10))}
                   />
                   <span>{pendingPrompt !== null ? "입력 대기 중" : isPracticeRunning ? "실행 중" : "실행 결과"}</span>
                 </div>
               </div>
-              <div className="terminal" aria-live="polite" style={{ fontSize: `${consoleFontSize}px` }}>
+              <div className="terminal" aria-live="polite" style={{ fontSize: `${practiceConsoleFontSize}px` }}>
                 <div className="terminalScroll">
                   <pre>{consoleLines.join("\n")}</pre>
                   {pendingPrompt !== null && (
