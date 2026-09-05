@@ -71,6 +71,7 @@ import {
   getStudentGradeClassId,
   isStudentGradeClassId
 } from "@/lib/student-class";
+import { getAccuracy, rankStudents } from "@/lib/dashboard-ranking";
 import { runPythonWithSkulpt } from "@/lib/skulpt-runner";
 import { checkCodeRequirements } from "@/lib/code-requirements";
 import {
@@ -299,14 +300,6 @@ export default function Home() {
   const dashboardRequestIdRef = useRef(0);
   const teacherDashboardScopeRef = useRef<TeacherDashboardScope>({ bookId: "", classId: "" });
   const teacherDashboardCacheRef = useRef(new Map<string, TeacherDashboardCacheEntry>());
-
-  const dashboard = useMemo(() => {
-    const accepted = submissions.filter((submission) => submission.status === "accepted").length;
-    const triedStudents = new Set(submissions.map((submission) => submission.student_id)).size;
-    const total = submissions.length;
-    const rate = total === 0 ? 0 : Math.round((accepted / total) * 100);
-    return { accepted, total, rate, triedStudents };
-  }, [submissions]);
 
   useEffect(() => {
     if (pendingPrompt !== null) consoleInputRef.current?.focus();
@@ -1750,7 +1743,6 @@ export default function Home() {
 
       {teacherAuthReady && screen === "teacher" && isTeacherAuthenticated && (
         <TeacherDashboard
-          dashboard={dashboard}
           loading={loading}
           submissions={submissions}
           students={teacherStudents}
@@ -2547,7 +2539,6 @@ function compareSubmissionsChronologically(
 }
 
 function TeacherDashboard({
-  dashboard,
   loading,
   submissions,
   students,
@@ -2560,7 +2551,6 @@ function TeacherDashboard({
   onCurriculumChanged,
   onLogout
 }: {
-  dashboard: { accepted: number; total: number; rate: number; triedStudents: number };
   loading: boolean;
   submissions: SubmissionWithStudent[];
   students: Student[];
@@ -2573,7 +2563,6 @@ function TeacherDashboard({
   onCurriculumChanged: () => Promise<void>;
   onLogout: () => void;
 }) {
-  const [studentFilter, setStudentFilter] = useState("all");
   const [sortBy, setSortBy] = useState("studentNo");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [subgroupFilter, setSubgroupFilter] = useState("all");
@@ -2663,11 +2652,7 @@ function TeacherDashboard({
   const bookFilterValues = books.map((book) => book.id);
   const subgroupFilterValues = ["all", ...bookProblemGroups.map((group) => group.id)];
   const classFilterValues = ["all", ...classOptions, "guest"];
-  const filteredStudents = students.filter(
-    (item) => matchesClassFilter(item, classFilter)
-  );
-  const studentFilterValues = ["all", ...filteredStudents.map((item) => item.id)];
-  const sortFilterValues = ["studentNo", "name", "submissions", "accepted", "speed"];
+  const sortFilterValues = ["studentNo", "name", "submissions", "accepted", "accuracy"];
   const studentRows = useMemo(() => {
     const displayedProblemIds = new Set(displayedProblems.map((problem) => problem.id));
     const submissionsByStudent = new Map<string, SubmissionWithStudent[]>();
@@ -2688,35 +2673,9 @@ function TeacherDashboard({
       const studentSubmissions = submissionsByStudent.get(item.id) ?? [];
       const submitted = studentSubmissions.length;
       const accepted = statuses.filter((submission) => submission?.status === "accepted").length;
-      const firstAcceptedAtByProblem = new Map<string, number>();
-      for (const submission of studentSubmissions) {
-        if (submission.status !== "accepted" || !submission.created_at) continue;
-        const acceptedAt = new Date(submission.created_at).getTime();
-        if (!Number.isFinite(acceptedAt)) continue;
-        const current = firstAcceptedAtByProblem.get(submission.problem_id);
-        if (current === undefined || acceptedAt < current) {
-          firstAcceptedAtByProblem.set(submission.problem_id, acceptedAt);
-        }
-      }
+      const accuracy = getAccuracy(accepted, submitted);
 
-      const firstProblemId = displayedProblems[0]?.id;
-      const speedStart = firstProblemId
-        ? firstAcceptedAtByProblem.get(firstProblemId)
-        : undefined;
-      const acceptedAfterStart =
-        speedStart === undefined
-          ? []
-          : [...firstAcceptedAtByProblem.values()].filter((acceptedAt) => acceptedAt >= speedStart);
-      const speedEnd =
-        acceptedAfterStart.length > 0 ? Math.max(...acceptedAfterStart) : undefined;
-      const speedMinutes =
-        speedStart !== undefined && speedEnd !== undefined ? (speedEnd - speedStart) / 60000 : 0;
-      const speed =
-        acceptedAfterStart.length >= 2 && speedMinutes > 0
-          ? (acceptedAfterStart.length - 1) / speedMinutes
-          : null;
-
-      return { student: item, statuses, acceptedAttempts, submitted, accepted, speed };
+      return { student: item, statuses, acceptedAttempts, submitted, accepted, accuracy };
     });
     const filtered = rows.filter(({ student }) => {
       const matchesClass = matchesClassFilter(student, classFilter);
@@ -2730,10 +2689,8 @@ function TeacherDashboard({
         comparison = left.submitted - right.submitted;
       } else if (sortBy === "accepted") {
         comparison = left.accepted - right.accepted;
-      } else if (sortBy === "speed") {
-        if (left.speed === null && right.speed !== null) return 1;
-        if (left.speed !== null && right.speed === null) return -1;
-        comparison = (left.speed ?? 0) - (right.speed ?? 0);
+      } else if (sortBy === "accuracy") {
+        comparison = left.accuracy - right.accuracy;
       } else {
         comparison = left.student.student_no.localeCompare(right.student.student_no, "ko", {
           numeric: true
@@ -2755,13 +2712,7 @@ function TeacherDashboard({
     sortBy,
     sortDirection
   ]);
-  const displayedStudentRows =
-    studentFilter === "all"
-      ? studentRows
-      : studentRows.filter(({ student }) => student.id === studentFilter);
-  const rankByStudent = useMemo(() => {
-    return new Map(studentRows.map((row, index) => [row.student.id, index + 1]));
-  }, [studentRows]);
+  const rankByStudent = useMemo(() => rankStudents(studentRows), [studentRows]);
   async function openSubmission(submission: SubmissionWithStudent) {
     const requestId = submissionHistoryRequestRef.current + 1;
     submissionHistoryRequestRef.current = requestId;
@@ -2937,12 +2888,10 @@ function TeacherDashboard({
   }, [overviewStudentId, selectedSubmission]);
 
   function changeClassFilter(value: string) {
-    setStudentFilter("all");
     onScopeChange(selectedBook?.id ?? "", value);
   }
 
   function changeDashboardBook(value: string) {
-    setStudentFilter("all");
     onScopeChange(value, classFilter);
   }
 
@@ -2960,12 +2909,6 @@ function TeacherDashboard({
             새로고침
           </button>
         </div>
-      </div>
-      <div className="metrics">
-        <Metric label="총 제출" value={`${dashboard.total}`} />
-        <Metric label="정답 제출" value={`${dashboard.accepted}`} />
-        <Metric label="정답률" value={`${dashboard.rate}%`} />
-        <Metric label="참여 학생" value={`${dashboard.triedStudents}`} />
       </div>
       <section className="panel">
         <div className="submissionOverviewHeader">
@@ -3039,25 +2982,6 @@ function TeacherDashboard({
               </div>
             </label>
             <label>
-              <span>학생</span>
-              <div className="filterSelectControl">
-                <select value={studentFilter} onChange={(event) => setStudentFilter(event.target.value)}>
-                  <option value="all">전체</option>
-                  {filteredStudents.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.student_no} {item.name}
-                    </option>
-                  ))}
-                </select>
-                <FilterStepButtons
-                  label="학생"
-                  values={studentFilterValues}
-                  value={studentFilter}
-                  onChange={setStudentFilter}
-                />
-              </div>
-            </label>
-            <label>
               <span>정렬</span>
               <div className="filterSelectControl">
                 <select value={sortBy} onChange={(event) => setSortBy(event.target.value)}>
@@ -3065,7 +2989,7 @@ function TeacherDashboard({
                   <option value="name">이름</option>
                   <option value="submissions">제출수</option>
                   <option value="accepted">정답수</option>
-                  <option value="speed">풀이속도</option>
+                  <option value="accuracy">정답률</option>
                 </select>
                 <FilterStepButtons
                   label="정렬"
@@ -3088,7 +3012,7 @@ function TeacherDashboard({
           </div>
         </div>
         <div className="submissionMatrixWrap">
-          {displayedStudentRows.length === 0 ? (
+          {studentRows.length === 0 ? (
             <p className="empty">조건에 맞는 학생이 없습니다.</p>
           ) : (
             <table className="submissionMatrix">
@@ -3099,7 +3023,7 @@ function TeacherDashboard({
                   <th>이름</th>
                   <th>정답수</th>
                   <th>제출수</th>
-                  <th>풀이속도</th>
+                  <th>정답률</th>
                   {displayedProblems.map((problem) => (
                     <th
                       className={`subgroupTone${subgroupToneByProblemId.get(problem.id) ?? 0}`}
@@ -3119,9 +3043,9 @@ function TeacherDashboard({
                 </tr>
               </thead>
               <tbody>
-                {displayedStudentRows.map((row) => (
+                {studentRows.map((row) => (
                   <tr key={row.student.id}>
-                    <td className="rankCell">
+                    <td className="rankCell" data-rank={rankByStudent.get(row.student.id)}>
                       <Trophy size={15} />
                       {rankByStudent.get(row.student.id)}
                     </td>
@@ -3145,7 +3069,7 @@ function TeacherDashboard({
                     </th>
                     <td className="scoreCell">{row.accepted}</td>
                     <td>{row.submitted}</td>
-                    <td>{row.speed === null ? "-" : `${row.speed.toFixed(2)}/분`}</td>
+                    <td>{`${row.accuracy.toFixed(1)}%`}</td>
                     {row.statuses.map((submission, index) => {
                       const problem = displayedProblems[index];
                       const acceptedAttempt = row.acceptedAttempts[index];

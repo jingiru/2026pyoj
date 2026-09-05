@@ -2368,8 +2368,27 @@ kbd {
   outline-offset: -2px;
 }
 
-.rankCell {
-  color: #b45309 !important;
+.submissionMatrix tbody tr:hover > th,
+.submissionMatrix tbody tr:hover > td,
+.submissionMatrix tbody tr:focus-within > th,
+.submissionMatrix tbody tr:focus-within > td {
+  background: color-mix(in srgb, var(--primary) 16%, var(--panel));
+}
+
+.submissionMatrix .rankCell {
+  color: #2563eb;
+}
+
+.submissionMatrix .rankCell[data-rank="1"] {
+  color: #b8860b;
+}
+
+.submissionMatrix .rankCell[data-rank="2"] {
+  color: #8993a1;
+}
+
+.submissionMatrix .rankCell[data-rank="3"] {
+  color: #b87333;
 }
 
 .rankCell svg {
