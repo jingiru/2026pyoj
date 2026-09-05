@@ -632,7 +632,7 @@ button {
   align-items: start;
   display: grid;
   gap: 18px;
-  grid-template-columns: 260px 220px 1fr;
+  grid-template-columns: 200px 220px 1fr;
   margin: 0 auto;
   max-width: 1720px;
   transition: grid-template-columns 180ms ease;
@@ -643,7 +643,7 @@ button {
 }
 
 .solveGrid.problemListCollapsed {
-  grid-template-columns: 260px 52px 1fr;
+  grid-template-columns: 200px 52px 1fr;
 }
 
 .solveGrid.bookSidebarCollapsed.problemListCollapsed {
@@ -726,8 +726,16 @@ button {
 }
 
 .solveGrid .problemItem {
-  grid-template-columns: 28px 1fr;
-  padding: 8px;
+  align-items: center;
+  grid-template-columns: 22px minmax(0, 1fr);
+  padding: 6px 8px;
+}
+
+.solveGrid .problemItem > span {
+  font-size: 12px;
+  font-weight: 700;
+  grid-row: auto;
+  line-height: 1.35;
 }
 
 .sectionTitle {
@@ -957,7 +965,7 @@ textarea:focus {
 }
 
 .problemItem span {
-  color: var(--primary);
+  color: color-mix(in srgb, var(--primary) 78%, var(--panel));
   font-weight: 800;
   grid-row: span 2;
 }
