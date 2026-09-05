@@ -119,18 +119,27 @@ export async function GET(request: NextRequest) {
 
   if (problemIds.length > 0 && (requestedClassId === "all" || scopedStudentIds.length > 0)) {
     if (after) {
-      let query = supabase
-        .from("submissions")
-        .select(DASHBOARD_SUBMISSION_COLUMNS)
-        .in("problem_id", problemIds)
-        .order("created_at", { ascending: false })
-        .gt("created_at", after)
-        .limit(1000);
-      if (requestedClassId !== "all") query = query.in("student_id", scopedStudentIds);
+      for (let from = 0; ; from += submissionPageSize) {
+        let query = supabase
+          .from("submissions")
+          .select(DASHBOARD_SUBMISSION_COLUMNS)
+          .in("problem_id", problemIds)
+          .gte("created_at", after)
+          .order("created_at", { ascending: true })
+          .order("id", { ascending: true })
+          .range(from, from + submissionPageSize - 1);
+        if (requestedClassId !== "all") query = query.in("student_id", scopedStudentIds);
 
-      const { data, error } = await query;
-      if (error) submissionError = error;
-      else submissionData.push(...((data ?? []) as unknown as SubmissionWithStudent[]));
+        const { data, error } = await query;
+        if (error) {
+          submissionError = error;
+          break;
+        }
+
+        const page = (data ?? []) as unknown as SubmissionWithStudent[];
+        submissionData.push(...page);
+        if (page.length < submissionPageSize) break;
+      }
     } else {
       for (let from = 0; ; from += submissionPageSize) {
         let query = supabase

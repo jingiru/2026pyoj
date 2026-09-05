@@ -93,6 +93,10 @@ import type { ProblemImportResult } from "@/lib/problem-import-types";
 type Screen = "home" | "practice" | "solve" | "teacher";
 type ColorMode = "light" | "dark";
 type TeacherDashboardScope = { bookId: string; classId: string };
+type TeacherDashboardCacheEntry = {
+  submissions: SubmissionWithStudent[];
+  after: string;
+};
 type JudgeResult = {
   status: SubmissionStatus;
   passedCount: number;
@@ -131,6 +135,8 @@ const GUEST_TOKEN_STORAGE_KEY = "pyoj:guest-token";
 const TEACHER_DASHBOARD_BOOK_STORAGE_KEY = "pyoj:teacher-dashboard-book";
 const TEACHER_DASHBOARD_CLASS_STORAGE_KEY = "pyoj:teacher-dashboard-class";
 const DEFAULT_TEACHER_DASHBOARD_CLASS_ID = "2-1";
+const DASHBOARD_CACHE_MAX_ENTRIES = 20;
+const DASHBOARD_EMPTY_CACHE_SYNC_OVERLAP_MS = 5 * 60 * 1000;
 const DASHBOARD_POLL_INTERVAL_MS = 7000;
 const DASHBOARD_BACKGROUND_POLL_INTERVAL_MS = 30000;
 const DEFAULT_SOLVE_EDITOR_HEIGHT = 156;
@@ -292,6 +298,7 @@ export default function Home() {
   const dashboardRefreshInFlightRef = useRef(false);
   const dashboardRequestIdRef = useRef(0);
   const teacherDashboardScopeRef = useRef<TeacherDashboardScope>({ bookId: "", classId: "" });
+  const teacherDashboardCacheRef = useRef(new Map<string, TeacherDashboardCacheEntry>());
 
   const dashboard = useMemo(() => {
     const accepted = submissions.filter((submission) => submission.status === "accepted").length;
@@ -667,6 +674,7 @@ export default function Home() {
       setSubmissions([]);
       setNotice("");
       latestDashboardSubmissionAtRef.current = null;
+      teacherDashboardCacheRef.current.clear();
       navigateTo("home");
     }
   }
@@ -1154,7 +1162,8 @@ export default function Home() {
   async function refreshDashboard(
     options: { incremental?: boolean; bookId?: string; classId?: string } = {}
   ) {
-    if (options.incremental && dashboardRefreshInFlightRef.current) return;
+    const hasExplicitScope = options.bookId !== undefined || options.classId !== undefined;
+    if (options.incremental && dashboardRefreshInFlightRef.current && !hasExplicitScope) return;
 
     const storedBookId = getStoredValue(TEACHER_DASHBOARD_BOOK_STORAGE_KEY)?.trim() ?? "";
     const storedClassId = normalizeTeacherDashboardClassId(
@@ -1165,6 +1174,10 @@ export default function Home() {
       classId:
         options.classId ?? (teacherDashboardScopeRef.current.classId || storedClassId)
     };
+    const requestedCacheKey = getTeacherDashboardCacheKey(requestedScope);
+    const syncFallbackAfter = new Date(
+      Date.now() - DASHBOARD_EMPTY_CACHE_SYNC_OVERLAP_MS
+    ).toISOString();
     const incremental = options.incremental && Boolean(latestDashboardSubmissionAtRef.current);
     const requestId = dashboardRequestIdRef.current + 1;
     dashboardRequestIdRef.current = requestId;
@@ -1203,6 +1216,7 @@ export default function Home() {
         setSubmissions([]);
         setTeacherStudents([]);
         latestDashboardSubmissionAtRef.current = null;
+        teacherDashboardCacheRef.current.clear();
         setTeacherLoginError("교사 로그인이 필요합니다.");
         setTeacherLoginOpen(true);
         navigateTo("home");
@@ -1217,19 +1231,37 @@ export default function Home() {
         return;
       }
 
+      const resolvedScope = data.scope ?? requestedScope;
+      const resolvedCacheKey = getTeacherDashboardCacheKey(resolvedScope);
       if (incremental) {
         const nextSubmissions = data.submissions ?? [];
         if (nextSubmissions.length > 0) {
-          setSubmissions((current) => {
-            const merged = mergeSubmissions(current, nextSubmissions);
-            latestDashboardSubmissionAtRef.current = getLatestSubmissionCreatedAt(merged);
-            return merged;
+          const cached = teacherDashboardCacheRef.current.get(resolvedCacheKey);
+          const merged = mergeSubmissions(cached?.submissions ?? submissions, nextSubmissions);
+          const after =
+            getLatestSubmissionCreatedAt(merged) ??
+            latestDashboardSubmissionAtRef.current ??
+            syncFallbackAfter;
+          latestDashboardSubmissionAtRef.current = after;
+          setTeacherDashboardCacheEntry(teacherDashboardCacheRef.current, resolvedCacheKey, {
+            submissions: merged,
+            after
           });
+          setSubmissions(merged);
           setTeacherStudents((current) => mergeStudentsFromSubmissions(current, nextSubmissions));
+        } else {
+          const cached = teacherDashboardCacheRef.current.get(requestedCacheKey);
+          if (cached) {
+            setTeacherDashboardCacheEntry(
+              teacherDashboardCacheRef.current,
+              requestedCacheKey,
+              cached
+            );
+          }
         }
       } else {
-        const resolvedScope = data.scope ?? requestedScope;
         const nextSubmissions = data.submissions ?? [];
+        const after = getLatestSubmissionCreatedAt(nextSubmissions) ?? syncFallbackAfter;
         teacherDashboardScopeRef.current = resolvedScope;
         setTeacherDashboardBookId(resolvedScope.bookId);
         setTeacherDashboardClassId(resolvedScope.classId);
@@ -1237,7 +1269,11 @@ export default function Home() {
         setStoredValue(TEACHER_DASHBOARD_CLASS_STORAGE_KEY, resolvedScope.classId);
         setSubmissions(nextSubmissions);
         setTeacherStudents(data.students ?? []);
-        latestDashboardSubmissionAtRef.current = getLatestSubmissionCreatedAt(nextSubmissions);
+        latestDashboardSubmissionAtRef.current = after;
+        setTeacherDashboardCacheEntry(teacherDashboardCacheRef.current, resolvedCacheKey, {
+          submissions: nextSubmissions,
+          after
+        });
       }
     } catch {
       if (!incremental && requestId === dashboardRequestIdRef.current) {
@@ -1265,6 +1301,17 @@ export default function Home() {
     setTeacherDashboardClassId(nextScope.classId);
     setStoredValue(TEACHER_DASHBOARD_BOOK_STORAGE_KEY, nextScope.bookId);
     setStoredValue(TEACHER_DASHBOARD_CLASS_STORAGE_KEY, nextScope.classId);
+    const cacheKey = getTeacherDashboardCacheKey(nextScope);
+    const cached = teacherDashboardCacheRef.current.get(cacheKey);
+    if (cached) {
+      setTeacherDashboardCacheEntry(teacherDashboardCacheRef.current, cacheKey, cached);
+      setSubmissions(cached.submissions);
+      latestDashboardSubmissionAtRef.current = cached.after;
+      setLoading(false);
+      void refreshDashboard({ ...nextScope, incremental: true });
+      return;
+    }
+
     setSubmissions([]);
     latestDashboardSubmissionAtRef.current = null;
     void refreshDashboard(nextScope);
@@ -2467,6 +2514,25 @@ function getLatestSubmissionCreatedAt(submissions: SubmissionWithStudent[]) {
     latestTime = time;
   }
   return latest;
+}
+
+function getTeacherDashboardCacheKey(scope: TeacherDashboardScope) {
+  return JSON.stringify([scope.bookId, scope.classId]);
+}
+
+function setTeacherDashboardCacheEntry(
+  cache: Map<string, TeacherDashboardCacheEntry>,
+  key: string,
+  entry: TeacherDashboardCacheEntry
+) {
+  cache.delete(key);
+  cache.set(key, entry);
+
+  while (cache.size > DASHBOARD_CACHE_MAX_ENTRIES) {
+    const oldestKey = cache.keys().next().value as string | undefined;
+    if (oldestKey === undefined) break;
+    cache.delete(oldestKey);
+  }
 }
 
 function compareSubmissionsChronologically(
