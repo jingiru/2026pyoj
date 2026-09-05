@@ -2652,7 +2652,15 @@ function TeacherDashboard({
   const bookFilterValues = books.map((book) => book.id);
   const subgroupFilterValues = ["all", ...bookProblemGroups.map((group) => group.id)];
   const classFilterValues = ["all", ...classOptions, "guest"];
-  const sortFilterValues = ["studentNo", "name", "submissions", "accepted", "accuracy"];
+  const sortableColumns = [
+    { key: "rank", label: "순위" },
+    { key: "studentNo", label: "학번" },
+    { key: "name", label: "이름" },
+    { key: "accepted", label: "정답수" },
+    { key: "submissions", label: "제출수" },
+    { key: "accuracy", label: "정답률" }
+  ];
+  const sortFilterValues = sortableColumns.map((column) => column.key);
   const studentRows = useMemo(() => {
     const displayedProblemIds = new Set(displayedProblems.map((problem) => problem.id));
     const submissionsByStudent = new Map<string, SubmissionWithStudent[]>();
@@ -2681,9 +2689,12 @@ function TeacherDashboard({
       const matchesClass = matchesClassFilter(student, classFilter);
       return matchesClass;
     });
+    const ranks = sortBy === "rank" ? rankStudents(filtered) : null;
     return filtered.sort((left, right) => {
       let comparison = 0;
-      if (sortBy === "name") {
+      if (sortBy === "rank") {
+        comparison = ranks!.get(left.student.id)! - ranks!.get(right.student.id)!;
+      } else if (sortBy === "name") {
         comparison = left.student.name.localeCompare(right.student.name, "ko");
       } else if (sortBy === "submissions") {
         comparison = left.submitted - right.submitted;
@@ -2985,11 +2996,9 @@ function TeacherDashboard({
               <span>정렬</span>
               <div className="filterSelectControl">
                 <select value={sortBy} onChange={(event) => setSortBy(event.target.value)}>
-                  <option value="studentNo">학번</option>
-                  <option value="name">이름</option>
-                  <option value="submissions">제출수</option>
-                  <option value="accepted">정답수</option>
-                  <option value="accuracy">정답률</option>
+                  {sortableColumns.map((column) => (
+                    <option key={column.key} value={column.key}>{column.label}</option>
+                  ))}
                 </select>
                 <FilterStepButtons
                   label="정렬"
@@ -3001,13 +3010,21 @@ function TeacherDashboard({
             </label>
             <label>
               <span>방향</span>
-              <select
-                value={sortDirection}
-                onChange={(event) => setSortDirection(event.target.value as "asc" | "desc")}
-              >
-                <option value="asc">오름차순</option>
-                <option value="desc">내림차순</option>
-              </select>
+              <div className="filterSelectControl">
+                <select
+                  value={sortDirection}
+                  onChange={(event) => setSortDirection(event.target.value as "asc" | "desc")}
+                >
+                  <option value="asc">오름차순</option>
+                  <option value="desc">내림차순</option>
+                </select>
+                <FilterStepButtons
+                  label="방향"
+                  values={["asc", "desc"]}
+                  value={sortDirection}
+                  onChange={(value) => setSortDirection(value as "asc" | "desc")}
+                />
+              </div>
             </label>
           </div>
         </div>
@@ -3018,12 +3035,33 @@ function TeacherDashboard({
             <table className="submissionMatrix">
               <thead>
                 <tr>
-                  <th>순위</th>
-                  <th>학번</th>
-                  <th>이름</th>
-                  <th>정답수</th>
-                  <th>제출수</th>
-                  <th>정답률</th>
+                  {sortableColumns.map((column) => {
+                    const active = sortBy === column.key;
+                    const nextDirection = active && sortDirection === "asc" ? "desc" : "asc";
+                    return (
+                      <th
+                        key={column.key}
+                        aria-sort={active ? (sortDirection === "asc" ? "ascending" : "descending") : "none"}
+                      >
+                        <button
+                          type="button"
+                          className="matrixSortButton"
+                          data-active={active}
+                          aria-label={`${column.label} ${nextDirection === "asc" ? "오름차순" : "내림차순"} 정렬`}
+                          title={`${column.label} ${nextDirection === "asc" ? "오름차순" : "내림차순"} 정렬`}
+                          onClick={() => {
+                            setSortBy(column.key);
+                            setSortDirection(nextDirection);
+                          }}
+                        >
+                          {column.label}
+                          <span className="matrixSortArrow" aria-hidden="true">
+                            {active && sortDirection === "desc" ? "▼" : "▲"}
+                          </span>
+                        </button>
+                      </th>
+                    );
+                  })}
                   {displayedProblems.map((problem) => (
                     <th
                       className={`subgroupTone${subgroupToneByProblemId.get(problem.id) ?? 0}`}

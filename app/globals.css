@@ -2349,6 +2349,37 @@ kbd {
   border-bottom: 0;
 }
 
+.matrixSortButton {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  color: inherit;
+  display: inline-flex;
+  font: inherit;
+  font-weight: 800;
+  gap: 3px;
+  padding: 3px 0;
+}
+
+.matrixSortArrow {
+  color: var(--muted);
+  font-size: 8px;
+  opacity: 0.5;
+}
+
+.matrixSortButton[data-active="true"] .matrixSortArrow {
+  color: var(--primary);
+  opacity: 1;
+}
+
+.matrixSortButton:hover,
+.matrixSortButton:focus-visible {
+  color: var(--primary);
+  outline: 2px solid color-mix(in srgb, var(--primary) 38%, transparent);
+  outline-offset: 2px;
+}
+
 .problemNumberButton {
   background: transparent;
   border: 0;
