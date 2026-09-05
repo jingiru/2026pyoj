@@ -18,7 +18,7 @@ import {
 import { python, pythonLanguage } from "@codemirror/lang-python";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { EditorSelection, EditorState, Prec } from "@codemirror/state";
-import { EditorView, keymap, lineNumbers } from "@codemirror/view";
+import { drawSelection, EditorView, keymap, lineNumbers } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
 import CodeMirror from "@uiw/react-codemirror";
 import {
@@ -2127,6 +2127,7 @@ function CodeEditor({
       history(),
       python(),
       EditorState.allowMultipleSelections.of(true),
+      drawSelection(),
       pythonLanguage.data.of({ autocomplete: pythonCompletionSource }),
       autocompletion(),
       closeBrackets(),
