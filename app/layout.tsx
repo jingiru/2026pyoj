@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Script from "next/script";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const GOOGLE_ANALYTICS_ID = "G-YDYDN37XX6";
@@ -18,6 +19,7 @@ export default function RootLayout({
     <html lang="ko">
       <body>
         {children}
+        <Analytics />
         <Script
           src={`https://www.googletagmanager.com/gtag/js?id=${GOOGLE_ANALYTICS_ID}`}
           strategy="afterInteractive"
