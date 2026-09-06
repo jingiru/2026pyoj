@@ -292,7 +292,7 @@ button {
 
 .choiceView {
   display: grid;
-  grid-template-rows: auto auto;
+  grid-template-rows: auto auto auto;
   justify-content: center;
   align-content: start;
   min-height: calc(100dvh - 140px);
@@ -319,6 +319,57 @@ button {
   grid-template-columns: repeat(3, minmax(230px, 360px));
   margin-top: 28px;
   padding-top: 15px;
+}
+
+.choiceContact {
+  align-items: center;
+  background: color-mix(in srgb, var(--panel) 92%, var(--primary));
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+  color: var(--muted);
+  display: flex;
+  gap: 12px;
+  justify-self: center;
+  margin-top: 32px;
+  padding: 10px 14px;
+}
+
+.choiceContact button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: var(--primary);
+  display: inline-flex;
+  font-weight: 700;
+  gap: 7px;
+  padding: 3px 2px;
+}
+
+.choiceContact button:hover {
+  text-decoration: underline;
+}
+
+.choiceContact button:focus-visible {
+  border-radius: 5px;
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+}
+
+.copyToast {
+  background: var(--ink);
+  border: 1px solid color-mix(in srgb, var(--ink) 75%, var(--line));
+  border-radius: 8px;
+  bottom: 28px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.2);
+  color: var(--bg);
+  font-size: 14px;
+  font-weight: 700;
+  left: 50%;
+  padding: 10px 14px;
+  position: fixed;
+  transform: translateX(-50%);
+  z-index: 1000;
 }
 
 .choiceButton.challenge { background: color-mix(in srgb, #f59e0b 8%, var(--panel)); }
@@ -434,6 +485,10 @@ label.challengeCheckbox { display: flex; flex-direction: row; align-items: cente
 .challengeExportOptions input { width: 18px; height: 18px; }
 @media (max-width: 1200px) { .challengeSolveGrid .workspace { grid-template-columns: 1fr; } .challengeControls { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 850px) { .choiceView { grid-template-columns: minmax(0, 500px); } .choiceGrid { grid-template-columns: 1fr; width: 100%; } .choiceButton { min-height: 180px; } .challengeProblemBrowser { grid-template-columns: 150px 110px minmax(280px, 1fr); overflow-x: auto; } }
+
+@media (max-width: 520px) {
+  .choiceContact { align-items: flex-start; flex-direction: column; gap: 5px; }
+}
 @media (max-width: 650px) { .challengeSolveGrid { grid-template-columns: 1fr; } .challengeSolveGrid .problemList { position: static; display: flex; align-items: center; gap: 8px; overflow-x: auto; } .challengeSolveGrid .problemItem { min-width: 95px; margin: 0; } .challengeControls, .challengeCreateBasics { grid-template-columns: 1fr; } .challengeBar h1 { font-size: 22px; } .challengeTeacherTimer { order: 2; width: 100%; } .challengeTeacherTimer .challengeTimer { flex: 1; } .challengePickerHeader { align-items: stretch; flex-direction: column; } .challengePickerHeader input { max-width: none; } .challengeCodeDisplay { letter-spacing: .04em; } .challengeConsoleActions { align-items: flex-end; flex-direction: column; } }
 
 /* Challenge completion easter egg arcade */

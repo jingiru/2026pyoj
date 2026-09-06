@@ -38,6 +38,7 @@ import {
   Lightbulb,
   LogIn,
   LogOut,
+  Mail,
   Pencil,
   PanelLeftClose,
   PanelLeftOpen,
@@ -2038,6 +2039,21 @@ function Header({
 }
 
 function HomeChoice({ onPractice, onSolve, onChallenge }: { onPractice: () => void; onSolve: () => void; onChallenge: () => void }) {
+  const contactEmail = "skyjjw79@naver.com";
+  const [copyNotice, setCopyNotice] = useState("");
+  const copyNoticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (copyNoticeTimer.current) clearTimeout(copyNoticeTimer.current);
+  }, []);
+
+  async function copyContactEmail() {
+    const copied = await copyTextToClipboard(contactEmail);
+    setCopyNotice(copied ? "메일 주소가 복사되었습니다" : "메일 주소를 복사하지 못했습니다");
+    if (copyNoticeTimer.current) clearTimeout(copyNoticeTimer.current);
+    copyNoticeTimer.current = setTimeout(() => setCopyNotice(""), 2000);
+  }
+
   return (
     <section className="choiceView">
       <div className="choiceHeader">
@@ -2061,6 +2077,18 @@ function HomeChoice({ onPractice, onSolve, onChallenge }: { onPractice: () => vo
           <span>수행평가 및 프로그래밍 대회</span>
         </button>
       </div>
+      <div className="choiceContact">
+        <span>문의사항이 있으신가요?</span>
+        <button type="button" onClick={() => void copyContactEmail()} title="메일 주소 복사">
+          <Mail size={18} />
+          {contactEmail}
+        </button>
+      </div>
+      {copyNotice && (
+        <div className="copyToast" role="status" aria-live="polite">
+          {copyNotice}
+        </div>
+      )}
     </section>
   );
 }
