@@ -5,6 +5,7 @@ import { ArrowDown, ArrowUp, Check, Clock3, Copy, Download, Expand, Minimize2, P
 import type { Problem, ProblemBook, Student } from "@/lib/types";
 import { challengePhase, elapsedLabel, firstSolvers, type Challenge, type ChallengeBoard, type ChallengeParticipant, type ChallengeSubmission } from "@/lib/challenge-types";
 import { runPythonWithSkulpt } from "@/lib/skulpt-runner";
+import ChallengeArcade from "./challenge-arcade";
 
 type EditorProps = { value: string; onChange: (value: string) => void; onRun: () => void; onSubmit?: () => void; colorMode: "light" | "dark"; fontSize: number };
 type PaneProps = { selectedProblem: Problem; previousProblem?: Problem; nextProblem?: Problem; autoAdvanceOnAccepted: boolean; onPrevious: () => void; onNext: () => void; onAutoAdvanceChange: (enabled: boolean) => void };
@@ -33,9 +34,9 @@ function remainingLabel(challenge: Challenge, now: number) {
   const seconds = Math.floor(remaining / 1_000) % 60;
   return hours > 0 ? `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}` : `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
-function ChallengeTimer({ challenge, now, large = false }: { challenge: Challenge; now: number; large?: boolean }) {
+function ChallengeTimer({ challenge, now, large = false, onEndedTripleClick }: { challenge: Challenge; now: number; large?: boolean; onEndedTripleClick?: () => void }) {
   const phase = challengePhase(challenge, now);
-  return <div className={`challengeTimer ${phase === "ended" ? "ended" : ""} ${large ? "large" : ""}`} role="timer" aria-label={`남은 시간 ${remainingLabel(challenge, now)}`}><Clock3 aria-hidden="true" /><span>{remainingLabel(challenge, now)}</span></div>;
+  return <div className={`challengeTimer ${phase === "ended" ? "ended" : ""} ${large ? "large" : ""} ${phase === "ended" && onEndedTripleClick ? "secretEnabled" : ""}`} role="timer" aria-label={`남은 시간 ${remainingLabel(challenge, now)}`}><Clock3 aria-hidden="true" /><span onClick={event => { if (phase === "ended" && event.detail === 3) onEndedTripleClick?.(); }}>{remainingLabel(challenge, now)}</span></div>;
 }
 
 export default function ChallengeExperience({ mode, student, colorMode, onMode, onClose, CodeEditor, ProblemPane }: { mode: Mode; student: Student | null; colorMode: "light" | "dark"; onMode: (mode: Mode) => void; onClose: () => void; CodeEditor: ComponentType<EditorProps>; ProblemPane: ComponentType<PaneProps> }) {
@@ -89,7 +90,7 @@ function ChallengeModal({ title, children, onClose, wide = false, className = ""
 
 function ChallengeStudent({ CodeEditor, ProblemPane, colorMode, onReenter }: { CodeEditor: ComponentType<EditorProps>; ProblemPane: ComponentType<PaneProps>; colorMode: "light" | "dark"; onReenter: () => void }) {
   const [session, setSession] = useState<Session | null>(null); const [error, setError] = useState(""); const [selected, setSelected] = useState(0); const [now, setNow] = useState(Date.now());
-  const clock = useRef({ server: Date.now(), local: 0 }); const [lastSync, setLastSync] = useState(0); const [autoNext, setAutoNext] = useState(false); const [historyOpen, setHistoryOpen] = useState(false);
+  const clock = useRef({ server: Date.now(), local: 0 }); const [lastSync, setLastSync] = useState(0); const [autoNext, setAutoNext] = useState(false); const [historyOpen, setHistoryOpen] = useState(false); const [arcadeOpen, setArcadeOpen] = useState(false);
   const refresh = useCallback(async () => {
     const id = new URL(window.location.href).searchParams.get("challenge") || read("pyoj:challenge-id"); if (!id) { setError("입장코드를 입력해주세요."); return; }
     try { const data = await api<Session>(`/api/challenges/session?id=${encodeURIComponent(id)}`); setSession(data); clock.current = { server: Date.parse(data.serverNow), local: performance.now() }; setNow(Date.parse(data.serverNow)); setLastSync(performance.now()); setError(""); }
@@ -102,7 +103,7 @@ function ChallengeStudent({ CodeEditor, ProblemPane, colorMode, onReenter }: { C
   if (!session) return <section className="challengeWaiting"><Trophy size={42} /><h1>챌린지 입장 확인</h1><p role="status">{error || "참여 정보를 불러오는 중입니다…"}</p>{error && <button className="primaryButton" onClick={onReenter}>입장코드 입력</button>}</section>;
   const { challenge, participant, submissions } = session; const phase = challengePhase(challenge, now); const problems = challenge.problem_snapshots; const problem = problems[selected] ?? problems[0]; const connected = performance.now() - lastSync < 12000 && !error;
   return <section className="challengeView">
-    <header className="challengeBar"><div><span className="pill">챌린지 · {participant.student_no} {participant.name}</span><h1>{challenge.title}</h1></div><ChallengeTimer challenge={challenge} now={now} /><button className="ghostButton" onClick={() => setHistoryOpen(true)}>내 제출 기록</button></header>
+    <header className="challengeBar"><div><span className="pill">챌린지 · {participant.student_no} {participant.name}</span><h1>{challenge.title}</h1></div><ChallengeTimer challenge={challenge} now={now} onEndedTripleClick={() => setArcadeOpen(true)} /><button className="ghostButton" onClick={() => setHistoryOpen(true)}>내 제출 기록</button></header>
     {error && <p className="modalError" role="alert">{error} 제출은 연결이 복구되면 가능합니다.</p>}
     {phase === "waiting" ? <div className="challengeWaiting"><Trophy size={48} /><h2>입장했습니다. 선생님의 시작을 기다려주세요.</h2><p>제한시간 {challenge.duration_minutes}분 · 시작하면 문제가 자동으로 공개됩니다.</p></div> : <>{phase === "ended" && <div className="notice">제한시간이 끝났습니다. 제출은 마감되었으며, 추가 시간이 부여되면 자동으로 다시 열립니다.</div>}<div className="challengeSolveGrid">
       <aside className="problemList"><div className="sectionTitle">문항</div>{problems.map((item, index) => { const records = submissions.filter(row => row.problem_id === item.id); const status = records.some(row => row.status === "accepted") ? "accepted" : records.at(-1)?.status; return <button className={`problemItem ${item.id === problem?.id ? "active" : ""} ${status === "accepted" ? "solved" : ""}`} key={item.id} onClick={() => setSelected(index)}><span>{index + 1}</span><strong>{statusLabel(status)}</strong></button>; })}</aside>
@@ -110,6 +111,7 @@ function ChallengeStudent({ CodeEditor, ProblemPane, colorMode, onReenter }: { C
     </div></>}
     {session.leaderboard && <ChallengeResults challenge={challenge} participants={session.leaderboard.participants} submissions={session.leaderboard.submissions} />}
     {historyOpen && <ChallengeModal title="내 제출 기록" wide onClose={() => setHistoryOpen(false)}><div className="challengeHistory">{[...submissions].reverse().map(row => <div key={row.id}><strong>{problems.find(item => item.id === row.problem_id)?.title ?? "문항"} · {statusLabel(row.status)}</strong><p>시작 후 {elapsedLabel(challenge.started_at, row.received_at)} · {row.feedback}</p></div>)}{!submissions.length && <p>아직 제출한 기록이 없습니다.</p>}</div></ChallengeModal>}
+    {arcadeOpen && <ChallengeModal title="비밀 파이썬 놀이터" wide className="arcadeModal" onClose={() => setArcadeOpen(false)}><ChallengeArcade /></ChallengeModal>}
   </section>;
 }
 

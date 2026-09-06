@@ -331,6 +331,7 @@ button {
 .challengeTimer { display: flex; align-items: center; justify-content: center; gap: 10px; background: var(--panel); border: 1px solid var(--line); padding: 15px 22px; border-radius: 10px; font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; min-width: 150px; }
 .challengeTimer svg { width: 22px; height: 22px; }
 .challengeTimer.ended { color: var(--rose); }
+.challengeTimer.secretEnabled span { cursor: default; touch-action: manipulation; user-select: none; }
 .challengeTeacherTimer { display: flex; align-items: stretch; gap: 7px; }
 .challengeTeacherTimer .iconButton { width: 48px; height: auto; border: 1px solid var(--line); background: var(--panel); }
 .challengeFullscreenTimer { position: fixed; inset: 0; z-index: 1000; display: grid; place-content: center; justify-items: center; gap: 28px; background: var(--bg); color: var(--ink); padding: 48px; text-align: center; }
@@ -434,6 +435,63 @@ label.challengeCheckbox { display: flex; flex-direction: row; align-items: cente
 @media (max-width: 1200px) { .challengeSolveGrid .workspace { grid-template-columns: 1fr; } .challengeControls { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 850px) { .choiceView { grid-template-columns: minmax(0, 500px); } .choiceGrid { grid-template-columns: 1fr; width: 100%; } .choiceButton { min-height: 180px; } .challengeProblemBrowser { grid-template-columns: 150px 110px minmax(280px, 1fr); overflow-x: auto; } }
 @media (max-width: 650px) { .challengeSolveGrid { grid-template-columns: 1fr; } .challengeSolveGrid .problemList { position: static; display: flex; align-items: center; gap: 8px; overflow-x: auto; } .challengeSolveGrid .problemItem { min-width: 95px; margin: 0; } .challengeControls, .challengeCreateBasics { grid-template-columns: 1fr; } .challengeBar h1 { font-size: 22px; } .challengeTeacherTimer { order: 2; width: 100%; } .challengeTeacherTimer .challengeTimer { flex: 1; } .challengePickerHeader { align-items: stretch; flex-direction: column; } .challengePickerHeader input { max-width: none; } .challengeCodeDisplay { letter-spacing: .04em; } .challengeConsoleActions { align-items: flex-end; flex-direction: column; } }
+
+/* Challenge completion easter egg arcade */
+.loginModal.arcadeModal { max-width: 860px; overflow-x: hidden; }
+.arcadeMenu { display: grid; gap: 20px; }
+.arcadeWelcome { display: flex; align-items: center; gap: 15px; border-radius: 14px; background: linear-gradient(135deg, color-mix(in srgb, #22c55e 16%, var(--panel)), color-mix(in srgb, #facc15 12%, var(--panel))); padding: 17px 20px; }
+.arcadeWelcome > span { font-size: 42px; }
+.arcadeWelcome strong { display: block; font-size: 18px; }
+.arcadeWelcome p { color: var(--muted); margin: 5px 0 0; }
+.arcadeGameCards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 13px; }
+.arcadeGameCards button { display: flex; flex-direction: column; align-items: flex-start; min-height: 210px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); color: var(--ink); padding: 20px; text-align: left; transition: transform 120ms ease, border-color 120ms ease, box-shadow 120ms ease; }
+.arcadeGameCards button:hover { border-color: #22c55e; box-shadow: 0 12px 28px rgba(34, 197, 94, .14); transform: translateY(-2px); }
+.arcadeGameCards strong { font-size: 18px; margin: 13px 0 7px; }
+.arcadeGameCards small { color: var(--muted); line-height: 1.45; }
+.arcadeGameCards em { margin-top: auto; color: #15803d; font-size: 12px; font-style: normal; font-weight: 750; }
+.arcadeCardIcon { font-size: 38px; }
+.arcadeGame { display: grid; gap: 14px; }
+.arcadeGameHeader { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; }
+.arcadeGameHeader > strong { font-size: 19px; text-align: center; }
+.arcadeGameHeader > span { display: flex; align-items: center; justify-content: flex-end; gap: 5px; color: var(--muted); font-size: 13px; }
+.arcadeGameHeader .ghostButton { justify-self: start; }
+.arcadeScoreRow { display: flex; align-items: stretch; justify-content: center; gap: 8px; }
+.arcadeScoreRow > div { display: flex; flex-direction: column; justify-content: center; min-width: 105px; border-radius: 9px; background: color-mix(in srgb, var(--primary) 8%, var(--panel)); padding: 8px 12px; }
+.arcadeScoreRow small { color: var(--muted); }
+.arcadeScoreRow strong { margin-top: 2px; }
+.arcadeScoreRow button { display: inline-flex; align-items: center; gap: 6px; }
+.mergeGame, .nestGame, .snakeGame { display: grid; justify-items: center; gap: 12px; }
+.mergeBoard { position: relative; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; width: min(100%, 510px); aspect-ratio: 1; border-radius: 15px; background: #172033; padding: 10px; touch-action: none; outline: none; }
+.mergeTile { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 0; overflow: hidden; border-radius: 10px; background: rgba(148, 163, 184, .17); color: #0f172a; animation: arcadePop 120ms ease-out; }
+.mergeTile span { font-size: clamp(22px, 5vw, 36px); line-height: 1; }
+.mergeTile strong { font-size: clamp(11px, 2.5vw, 16px); margin-top: 5px; }
+.mergeTile small { display: block; max-width: 92%; overflow: hidden; font: 10px Consolas, monospace; opacity: .7; text-overflow: ellipsis; white-space: nowrap; }
+.mergeTile.level1 { background: #f8fafc; } .mergeTile.level2 { background: #dcfce7; } .mergeTile.level3 { background: #bbf7d0; } .mergeTile.level4 { background: #86efac; } .mergeTile.level5 { background: #fde68a; } .mergeTile.level6 { background: #fdba74; } .mergeTile.level7 { background: #c4b5fd; } .mergeTile.level8 { background: #93c5fd; } .mergeTile.level9 { background: #f9a8d4; }
+@keyframes arcadePop { from { transform: scale(.83); opacity: .5; } }
+.arcadeGameOver { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; border-radius: inherit; background: rgba(7, 17, 31, .82); color: white; text-align: center; backdrop-filter: blur(2px); }
+.arcadeGameOver strong { font: 800 clamp(21px, 5vw, 32px) Consolas, monospace; }
+.arcadeGameOver button { border: 0; border-radius: 8px; background: #22c55e; color: #052e16; font-weight: 800; padding: 10px 18px; }
+.directionPad { display: none; grid-template-columns: repeat(3, 48px); gap: 5px; }
+.directionPad button { display: grid; place-items: center; width: 48px; height: 39px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); }
+.arcadeTip { display: flex; align-items: center; justify-content: center; gap: 7px; color: var(--muted); margin: 0; text-align: center; }
+.nestCanvasWrap, .snakeCanvasWrap { position: relative; width: min(100%, 420px); }
+.nestCanvasWrap canvas, .snakeCanvasWrap canvas { display: block; width: 100%; height: auto; border: 3px solid #172033; border-radius: 13px; touch-action: none; }
+.snakeCanvasWrap { max-width: 396px; }
+.nestCanvasWrap .arcadeGameOver, .snakeCanvasWrap .arcadeGameOver { border-radius: 11px; }
+
+@media (max-width: 650px) {
+  .loginModal.arcadeModal { padding: 18px 14px; }
+  .arcadeGameCards { grid-template-columns: 1fr; }
+  .arcadeGameCards button { min-height: 130px; }
+  .arcadeGameHeader { grid-template-columns: 1fr auto; }
+  .arcadeGameHeader > strong { text-align: right; }
+  .arcadeGameHeader > span { display: none; }
+  .arcadeScoreRow { width: 100%; flex-wrap: wrap; }
+  .arcadeScoreRow > div { flex: 1; min-width: 90px; }
+  .directionPad { display: grid; }
+  .mergeTile small { display: none; }
+  .arcadeTip { font-size: 12px; }
+}
 
 .choiceButton {
   align-items: flex-start;
