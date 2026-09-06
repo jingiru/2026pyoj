@@ -42,30 +42,40 @@ test("entry codes use only uppercase, visually distinct characters", () => {
   }
 });
 test("challenge result workbook includes base results and selected details", async () => {
-  const richChallenge = { ...challenge, title: "2학년 수행평가", entry_code: "ACDE2345" };
+  const richChallenge = { ...challenge, title: "2학년 수행평가", entry_code: "ACDE2345", started_at: "2026-09-06T17:30:00Z", ends_at: "2026-09-06T18:10:00Z" };
   const participants = [
     { id: "student-b", challenge_id: "c", student_no: "1202", name: "나학생", joined_at: "2026-09-06T01:00:00Z" },
     { id: "student-a", challenge_id: "c", student_no: "1201", name: "가학생", joined_at: "2026-09-06T01:00:00Z" }
   ];
   const submissions = [
-    { id: "s1", participant_id: "student-a", challenge_id: "c", problem_id: "p1", status: "wrong_answer", received_at: "2026-09-06T01:02:00Z", passed_count: 0, total_count: 2 },
-    { id: "s2", participant_id: "student-a", challenge_id: "c", problem_id: "p1", status: "accepted", received_at: "2026-09-06T01:05:00Z", passed_count: 2, total_count: 2 }
+    { id: "s1", participant_id: "student-a", challenge_id: "c", problem_id: "p1", status: "wrong_answer", received_at: "2026-09-06T17:32:00Z", passed_count: 0, total_count: 2 },
+    { id: "s2", participant_id: "student-a", challenge_id: "c", problem_id: "p1", status: "accepted", received_at: "2026-09-06T17:35:00Z", passed_count: 2, total_count: 2 }
   ];
   const workbook = await buildChallengeResultsWorkbook(richChallenge, participants, submissions, { includeFirstSolver: true, includeSubmissionTimes: true, includeAttemptCounts: true });
-  assert.ok(Math.abs(workbook.getWorksheet("결과").getCell("H5").value - (5 / 1440)) < 1e-10);
+  assert.ok(Math.abs(workbook.getWorksheet("결과").getCell("H6").value - (5 / 1440)) < 1e-10);
+  assert.equal(workbook.getWorksheet("결과").getCell("E2").value.toISOString(), "2026-09-07T02:30:00.000Z");
+  assert.equal(workbook.getWorksheet("결과").getCell("F6").value.toISOString(), "2026-09-07T02:32:00.000Z");
   const buffer = await workbook.xlsx.writeBuffer();
   const ExcelJS = require("exceljs");
   const loaded = await new ExcelJS.Workbook().xlsx.load(buffer);
   const sheet = loaded.getWorksheet("결과");
   assert.ok(sheet);
-  assert.deepEqual(sheet.getRow(4).values.slice(1), ["학번", "이름", "총 정답", "1번 정오답", "1번 최초 해결", "1번 첫 제출 시각", "1번 최초 정답 시각", "1번 정답 소요시간", "1번 제출 시도"]);
-  assert.equal(sheet.getCell("A5").value, "1201");
-  assert.equal(sheet.getCell("D5").value, "정답");
-  assert.equal(sheet.getCell("E5").value, "최초 해결");
-  assert.ok(sheet.getCell("F5").value instanceof Date);
-  assert.equal(sheet.getCell("H5").numFmt, "[m]:ss");
-  assert.equal(sheet.getCell("I5").value, 2);
-  assert.equal(sheet.getCell("D6").value, "미제출");
+  assert.equal(sheet.getCell("A4").value, "학생 정보");
+  assert.equal(sheet.getCell("C4").value, "결과");
+  assert.equal(sheet.getCell("D4").value, "1번");
+  assert.deepEqual(sheet.getRow(5).values.slice(1), ["학번", "이름", "총 정답", "정오답", "최초 해결", "첫 제출 시각", "최초 정답 시각", "소요시간", "시도 횟수"]);
+  assert.equal(sheet.getCell("A6").value, "1201");
+  assert.equal(sheet.getCell("D6").value, "정답");
+  assert.equal(sheet.getCell("E6").value, "최초 해결");
+  assert.ok(sheet.getCell("F6").value instanceof Date);
+  assert.equal(sheet.getCell("E2").value.toISOString(), "2026-09-07T02:30:00.000Z");
+  assert.equal(sheet.getCell("F6").value.toISOString(), "2026-09-07T02:32:00.000Z");
+  assert.equal(sheet.getCell("H6").numFmt, "[m]:ss");
+  assert.equal(sheet.getCell("I6").value, 2);
+  assert.equal(sheet.getCell("D7").value, "미제출");
+  assert.ok(sheet.getColumn(6).width >= 23);
+  assert.equal(sheet.getCell("I4").master.address, "D4");
+  assert.equal(sheet.getCell("F2").master.address, "E2");
   assert.equal(loaded.getWorksheet("문항 정보").getCell("B2").value, "더하기");
 });
 test("student responses hide all pre-start problems, entry codes and hidden test cases", () => {
