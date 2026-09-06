@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "test": "node --test tests/*.test.cjs",
+    "test:challenge-build": "node tests/challenge-build-smoke.cjs",
     "lint": "next lint"
   },
   "dependencies": {

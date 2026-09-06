@@ -316,10 +316,83 @@ button {
 .choiceGrid {
   display: grid;
   gap: 18px;
-  grid-template-columns: repeat(2, minmax(260px, 420px));
+  grid-template-columns: repeat(3, minmax(230px, 360px));
   margin-top: 28px;
   padding-top: 15px;
 }
+
+.choiceButton.challenge { background: color-mix(in srgb, #f59e0b 8%, var(--panel)); }
+.choiceButton.challenge svg { color: #b77913; }
+.challengeView, .challengeManager { margin: 24px auto; max-width: 1800px; }
+.challengeBar { display: flex; align-items: center; flex-wrap: wrap; gap: 18px; margin-bottom: 22px; }
+.challengeBar > div:first-child { flex: 1; }
+.challengeView > .challengeBar { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: 12px 0; }
+.challengeBar h1 { font-size: 27px; margin: 10px 0 0; }
+.challengeTimer { display: flex; align-items: center; gap: 10px; background: var(--panel); border: 1px solid var(--line); padding: 15px 22px; border-radius: 10px; font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.challengeTimer.ended { color: var(--rose); }
+.challengeWaiting { display: grid; justify-items: center; text-align: center; gap: 16px; padding: 80px 24px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; }
+.challengeWaiting svg { color: #b77913; }
+.challengeWaiting h1, .challengeWaiting h2, .challengeWaiting p { margin: 0; }
+.challengeWaiting p { color: var(--muted); }
+.challengeSolveGrid { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 16px; align-items: start; }
+.challengeSolveGrid .problemList { position: sticky; top: 120px; padding: 12px; max-height: 70dvh; overflow-y: auto; }
+.challengeSolveGrid .problemItem { width: 100%; padding: 10px 8px; margin-top: 8px; }
+.challengeSolveGrid .problemItem strong { font-size: 12px; }
+.challengeSolveGrid .workspace { grid-template-columns: minmax(290px, .9fr) minmax(420px, 1.1fr); gap: 16px; }
+.challengeSolveGrid .problemPane { padding: 22px; }
+.challengeIde { display: block; }
+.challengeIde .ideHeader { flex-wrap: wrap; }
+.challengeIde .ideActions { justify-content: flex-start; }
+.challengeEditorSection { height: 360px; min-height: 210px; resize: vertical; overflow: hidden; display: flex; flex-direction: column; }
+.challengeEditorSection > .codeEditor, .challengeEditorSection > .cm-theme { flex: 1; min-height: 0; overflow: auto; }
+.challengeEditorSection > div:last-child { flex: 1; min-height: 0; overflow: auto; }
+.challengeTerminal { height: 230px; min-height: 150px; overflow: auto; padding: 18px; }
+.challengeTerminal pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+.challengeIdeFooter { padding: 12px 16px; font-size: 12px; color: var(--muted); }
+.challengeIdeFooter p { color: var(--ink); font-size: 15px; font-weight: 700; padding-top: 8px; }
+.challengeFont { display: flex; align-items: center; gap: 8px; }
+.challengeFont button { border: 1px solid var(--line); border-radius: 5px; background: var(--panel); color: var(--ink); padding: 3px 10px; }
+.challengeModal { max-height: 90dvh; overflow-y: auto; }
+.challengeModal.wide { max-width: 820px; }
+.challengeModal h2 { padding-right: 30px; margin-top: 0; font-size: 23px; }
+.challengeTabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 18px 0; }
+.challengeTabs button { background: var(--bg); color: var(--muted); border: 1px solid var(--line); border-radius: 6px; padding: 10px; }
+.challengeTabs .active { color: var(--primary); border-color: var(--primary); background: color-mix(in srgb, var(--primary) 8%, var(--panel)); }
+.challengeSelect { display: block; max-width: 600px; margin: 16px 0; }
+.challengeSelect select { display: block; margin-top: 8px; width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 7px; background: var(--panel); color: var(--ink); font: inherit; }
+.challengeControls { display: grid; grid-template-columns: 1.1fr 1fr 1fr 1.5fr; gap: 20px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 22px; margin: 20px 0; }
+.challengeControls > div { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.challengeControls span { color: var(--muted); font-size: 13px; }
+.challengeControls strong { font-size: 23px; }
+.challengeEntryCode { font-family: monospace; letter-spacing: 3px; color: var(--primary); }
+.challengeControls .challengeTimeAction { flex-direction: row; align-items: end; flex-wrap: wrap; }
+.challengeTimeAction label { margin: 0; }
+.challengeTimeAction input { width: 95px; }
+.challengeResults { overflow-x: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; margin-top: 20px; }
+.challengeResults table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.challengeResults caption { text-align: left; font-weight: 800; padding: 18px; }
+.challengeResults th, .challengeResults td { padding: 12px; border-bottom: 1px solid var(--line); text-align: center; white-space: nowrap; }
+.challengeResults thead { background: color-mix(in srgb, var(--primary) 5%, var(--panel)); }
+.challengeResults th small { display: inline-block; max-width: 150px; overflow: hidden; text-overflow: ellipsis; font-weight: 400; }
+.challengeCell { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; border: 0; background: transparent; color: inherit; width: 100%; min-height: 64px; padding: 0; font-size: 13px; }
+.challengeCell small { color: var(--muted); }
+.challengeAccepted { background: color-mix(in srgb, #22c55e 10%, var(--panel)); }
+.challengeCell strong span { color: #b77913; }
+.challengeEvents { background: var(--panel); padding: 16px; border: 1px solid var(--line); border-radius: 8px; }
+.challengeCreate { display: grid; gap: 10px; }
+.challengeCreate h3 { margin: 10px 0; }
+label.challengeCheckbox { display: flex; flex-direction: row; align-items: center; gap: 10px; padding: 8px; margin: 0; }
+.challengeCheckbox input { width: 18px; height: 18px; flex: 0 0 18px; }
+.challengeCheckbox small { display: block; color: var(--muted); margin-top: 3px; }
+.challengeProblemPicker { max-height: 260px; overflow-y: auto; border: 1px solid var(--line); border-radius: 8px; }
+.challengeChosen { padding-left: 26px; margin: 0 0 12px; max-height: 250px; overflow-y: auto; }
+.challengeChosen li { padding: 6px 0; }
+.challengeChosen li > span { display: inline-block; width: calc(100% - 128px); vertical-align: middle; }
+.challengeHistory { display: grid; gap: 20px; }
+.challengeHistory pre { background: var(--bg); color: var(--ink); padding: 14px; white-space: pre-wrap; overflow-wrap: anywhere; border-radius: 6px; }
+@media (max-width: 1200px) { .challengeSolveGrid .workspace { grid-template-columns: 1fr; } .challengeControls { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 850px) { .choiceView { grid-template-columns: minmax(0, 500px); } .choiceGrid { grid-template-columns: 1fr; width: 100%; } .choiceButton { min-height: 180px; } }
+@media (max-width: 650px) { .challengeSolveGrid { grid-template-columns: 1fr; } .challengeSolveGrid .problemList { position: static; display: flex; align-items: center; gap: 8px; overflow-x: auto; } .challengeSolveGrid .problemItem { min-width: 95px; margin: 0; } .challengeControls { grid-template-columns: 1fr; } .challengeBar h1 { font-size: 22px; } }
 
 .choiceButton {
   align-items: flex-start;
@@ -3417,6 +3490,9 @@ kbd {
   .ideActions {
     width: 100%;
   }
+
+  .modeSwitch { flex-wrap: wrap; }
+  .modeSwitch button { width: auto; flex: 1 0 auto; }
 
   .ideHeader {
     align-items: stretch;

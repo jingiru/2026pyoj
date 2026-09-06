@@ -145,8 +145,8 @@ async function canAccessProblem(
     ]);
 
   if (studentError || problemError || !student || !problem) return false;
-  if (student.is_guest) return true;
   if (!problem.is_published) return false;
+  if (student.is_guest) return problem.visibility_scope !== "classes";
   if (problem.visibility_scope !== "classes") return true;
   const classId = getStudentClassId(student.student_no);
   return Boolean(classId && Array.isArray(problem.visible_class_ids) && problem.visible_class_ids.includes(classId));

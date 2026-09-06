@@ -90,8 +90,9 @@ import type {
   TestCase
 } from "@/lib/types";
 import type { ProblemImportResult } from "@/lib/problem-import-types";
+import ChallengeExperience from "./challenge";
 
-type Screen = "home" | "practice" | "solve" | "teacher";
+type Screen = "home" | "practice" | "solve" | "teacher" | "challenge" | "challenge-teacher";
 type ColorMode = "light" | "dark";
 type TeacherDashboardScope = { bookId: string; classId: string };
 type TeacherDashboardCacheEntry = {
@@ -184,6 +185,7 @@ const sublimeLightHighlight = HighlightStyle.define([
 
 export default function Home() {
   const [screen, setScreen] = useState<Screen>("home");
+  const [challengeEntryOpen, setChallengeEntryOpen] = useState(false);
   const [colorMode, setColorMode] = useState<ColorMode>("light");
   const [loginOpen, setLoginOpen] = useState(false);
   const [teacherLoginOpen, setTeacherLoginOpen] = useState(false);
@@ -1319,6 +1321,7 @@ export default function Home() {
         onHome={() => navigateTo("home")}
         onPractice={() => navigateTo("practice")}
         onSolve={enterSolveMode}
+        onChallenge={() => setChallengeEntryOpen(true)}
         onTeacher={enterTeacherMode}
         onLogout={logoutStudent}
         onToggleColorMode={() => setColorMode((mode) => (mode === "dark" ? "light" : "dark"))}
@@ -1326,7 +1329,22 @@ export default function Home() {
 
       {notice && <div className="notice">{notice}</div>}
 
-      {screen === "home" && <HomeChoice onPractice={() => navigateTo("practice")} onSolve={enterSolveMode} />}
+      {screen === "home" && <HomeChoice onPractice={() => navigateTo("practice")} onSolve={enterSolveMode} onChallenge={() => setChallengeEntryOpen(true)} />}
+
+      {(challengeEntryOpen || screen === "challenge" || screen === "challenge-teacher") && (
+        <ChallengeExperience
+          mode={challengeEntryOpen ? "entry" : screen === "challenge-teacher" ? "teacher" : "student"}
+          student={student}
+          colorMode={colorMode}
+          CodeEditor={CodeEditor}
+          ProblemPane={ProblemPane}
+          onClose={() => { setChallengeEntryOpen(false); if (screen === "challenge" || screen === "challenge-teacher") navigateTo("home"); }}
+          onMode={(mode) => {
+            setChallengeEntryOpen(mode === "entry");
+            if (mode !== "entry") navigateTo(mode === "teacher" ? "challenge-teacher" : "challenge");
+          }}
+        />
+      )}
 
       {screen === "practice" && (
         <section className="practiceView">
@@ -1961,6 +1979,7 @@ function Header({
   onHome,
   onPractice,
   onSolve,
+  onChallenge,
   onTeacher,
   onLogout,
   onToggleColorMode
@@ -1971,6 +1990,7 @@ function Header({
   onHome: () => void;
   onPractice: () => void;
   onSolve: () => void;
+  onChallenge: () => void;
   onTeacher: () => void;
   onLogout: () => void;
   onToggleColorMode: () => void;
@@ -2001,6 +2021,10 @@ function Header({
           <GraduationCap size={18} />
           문제
         </button>
+        <button className={screen === "challenge" || screen === "challenge-teacher" ? "active" : ""} onClick={onChallenge}>
+          <Trophy size={18} />
+          챌린지
+        </button>
         <button className={screen === "teacher" ? "active" : ""} onClick={onTeacher}>
           <LayoutDashboard size={18} />
           교사
@@ -2013,7 +2037,7 @@ function Header({
   );
 }
 
-function HomeChoice({ onPractice, onSolve }: { onPractice: () => void; onSolve: () => void }) {
+function HomeChoice({ onPractice, onSolve, onChallenge }: { onPractice: () => void; onSolve: () => void; onChallenge: () => void }) {
   return (
     <section className="choiceView">
       <div className="choiceHeader">
@@ -2030,6 +2054,11 @@ function HomeChoice({ onPractice, onSolve }: { onPractice: () => void; onSolve: 
           <GraduationCap size={34} />
           <strong>문제 풀기</strong>
           <span>학번과 이름으로 로그인하고 문제 풀기</span>
+        </button>
+        <button className="choiceButton challenge" onClick={onChallenge}>
+          <Trophy size={34} />
+          <strong>챌린지</strong>
+          <span>수행평가 및 프로그래밍 대회</span>
         </button>
       </div>
     </section>
@@ -2361,7 +2390,7 @@ function ProblemPane({
         <ProblemBlock title="입력" body={selectedProblem.inputDescription} />
         <ProblemBlock title="출력" body={selectedProblem.outputDescription} />
       </div>
-      {selectedProblem.testCases.length > 1 &&
+      {(selectedProblem.testCases.length > 1 || selectedProblem.testCases.length === 0) &&
         selectedProblem.showExample !== false &&
         selectedProblem.examples.length > 0 && (
         <div className="exampleBox">
@@ -4437,7 +4466,7 @@ function groupProblems(problems: Problem[], book?: ProblemBook) {
 
 function getScreenFromUrl(): Screen {
   const screen = new URL(window.location.href).searchParams.get("screen");
-  return screen === "practice" || screen === "solve" || screen === "teacher" ? screen : "home";
+  return screen === "practice" || screen === "solve" || screen === "teacher" || screen === "challenge" || screen === "challenge-teacher" ? screen : "home";
 }
 
 function getSavedProblemCode(problemId: string) {
