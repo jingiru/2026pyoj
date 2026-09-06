@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
+import { canAccessPracticeProblem } from "@/lib/problem-access";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
-import { getStudentClassId } from "@/lib/student-class";
 
 type CodeRunPayload = {
   studentId?: unknown;
@@ -93,14 +93,11 @@ async function canAccessProblem(
   student: { student_no: string; is_guest: boolean },
   problemId: string
 ) {
-  if (student.is_guest) return true;
   const { data: problem, error } = await supabase
     .from("problems")
     .select("is_published, visibility_scope, visible_class_ids")
     .eq("id", problemId)
     .single();
-  if (error || !problem || !problem.is_published) return false;
-  if (problem.visibility_scope !== "classes") return true;
-  const classId = getStudentClassId(student.student_no);
-  return Boolean(classId && Array.isArray(problem.visible_class_ids) && problem.visible_class_ids.includes(classId));
+  if (error || !problem) return false;
+  return canAccessPracticeProblem(student, problem);
 }

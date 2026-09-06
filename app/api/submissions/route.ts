@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
+import { canAccessPracticeProblem } from "@/lib/problem-access";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
-import { getStudentClassId } from "@/lib/student-class";
 import type { Submission } from "@/lib/types";
 
 export async function GET(request: Request) {
@@ -145,9 +145,5 @@ async function canAccessProblem(
     ]);
 
   if (studentError || problemError || !student || !problem) return false;
-  if (!problem.is_published) return false;
-  if (student.is_guest) return problem.visibility_scope !== "classes";
-  if (problem.visibility_scope !== "classes") return true;
-  const classId = getStudentClassId(student.student_no);
-  return Boolean(classId && Array.isArray(problem.visible_class_ids) && problem.visible_class_ids.includes(classId));
+  return canAccessPracticeProblem(student, problem);
 }

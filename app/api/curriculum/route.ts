@@ -19,8 +19,7 @@ export async function GET(request: NextRequest) {
       ? await isValidGuestToken(supabase, guestToken)
       : false;
     const studentClassId = !isGuest && studentId ? await getStudentClassId(supabase, studentId) : null;
-    // Unpublished assessment problems must remain private for guests as well.
-    const curriculum = await loadCurriculum(supabase, true, studentClassId);
+    const curriculum = await loadCurriculum(supabase, !isGuest, studentClassId);
     return NextResponse.json({ ok: true, ...curriculum });
   } catch (error) {
     console.error("[Curriculum]", error);
