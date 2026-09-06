@@ -14,13 +14,15 @@ function load(relative, overrides = {}) {
     return nativeRequire(name);
   };
   localRequire.resolve = nativeRequire.resolve;
-  const compiled = ts.transpileModule(readFileSync(filename, "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+  const compiled = ts.transpileModule(readFileSync(filename, "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText;
   const mod = { exports: {} };
   new Function("require", "module", "exports", compiled)(localRequire, mod, mod.exports);
   return mod.exports;
 }
 const { challengePhase, elapsedLabel, firstSolvers, publicChallenge } = load("lib/challenge-types.ts");
 const { judgeChallenge } = load("lib/challenge-judge.ts");
+const { CHALLENGE_CODE_ALPHABET, generateChallengeEntryCode } = load("lib/challenge-server.ts");
+const { buildChallengeResultsWorkbook } = load("lib/challenge-export.ts");
 const problem = { id: "p1", title: "더하기", hint: "힌트", testCases: [{ input: "2\n3", output: "5", isSample: true }, { input: "-1\n4", output: "3", isSample: false }], examples: [{ input: "2\n3", output: "5", isSample: true }] };
 const challenge = { id: "c", entry_code: "1234ABCD", started_at: "2026-09-06T01:00:00Z", ends_at: "2026-09-06T01:40:00Z", problem_snapshots: [problem] };
 
@@ -30,6 +32,41 @@ test("challenge timing: pre-start, exact deadline, extended deadline and elapsed
   assert.equal(challengePhase(challenge, Date.parse(challenge.ends_at)), "ended");
   assert.equal(challengePhase({ ...challenge, ends_at: "2026-09-06T01:45:00Z" }, Date.parse(challenge.ends_at)), "running");
   assert.equal(elapsedLabel(challenge.started_at, "2026-09-06T01:12:34Z"), "12:34");
+});
+test("entry codes use only uppercase, visually distinct characters", () => {
+  assert.equal(CHALLENGE_CODE_ALPHABET, "ACDEFGHJKLMNPQRSTUVWXYZ2345679");
+  for (let index = 0; index < 1000; index += 1) {
+    const code = generateChallengeEntryCode();
+    assert.match(code, /^[ACDEFGHJKLMNPQRSTUVWXYZ2345679]{8}$/);
+    assert.doesNotMatch(code, /[BOI018a-z]/);
+  }
+});
+test("challenge result workbook includes base results and selected details", async () => {
+  const richChallenge = { ...challenge, title: "2학년 수행평가", entry_code: "ACDE2345" };
+  const participants = [
+    { id: "student-b", challenge_id: "c", student_no: "1202", name: "나학생", joined_at: "2026-09-06T01:00:00Z" },
+    { id: "student-a", challenge_id: "c", student_no: "1201", name: "가학생", joined_at: "2026-09-06T01:00:00Z" }
+  ];
+  const submissions = [
+    { id: "s1", participant_id: "student-a", challenge_id: "c", problem_id: "p1", status: "wrong_answer", received_at: "2026-09-06T01:02:00Z", passed_count: 0, total_count: 2 },
+    { id: "s2", participant_id: "student-a", challenge_id: "c", problem_id: "p1", status: "accepted", received_at: "2026-09-06T01:05:00Z", passed_count: 2, total_count: 2 }
+  ];
+  const workbook = await buildChallengeResultsWorkbook(richChallenge, participants, submissions, { includeFirstSolver: true, includeSubmissionTimes: true, includeAttemptCounts: true });
+  assert.ok(Math.abs(workbook.getWorksheet("결과").getCell("H5").value - (5 / 1440)) < 1e-10);
+  const buffer = await workbook.xlsx.writeBuffer();
+  const ExcelJS = require("exceljs");
+  const loaded = await new ExcelJS.Workbook().xlsx.load(buffer);
+  const sheet = loaded.getWorksheet("결과");
+  assert.ok(sheet);
+  assert.deepEqual(sheet.getRow(4).values.slice(1), ["학번", "이름", "총 정답", "1번 정오답", "1번 최초 해결", "1번 첫 제출 시각", "1번 최초 정답 시각", "1번 정답 소요시간", "1번 제출 시도"]);
+  assert.equal(sheet.getCell("A5").value, "1201");
+  assert.equal(sheet.getCell("D5").value, "정답");
+  assert.equal(sheet.getCell("E5").value, "최초 해결");
+  assert.ok(sheet.getCell("F5").value instanceof Date);
+  assert.equal(sheet.getCell("H5").numFmt, "[m]:ss");
+  assert.equal(sheet.getCell("I5").value, 2);
+  assert.equal(sheet.getCell("D6").value, "미제출");
+  assert.equal(loaded.getWorksheet("문항 정보").getCell("B2").value, "더하기");
 });
 test("student responses hide all pre-start problems, entry codes and hidden test cases", () => {
   const waiting = publicChallenge({ ...challenge, started_at: null });
@@ -87,6 +124,12 @@ test("challenge endpoints reject unauthenticated access before database or gradi
   });
   const request = new NextRequest("http://localhost/api/challenges/submit", { method: "POST", body: JSON.stringify({ challengeId: "c", problemId: "p", code: "print(1)", requestId: "00000000-0000-4000-8000-000000000000", status: "accepted" }) });
   assert.equal((await submit.POST(request)).status, 401);
+  const exportRoute = load("app/api/challenges/export/route.ts", {
+    "@/lib/teacher-auth": { isTeacherRequestAuthenticated: () => false },
+    "@/lib/challenge-server": { allRows: deniedDb, challengeDb: deniedDb, fail: (e, status) => Response.json({ message: e.message }, { status }) },
+    "@/lib/challenge-export": { buildChallengeResultsWorkbook: deniedDb }
+  });
+  assert.equal((await exportRoute.POST(new NextRequest("http://localhost/api/challenges/export", { method: "POST" }))).status, 401);
 });
 
 test("submission route uses server verdict and preserves database reception time", async () => {

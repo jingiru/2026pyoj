@@ -1,7 +1,7 @@
 -- Challenge data is accessible exclusively through authenticated server routes.
 create table public.challenges (
   id uuid primary key default gen_random_uuid(),
-  entry_code text not null unique check (entry_code ~ '^[A-F0-9]{8}$'),
+  entry_code text not null unique check (entry_code ~ '^[ACDEFGHJKLMNPQRSTUVWXYZ2345679]{8}$'),
   title text not null check (length(title) between 1 and 100),
   duration_minutes integer not null check (duration_minutes between 1 and 480),
   show_leaderboard boolean not null default false,
@@ -40,21 +40,11 @@ create table public.challenge_submissions (
 );
 create index challenge_submissions_board on public.challenge_submissions(challenge_id, received_at, id);
 create index challenge_submissions_history on public.challenge_submissions(participant_id, problem_id, received_at);
-create table public.challenge_events (
-  id uuid primary key default gen_random_uuid(),
-  challenge_id uuid not null references public.challenges(id) on delete cascade,
-  action text not null check (action in ('start','extend')),
-  minutes integer not null,
-  created_at timestamptz not null default clock_timestamp()
-);
-create index challenge_events_challenge on public.challenge_events(challenge_id, created_at);
-
 alter table public.challenges enable row level security;
 alter table public.challenge_participants enable row level security;
 alter table public.challenge_submissions enable row level security;
-alter table public.challenge_events enable row level security;
-revoke all on public.challenges, public.challenge_participants, public.challenge_submissions, public.challenge_events from public, anon, authenticated;
-grant all on public.challenges, public.challenge_participants, public.challenge_submissions, public.challenge_events to service_role;
+revoke all on public.challenges, public.challenge_participants, public.challenge_submissions from public, anon, authenticated;
+grant all on public.challenges, public.challenge_participants, public.challenge_submissions to service_role;
 
 create function public.challenge_control(p_id uuid, p_action text, p_minutes integer)
 returns jsonb language plpgsql security invoker set search_path = '' as $$
@@ -72,7 +62,6 @@ begin
     update public.challenges set ends_at = greatest(ends_at, t) + make_interval(mins => p_minutes) where id = p_id returning * into c;
   else raise exception '잘못된 진행 요청입니다.';
   end if;
-  insert into public.challenge_events(challenge_id, action, minutes) values(p_id, p_action, p_minutes);
   return to_jsonb(c);
 end;
 $$;

@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, randomInt } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseAdmin } from "./supabase-admin";
 
@@ -14,6 +14,13 @@ export function identity(request: NextRequest) {
 }
 export function tokenHash(token: string) { return createHash("sha256").update(token).digest("hex"); }
 export function newIdentity() { return randomBytes(32).toString("hex"); }
+export const CHALLENGE_CODE_ALPHABET = "ACDEFGHJKLMNPQRSTUVWXYZ2345679";
+export function generateChallengeEntryCode(length = 8) {
+  return Array.from(
+    { length },
+    () => CHALLENGE_CODE_ALPHABET[randomInt(CHALLENGE_CODE_ALPHABET.length)]
+  ).join("");
+}
 export function setIdentity(response: NextResponse, token: string) {
   response.cookies.set(CHALLENGE_COOKIE, token, { httpOnly: true, sameSite: "strict", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 60 * 60 * 24 * 30 });
 }

@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    if (typeof body.entryCode !== "string" || !/^[a-f0-9]{8}$/i.test(body.entryCode.trim()) ||
+    if (typeof body.entryCode !== "string" || !/^[A-Z0-9]{8}$/i.test(body.entryCode.trim()) ||
       typeof body.studentNo !== "string" || !/^\d{4}$/.test(body.studentNo) ||
       typeof body.name !== "string" || !body.name.trim() || body.name.trim().length > 30) return fail(new Error("입장코드, 학번 4자리, 이름을 확인해주세요."));
     const token = identity(request) ?? newIdentity();

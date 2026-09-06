@@ -35,7 +35,6 @@ export type ChallengeBoard = {
   participants: ChallengeParticipant[];
   submissions: ChallengeSubmission[];
   serverNow: string;
-  events?: { id: string; action: string; minutes: number; created_at: string }[];
 };
 
 export function challengePhase(challenge: Pick<Challenge, "started_at" | "ends_at">, now = Date.now()) {
