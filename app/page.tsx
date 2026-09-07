@@ -127,6 +127,7 @@ const PROBLEM_GROUP_TITLES: Record<number, string[]> = {
 };
 
 const PRACTICE_CODE_STORAGE_KEY = "pyoj:practice-code";
+const PRACTICE_HEADER_COLLAPSED_STORAGE_KEY = "pyoj:practice-header-collapsed";
 const SELECTED_PROBLEM_STORAGE_KEY = "pyoj:selected-problem";
 const PROBLEM_CODE_STORAGE_PREFIX = "pyoj:problem-code:";
 const AUTO_ADVANCE_STORAGE_KEY = "pyoj:auto-advance-on-accepted";
@@ -186,6 +187,8 @@ const sublimeLightHighlight = HighlightStyle.define([
 
 export default function Home() {
   const [screen, setScreen] = useState<Screen>("home");
+  const [practiceHeaderCollapsed, setPracticeHeaderCollapsed] = useState(false);
+  const [practiceHeaderPreferenceReady, setPracticeHeaderPreferenceReady] = useState(false);
   const [challengeEntryOpen, setChallengeEntryOpen] = useState(false);
   const [colorMode, setColorMode] = useState<ColorMode>("light");
   const [loginOpen, setLoginOpen] = useState(false);
@@ -479,6 +482,21 @@ export default function Home() {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [screen, isTeacherAuthenticated]);
+
+  useEffect(() => {
+    setPracticeHeaderCollapsed(
+      getStoredValue(PRACTICE_HEADER_COLLAPSED_STORAGE_KEY) === "true"
+    );
+    setPracticeHeaderPreferenceReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!practiceHeaderPreferenceReady) return;
+    setStoredValue(
+      PRACTICE_HEADER_COLLAPSED_STORAGE_KEY,
+      String(practiceHeaderCollapsed)
+    );
+  }, [practiceHeaderCollapsed, practiceHeaderPreferenceReady]);
 
   useEffect(() => {
     const savedPracticeCode = getStoredValue(PRACTICE_CODE_STORAGE_KEY);
@@ -1319,6 +1337,7 @@ export default function Home() {
         screen={screen}
         student={student}
         colorMode={colorMode}
+        practiceHeaderCollapsed={practiceHeaderCollapsed}
         onHome={() => navigateTo("home")}
         onPractice={() => navigateTo("practice")}
         onSolve={enterSolveMode}
@@ -1326,6 +1345,7 @@ export default function Home() {
         onTeacher={enterTeacherMode}
         onLogout={logoutStudent}
         onToggleColorMode={() => setColorMode((mode) => (mode === "dark" ? "light" : "dark"))}
+        onTogglePracticeHeader={() => setPracticeHeaderCollapsed((collapsed) => !collapsed)}
       />
 
       {notice && <div className="notice">{notice}</div>}
@@ -1349,7 +1369,11 @@ export default function Home() {
 
       {screen === "practice" && (
         <section className="practiceView">
-          <div className="practiceIntro">
+          <div
+            id="practice-heading"
+            className={`practiceIntro ${practiceHeaderCollapsed ? "collapsed" : ""}`}
+            aria-hidden={practiceHeaderCollapsed}
+          >
             <span className="pill">코딩 연습</span>
             <h1>파이썬 연습을 위한 통합 개발 환경(IDE)</h1>
           </div>
@@ -1977,17 +2001,20 @@ function Header({
   screen,
   student,
   colorMode,
+  practiceHeaderCollapsed,
   onHome,
   onPractice,
   onSolve,
   onChallenge,
   onTeacher,
   onLogout,
-  onToggleColorMode
+  onToggleColorMode,
+  onTogglePracticeHeader
 }: {
   screen: Screen;
   student: Student | null;
   colorMode: ColorMode;
+  practiceHeaderCollapsed: boolean;
   onHome: () => void;
   onPractice: () => void;
   onSolve: () => void;
@@ -1995,9 +2022,10 @@ function Header({
   onTeacher: () => void;
   onLogout: () => void;
   onToggleColorMode: () => void;
+  onTogglePracticeHeader: () => void;
 }) {
   return (
-    <header className="topbar">
+    <header className={`topbar ${screen === "practice" && practiceHeaderCollapsed ? "practiceHeaderCollapsed" : ""}`}>
       <button className="brand brandButton" onClick={onHome}>
         <div className="brandMark">
           <Code2 size={24} />
@@ -2033,6 +2061,18 @@ function Header({
         <button onClick={onToggleColorMode}>
           {colorMode === "dark" ? "화이트" : "다크"}
         </button>
+        {screen === "practice" && (
+          <button
+            className="practiceHeaderToggle"
+            onClick={onTogglePracticeHeader}
+            aria-expanded={!practiceHeaderCollapsed}
+            aria-controls="practice-heading"
+            title={practiceHeaderCollapsed ? "상단 펼치기" : "상단 접기"}
+          >
+            {practiceHeaderCollapsed ? <ChevronDown size={18} /> : <ChevronUp size={18} />}
+            <span>{practiceHeaderCollapsed ? "펼치기" : "접기"}</span>
+          </button>
+        )}
       </div>
     </header>
   );
