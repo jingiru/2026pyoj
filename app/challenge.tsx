@@ -123,16 +123,17 @@ function FontSizeControl({ value, onChange, label }: { value: number; onChange: 
 function ChallengeIDE({ problem, participant, canSubmit, colorMode, CodeEditor, onSubmitted }: { problem: Problem; participant: ChallengeParticipant; canSubmit: boolean; colorMode: "light" | "dark"; CodeEditor: ComponentType<EditorProps>; onSubmitted: (accepted: boolean) => Promise<void> }) {
   const storageKey = `pyoj:challenge-code:${participant.challenge_id}:${participant.id}:${problem.id}`;
   const [code, setCode] = useState(() => read(storageKey) ?? problem.starterCode); const [editorFont, setEditorFont] = useState(25); const [consoleFont, setConsoleFont] = useState(25); const [editorHeight, setEditorHeight] = useState(208);
-  const [output, setOutput] = useState("실행 버튼 또는 Shift + Enter로 실행하세요."); const [prompt, setPrompt] = useState<string | null>(null); const [input, setInput] = useState(""); const [running, setRunning] = useState(false); const [submitting, setSubmitting] = useState(false); const [notice, setNotice] = useState("");
+  const [output, setOutput] = useState("실행 버튼 또는 Shift + Enter로 실행하세요."); const [prompt, setPrompt] = useState<string | null>(null); const [input, setInput] = useState(""); const [running, setRunning] = useState(false); const [hasRun, setHasRun] = useState(false); const [submitting, setSubmitting] = useState(false); const [notice, setNotice] = useState("");
   const resolver = useRef<((input: string) => void) | null>(null); const controller = useRef<AbortController | null>(null); const submittingRef = useRef(false); const mounted = useRef(true); const inputRef = useRef<HTMLInputElement>(null); const bodyRef = useRef<HTMLDivElement>(null); const resizing = useRef<{ startY: number; startHeight: number } | null>(null);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; controller.current?.abort(); resolver.current?.(""); }; }, []); useEffect(() => { if (prompt !== null) inputRef.current?.focus(); }, [prompt]);
   function change(value: string) { setCode(value); if (!write(storageKey, value)) setNotice("이 브라우저에서 코드 자동 저장을 사용할 수 없습니다. 코드를 별도로 보관해주세요."); }
   async function run() {
-    if (controller.current || submittingRef.current) return; const abort = new AbortController(); controller.current = abort; setRunning(true); setOutput(""); setPrompt(null);
+    if (controller.current || submittingRef.current) return; const abort = new AbortController(); controller.current = abort; setHasRun(true); setRunning(true); setOutput(""); setPrompt(null);
     try { await runPythonWithSkulpt(code, { output: text => setOutput(old => (old + text).slice(-65536)), error: text => setOutput(old => old + "\n" + text), input: text => new Promise(resolve => { resolver.current = resolve; setPrompt(text); }) }, { signal: abort.signal }); }
     finally { controller.current = null; resolver.current = null; if (mounted.current) { setRunning(false); setPrompt(null); } }
   }
   async function submit() {
+    if (!hasRun) { setOutput("일단 실행하여 결과를 확인한 후 제출하세요"); return; }
     if (!canSubmit || submittingRef.current || controller.current) return; submittingRef.current = true; setSubmitting(true); setNotice("");
     try { const result = await api<{ submission: ChallengeSubmission }>("/api/challenges/submit", { challengeId: participant.challenge_id, problemId: problem.id, code, requestId: crypto.randomUUID() }); if (mounted.current) setNotice(`${statusLabel(result.submission.status)} · ${result.submission.feedback ?? ""}`); if (mounted.current) await onSubmitted(result.submission.status === "accepted"); }
     catch (caught) { if (mounted.current) setNotice(message(caught)); } finally { submittingRef.current = false; if (mounted.current) setSubmitting(false); }

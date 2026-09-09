@@ -259,6 +259,7 @@ export default function Home() {
   const [latestJudgeResults, setLatestJudgeResults] = useState<Record<string, JudgeResult>>({});
   const [geminiHelpNotice, setGeminiHelpNotice] = useState("");
   const [solvedProblemIds, setSolvedProblemIds] = useState<Set<string>>(() => new Set());
+  const [runProblemIds, setRunProblemIds] = useState<Set<string>>(() => new Set());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [autoAdvanceOnAccepted, setAutoAdvanceOnAccepted] = useState(false);
   const [solveConsoleLines, setSolveConsoleLines] = useState<string[]>([
@@ -930,6 +931,10 @@ export default function Home() {
   }
 
   async function submitCode() {
+    if (!runProblemIds.has(selectedProblem.id)) {
+      setSolveConsoleLines(["일단 실행하여 결과를 확인한 후 제출하세요"]);
+      return;
+    }
     if (!student) {
       setLoginOpen(true);
       return;
@@ -1001,6 +1006,7 @@ export default function Home() {
     const codeSnapshot = code;
     const problemIdSnapshot = selectedProblem.id;
     const studentSnapshot = student;
+    setRunProblemIds((current) => new Set(current).add(problemIdSnapshot));
     solveRunAbortControllerRef.current = abortController;
     setIsSolveRunning(true);
     setResult(null);
