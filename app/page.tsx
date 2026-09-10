@@ -2310,20 +2310,6 @@ function CodeEditor({
             }
           },
           {
-            key: "Ctrl-Alt-Shift-]",
-            run: () => {
-              onFontSizeChange?.(10);
-              return Boolean(onFontSizeChange);
-            }
-          },
-          {
-            key: "Ctrl-Alt-Shift-[",
-            run: () => {
-              onFontSizeChange?.(-10);
-              return Boolean(onFontSizeChange);
-            }
-          },
-          {
             key: "Ctrl-Alt-\\",
             run: () => {
               onFontSizeReset?.();
