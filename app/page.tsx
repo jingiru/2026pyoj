@@ -3587,8 +3587,20 @@ function ProblemBlock({ title, body }: { title: string; body: string }) {
   return (
     <section className="problemBlock">
       <h2>{title}</h2>
-      <p>{body}</p>
+      <p>{renderHighlightedText(body)}</p>
     </section>
+  );
+}
+
+function renderHighlightedText(text: string) {
+  const parts = text.split(/(\[\[[^\[\]]+\]\])/g);
+
+  return parts.map((part, index) =>
+    part.startsWith("[[") && part.endsWith("]]")) ? (
+      <strong key={index}>{part.slice(2, -2)}</strong>
+    ) : (
+      part
+    )
   );
 }
 
