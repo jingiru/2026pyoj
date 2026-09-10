@@ -132,7 +132,7 @@ const SELECTED_PROBLEM_STORAGE_KEY = "pyoj:selected-problem";
 const PROBLEM_CODE_STORAGE_PREFIX = "pyoj:problem-code:";
 const AUTO_ADVANCE_STORAGE_KEY = "pyoj:auto-advance-on-accepted";
 const SOLVE_EDITOR_HEIGHT_STORAGE_KEY = "pyoj:solve-editor-height";
-const SOLVE_CODE_FONT_SIZE_STORAGE_KEY = "pyoj:solve-code-font-size";
+const SOLVE_CODE_FONT_SIZE_STORAGE_KEY = "pyoj:solve-code-font-size-v2";
 const SOLVE_CONSOLE_FONT_SIZE_STORAGE_KEY = "pyoj:solve-console-font-size";
 const STUDENT_STORAGE_KEY = "pyoj:student";
 const GUEST_TOKEN_STORAGE_KEY = "pyoj:guest-token";
@@ -239,7 +239,7 @@ export default function Home() {
   const [practiceCode, setPracticeCode] = useState("print()");
   const [practiceCodeFontSize, setPracticeCodeFontSize] = useState(30);
   const [practiceConsoleFontSize, setPracticeConsoleFontSize] = useState(30);
-  const [codeFontSize, setCodeFontSize] = useState(15);
+  const [codeFontSize, setCodeFontSize] = useState(25);
   const [consoleFontSize, setConsoleFontSize] = useState(15);
   const [consoleLines, setConsoleLines] = useState<string[]>([
     "Shift + Enter로 실행하세요.",
@@ -1425,6 +1425,10 @@ export default function Home() {
                 onRun={runPractice}
                 colorMode={colorMode}
                 fontSize={practiceCodeFontSize}
+                onFontSizeChange={(amount) =>
+                  setPracticeCodeFontSize((size) => Math.max(12, Math.min(60, size + amount)))
+                }
+                onFontSizeReset={() => setPracticeCodeFontSize(30)}
               />
             </article>
             <div
@@ -1709,6 +1713,10 @@ export default function Home() {
                     onSubmit={submitCode}
                     colorMode={colorMode}
                     fontSize={codeFontSize}
+                    onFontSizeChange={(amount) =>
+                      setCodeFontSize((size) => Math.max(12, Math.min(60, size + amount)))
+                    }
+                    onFontSizeReset={() => setCodeFontSize(25)}
                   />
                 </div>
                 <div
@@ -2207,7 +2215,9 @@ function CodeEditor({
   onRun,
   onSubmit,
   colorMode,
-  fontSize
+  fontSize,
+  onFontSizeChange,
+  onFontSizeReset
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -2215,6 +2225,8 @@ function CodeEditor({
   onSubmit?: () => void;
   colorMode: ColorMode;
   fontSize: number;
+  onFontSizeChange?: (amount: number) => void;
+  onFontSizeReset?: () => void;
 }) {
   const extensions = useMemo(
     () => [
@@ -2283,6 +2295,41 @@ function CodeEditor({
               return Boolean(onSubmit);
             }
           },
+          {
+            key: "Ctrl-Alt-]",
+            run: () => {
+              onFontSizeChange?.(1);
+              return Boolean(onFontSizeChange);
+            }
+          },
+          {
+            key: "Ctrl-Alt-[",
+            run: () => {
+              onFontSizeChange?.(-1);
+              return Boolean(onFontSizeChange);
+            }
+          },
+          {
+            key: "Ctrl-Alt-Shift-]",
+            run: () => {
+              onFontSizeChange?.(10);
+              return Boolean(onFontSizeChange);
+            }
+          },
+          {
+            key: "Ctrl-Alt-Shift-[",
+            run: () => {
+              onFontSizeChange?.(-10);
+              return Boolean(onFontSizeChange);
+            }
+          },
+          {
+            key: "Ctrl-Alt-\\",
+            run: () => {
+              onFontSizeReset?.();
+              return Boolean(onFontSizeReset);
+            }
+          },
           { key: "Ctrl-Enter", mac: "Cmd-Enter", run: insertBlankLine },
           { key: "Ctrl-Shift-d", mac: "Cmd-Shift-d", run: copyLineDown },
           { key: "Ctrl-d", mac: "Cmd-d", run: selectNextWordOccurrence },
@@ -2293,7 +2340,7 @@ function CodeEditor({
       ),
       keymap.of([...defaultKeymap, ...historyKeymap])
     ],
-    [colorMode, fontSize, onRun, onSubmit]
+    [colorMode, fontSize, onFontSizeChange, onFontSizeReset, onRun, onSubmit]
   );
 
   return (
