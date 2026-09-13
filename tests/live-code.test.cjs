@@ -81,6 +81,8 @@ test('live provider merges simultaneous edits, repairs lost edits and rejects ob
     assert.equal(t2.states[0].doc.getText('code').toString(), s.states[0].doc.getText('code').toString());
     t.connection('CHANNEL_ERROR');
     assert.equal(t.states[2], false);
+    t.timers[0]();
+    assert.match(t.states[1], /CHANNEL_ERROR/);
     t.connection('SUBSCRIBED');
     assert.equal(t.states[2], true);
     const oldEpoch = t.states[0].epoch;

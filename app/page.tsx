@@ -1380,9 +1380,6 @@ export default function Home() {
         />
       )}
 
-      {(screen === "practice" || screen === "solve") && student && !student.is_guest && (
-        <p className="liveCodeStatus" role="status">{liveCode.teacherPresent ? "선생님이 코드를 보고 있습니다 · 커서와 선택 영역이 공유됩니다" : liveCode.status}</p>
-      )}
       {screen === "practice" && (
         <section className="practiceView">
           <div

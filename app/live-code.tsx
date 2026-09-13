@@ -24,11 +24,10 @@ export function useLiveCode(student: Student | null, active: ActiveCode | null, 
   const [shared, setShared] = useState<SharedCode | null>(null);
   const [status, setStatus] = useState("");
   const [online, setOnline] = useState(false);
-  const [teacherPresent, setTeacherPresent] = useState(false);
   const latest = useRef(active); latest.current = active;
   const key = active?.key;
   useEffect(() => {
-    setShared(null); setOnline(false); setTeacherPresent(false); setStatus("");
+    setShared(null); setOnline(false); setStatus("");
     if (!student || student.is_guest || (!teacher && !key)) return;
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const apiKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -54,7 +53,6 @@ export function useLiveCode(student: Student | null, active: ActiveCode | null, 
       });
       awareness.on("update", ({ added, updated, removed }: { added: number[]; updated: number[]; removed: number[] }, origin: unknown) => {
         if (origin !== remoteOrigin) send({ type: "awareness", epoch: next.epoch, update: pack(encodeAwarenessUpdate(awareness, [...added, ...updated, ...removed])) });
-        setTeacherPresent(Array.from(awareness.getStates().values()).some(state => state.user?.role === "teacher"));
       });
       awareness.setLocalStateField("user", { name: teacher ? "선생님" : student.name, role: teacher ? "teacher" : "student", color: teacher ? "#d97706" : "#2563eb", colorLight: teacher ? "#fef3c7" : "#dbeafe" });
       setShared(next); return next;
@@ -93,12 +91,15 @@ export function useLiveCode(student: Student | null, active: ActiveCode | null, 
             if (!teacher && !current) makeShared({ key: key!, title: latest.current!.title, epoch: crypto.randomUUID(), startedAt: Date.now() });
             if (teacher) { setStatus("학생이 코드 편집기를 열기를 기다리는 중…"); send({ type: "request" }); }
             else { setStatus("실시간 지도 연결됨"); announce(); }
-          } else { setOnline(false); setStatus("실시간 연결이 끊겼습니다. 재연결 중…"); }
+          } else {
+            setOnline(false);
+            setStatus(`실시간 채널 연결 실패 (${state}). Supabase 채널 권한과 JWT 설정을 확인해주세요.`);
+          }
         });
         timers.push(setInterval(() => {
           if (teacher) {
             send({ type: "request" });
-            if (Date.now() - lastStudent > 10000) { setOnline(false); setStatus("학생이 코드 편집기를 열기를 기다리는 중…"); }
+            if (connected && Date.now() - lastStudent > 10000) { setOnline(false); setStatus("학생이 코드 편집기를 열기를 기다리는 중…"); }
           } else announce();
           if (current) send({ type: "awareness", epoch: current.epoch, update: pack(encodeAwarenessUpdate(current.awareness, [current.doc.clientID])) });
           // Bidirectional repair also recovers a teacher edit whose broadcast was lost.
@@ -114,16 +115,15 @@ export function useLiveCode(student: Student | null, active: ActiveCode | null, 
     };
   }, [student?.id, student?.student_no, student?.name, student?.is_guest, key, teacher]);
   const extension = useMemo(() => shared ? [yCollab(shared.doc.getText("code"), shared.awareness), keymap.of(yUndoManagerKeymap)] : null, [shared]);
-  return { shared, extension, status, online, teacherPresent };
+  return { shared, extension, status, online };
 }
 
 export function LiveStudentModal({ student, onClose }: { student: Student; onClose: () => void }) {
   const live = useLiveCode(student, null, true);
-  const [editing, setEditing] = useState(false);
   const closeRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLElement>(null);
   const onCloseRef = useRef(onClose); onCloseRef.current = onClose;
-  const writableRef = useRef(false); writableRef.current = editing && live.online;
+  const writableRef = useRef(false); writableRef.current = live.online;
   const guard = useMemo(() => EditorState.transactionFilter.of(transaction =>
     transaction.docChanged && !writableRef.current && !transaction.annotation(ySyncAnnotation) ? [] : transaction
   ), []);
@@ -149,9 +149,7 @@ export function LiveStudentModal({ student, onClose }: { student: Student; onClo
   return <div className="modalBackdrop" onMouseDown={onClose}>
     <section ref={dialogRef} className="liveCodeModal" role="dialog" aria-modal="true" aria-labelledby="live-code-title" onMouseDown={event => event.stopPropagation()}>
       <header><div><h2 id="live-code-title">{student.student_no} {student.name} · 학생 화면 보기</h2><p role="status">{live.status}</p></div><button ref={closeRef} className="ghostButton" onClick={onClose}>닫기</button></header>
-      {live.shared && <><div className="liveCodeToolbar"><strong>{live.shared.title}</strong><button className="ghostButton" disabled={!live.online} onClick={() => setEditing(value => !value)}>{editing ? "보기 모드로 전환" : "공동 편집 시작"}</button><span>{editing && live.online ? "함께 편집 중" : "보기 모드"}</span></div>
-        <CodeMirror key={live.shared.epoch} value={live.shared.doc.getText("code").toString()} extensions={[python(), undoGuard, live.extension!, guard]} basicSetup={{ history: false }} readOnly={!editing || !live.online} editable={editing && live.online} height="100%" />
-        <p className="helperText">선택한 영역과 커서는 학생에게 표시됩니다. 공동 편집 중 수정한 코드는 학생 편집기에도 반영됩니다.</p></>}
+      {live.shared && <CodeMirror key={live.shared.epoch} value={live.shared.doc.getText("code").toString()} extensions={[python(), undoGuard, live.extension!, guard]} basicSetup={{ history: false }} readOnly={!live.online} editable={live.online} height="100%" />}
     </section>
   </div>;
 }

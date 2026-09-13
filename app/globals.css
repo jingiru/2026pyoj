@@ -3752,9 +3752,8 @@ kbd {
     justify-self: end;
   }
 }
-.liveCodeStatus { margin: 8px 24px; color: #92400e; font-size: 14px; }
 .liveCodeModal { width: min(1100px, 95vw); height: min(850px, 90vh); background: var(--panel); color: var(--ink); border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 14px; }
-.liveCodeModal header, .liveCodeToolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.liveCodeModal header { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .liveCodeModal h2 { margin: 0; font-size: 20px; }
 .liveCodeModal .cm-theme { flex: 1; min-height: 0; overflow: auto; border: 1px solid #cbd5e1; }
 .liveCodeModal .cm-content { font: 18px/1.6 Consolas, monospace; }
