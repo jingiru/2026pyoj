@@ -93,6 +93,8 @@ import type {
 } from "@/lib/types";
 import type { ProblemImportResult } from "@/lib/problem-import-types";
 import ChallengeExperience from "./challenge";
+import { LiveStudentModal, useLiveCode } from "./live-code";
+import type { Extension } from "@codemirror/state";
 
 type Screen = "home" | "practice" | "solve" | "teacher" | "challenge" | "challenge-teacher";
 type ColorMode = "light" | "dark";
@@ -238,6 +240,10 @@ export default function Home() {
       : undefined;
   const [code, setCode] = useState(DEFAULT_PROBLEM.starterCode);
   const [practiceCode, setPracticeCode] = useState("print()");
+  const liveCode = useLiveCode(student, screen === "solve"
+    ? { key: selectedProblem.id, title: selectedProblem.title, code }
+    : screen === "practice" ? { key: "practice", title: "자유 연습", code: practiceCode } : null);
+  const liveExtension = liveCode.shared?.key === (screen === "solve" ? selectedProblem.id : "practice") ? liveCode.extension : null;
   const [practiceCodeFontSize, setPracticeCodeFontSize] = useState(30);
   const [practiceConsoleFontSize, setPracticeConsoleFontSize] = useState(30);
   const [codeFontSize, setCodeFontSize] = useState(25);
@@ -1374,6 +1380,9 @@ export default function Home() {
         />
       )}
 
+      {(screen === "practice" || screen === "solve") && student && !student.is_guest && (
+        <p className="liveCodeStatus" role="status">{liveCode.teacherPresent ? "선생님이 코드를 보고 있습니다 · 커서와 선택 영역이 공유됩니다" : liveCode.status}</p>
+      )}
       {screen === "practice" && (
         <section className="practiceView">
           <div
@@ -1421,6 +1430,8 @@ export default function Home() {
                 </div>
               </div>
               <CodeEditor
+                key={liveExtension ? liveCode.shared?.epoch : "practice"}
+                collaboration={liveExtension ?? undefined}
                 value={practiceCode}
                 onChange={setPracticeCode}
                 onRun={runPractice}
@@ -1708,6 +1719,8 @@ export default function Home() {
                     />
                   </div>
                   <CodeEditor
+                    key={liveExtension ? liveCode.shared?.epoch : selectedProblem.id}
+                    collaboration={liveExtension ?? undefined}
                     value={code}
                     onChange={setCode}
                     onRun={runSolveCode}
@@ -2218,7 +2231,8 @@ function CodeEditor({
   colorMode,
   fontSize,
   onFontSizeChange,
-  onFontSizeReset
+  onFontSizeReset,
+  collaboration
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -2228,11 +2242,12 @@ function CodeEditor({
   fontSize: number;
   onFontSizeChange?: (amount: number) => void;
   onFontSizeReset?: () => void;
+  collaboration?: Extension;
 }) {
   const extensions = useMemo(
     () => [
       lineNumbers(),
-      history(),
+      ...(collaboration ? [collaboration] : [history()]),
       python(),
       EditorState.allowMultipleSelections.of(true),
       drawSelection(),
@@ -2325,9 +2340,9 @@ function CodeEditor({
           ...completionKeymap
         ])
       ),
-      keymap.of([...defaultKeymap, ...historyKeymap])
+      keymap.of([...defaultKeymap, ...(collaboration ? [] : historyKeymap)])
     ],
-    [colorMode, fontSize, onFontSizeChange, onFontSizeReset, onRun, onSubmit]
+    [colorMode, fontSize, onFontSizeChange, onFontSizeReset, onRun, onSubmit, collaboration]
   );
 
   return (
@@ -2710,6 +2725,7 @@ function TeacherDashboard({
   const [submissionHistoryLoading, setSubmissionHistoryLoading] = useState(false);
   const submissionHistoryRequestRef = useRef(0);
   const [overviewStudentId, setOverviewStudentId] = useState("");
+  const [liveStudent, setLiveStudent] = useState<Student | null>(null);
   const [previewProblemId, setPreviewProblemId] = useState("");
   const selectedBook = books.find((book) => book.id === selectedBookId) ?? books[0];
   const bookProblems = problems
@@ -3262,7 +3278,8 @@ function TeacherDashboard({
                       <button
                         className="studentOverviewLink"
                         type="button"
-                        onClick={() => setOverviewStudentId(row.student.id)}
+                        onClick={() => setLiveStudent(row.student)}
+                        title="학생 실시간 코드 보기"
                       >
                         {row.student.student_no}
                       </button>
@@ -3331,6 +3348,7 @@ function TeacherDashboard({
         problems={problems}
         onChanged={onCurriculumChanged}
       />
+      {liveStudent && <LiveStudentModal student={liveStudent} onClose={() => setLiveStudent(null)} />}
       {overviewStudent && (
         <div className="modalBackdrop" role="presentation" onMouseDown={() => setOverviewStudentId("")}>
           <section
