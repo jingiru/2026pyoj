@@ -28,6 +28,19 @@ export async function GET(request: NextRequest) {
 
   const studentId = request.nextUrl.searchParams.get("studentId")?.trim();
   const problemId = request.nextUrl.searchParams.get("problemId")?.trim();
+  if (studentId && !problemId) {
+    const submissions: SubmissionWithStudent[] = [];
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await supabase.from("submissions").select(DASHBOARD_SUBMISSION_COLUMNS)
+        .eq("student_id", studentId).order("created_at", { ascending: false })
+        .order("id", { ascending: false }).range(from, from + 999);
+      if (error) return dashboardError(error);
+      const page = (data ?? []) as unknown as SubmissionWithStudent[];
+      submissions.push(...page);
+      if (page.length < 1000) break;
+    }
+    return NextResponse.json({ ok: true, submissions });
+  }
   if (studentId || problemId) {
     if (!studentId || !problemId) {
       return NextResponse.json(

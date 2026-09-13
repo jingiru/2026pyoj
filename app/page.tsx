@@ -69,6 +69,7 @@ import {
 import {
   CLASS_VISIBILITY_OPTIONS,
   formatClassLabel,
+  getStudentClassId,
   getStudentGradeClassId,
   isStudentGradeClassId
 } from "@/lib/student-class";
@@ -2902,17 +2903,54 @@ function TeacherDashboard({
   const overviewStudent = overviewStudentId
     ? students.find((student) => student.id === overviewStudentId)
     : undefined;
+  const [overviewSubmissions, setOverviewSubmissions] = useState<SubmissionWithStudent[]>([]);
+  const [overviewLoading, setOverviewLoading] = useState(false);
+  const [overviewError, setOverviewError] = useState("");
+  useEffect(() => {
+    if (!overviewStudentId) return;
+    const controller = new AbortController();
+    setOverviewSubmissions([]);
+    setOverviewLoading(true);
+    setOverviewError("");
+    async function load() {
+      try {
+        const query = new URLSearchParams({ studentId: overviewStudentId });
+        const response = await fetch(`/api/teacher-dashboard?${query}`, { cache: "no-store", signal: controller.signal });
+        const data = await response.json();
+        if (!response.ok || !data.ok) throw new Error();
+        if (!controller.signal.aborted) setOverviewSubmissions(data.submissions ?? []);
+      } catch {
+        if (!controller.signal.aborted) setOverviewError("학생 현황을 불러오지 못했습니다. 다시 열어 주세요.");
+      } finally {
+        if (!controller.signal.aborted) setOverviewLoading(false);
+      }
+    }
+    void load();
+    return () => controller.abort();
+  }, [overviewStudentId, submissions]);
+  const overviewSubmissionByProblem = useMemo(() => {
+    const result = new Map<string, SubmissionWithStudent>();
+    for (const item of overviewSubmissions) {
+      const current = result.get(item.problem_id);
+      if (!current || (current.status !== "accepted" && item.status === "accepted")) result.set(item.problem_id, item);
+    }
+    return result;
+  }, [overviewSubmissions]);
   const overviewBookRows = useMemo(() => {
     if (!overviewStudent) return [];
 
-    return books.map((book) => {
+    const classId = overviewStudent.is_guest ? null : getStudentClassId(overviewStudent.student_no);
+    return books.filter((book) => book.isPublished !== false).map((book) => {
       const bookItems = problems
-        .filter((problem) => problem.bookId === book.id)
+        .filter((problem) => problem.bookId === book.id && problem.isPublished !== false &&
+          ((problem.visibilityScope ?? "all") === "all" || Boolean(classId && problem.visibleClassIds?.includes(classId))))
         .sort((left, right) => left.order - right.order);
       const statuses = bookItems.map((problem) =>
-        dashboardSubmissionByStudentProblem.get(`${overviewStudent.id}:${problem.id}`)
+        overviewSubmissionByProblem.get(problem.id)
       );
       const submitted = statuses.filter(Boolean).length;
+      const ids = new Set(bookItems.map((problem) => problem.id));
+      const submissionCount = overviewSubmissions.filter((item) => ids.has(item.problem_id)).length;
       const accepted = statuses.filter((submission) => submission?.status === "accepted").length;
       const wrongProblems = bookItems.filter((_, index) => {
         const submission = statuses[index];
@@ -2923,12 +2961,10 @@ function TeacherDashboard({
         ...group,
         items: group.problems.map((problem) => ({
           problem,
-          submission: dashboardSubmissionByStudentProblem.get(
-            `${overviewStudent.id}:${problem.id}`
-          )
+          submission: overviewSubmissionByProblem.get(problem.id)
         }))
       }));
-      const latestActivity = submissions.find(
+      const latestActivity = overviewSubmissions.find(
         (submission) =>
           submission.student_id === overviewStudent.id &&
           bookItems.some((problem) => problem.id === submission.problem_id)
@@ -2938,6 +2974,7 @@ function TeacherDashboard({
         book,
         total: bookItems.length,
         submitted,
+        submissionCount,
         accepted,
         wrongProblems,
         unsubmittedProblems,
@@ -2948,13 +2985,13 @@ function TeacherDashboard({
         acceptedProgress:
           bookItems.length === 0 ? 0 : Math.round((accepted / bookItems.length) * 100)
       };
-    });
+    }).filter((row) => row.total > 0);
   }, [
     overviewStudent,
     books,
     problems,
-    submissions,
-    dashboardSubmissionByStudentProblem
+    overviewSubmissions,
+    overviewSubmissionByProblem
   ]);
   const overviewStats = useMemo(() => {
     const total = overviewBookRows.reduce((sum, row) => sum + row.total, 0);
@@ -2969,9 +3006,7 @@ function TeacherDashboard({
             new Date(right.latestActivity!.created_at!).getTime() -
             new Date(left.latestActivity!.created_at!).getTime()
         )[0] ?? overviewBookRows.find((row) => row.submitted > 0);
-    const lastActivity = submissions.find(
-      (submission) => submission.student_id === overviewStudent?.id
-    );
+    const lastActivity = currentBook?.latestActivity;
 
     return {
       total,
@@ -2982,7 +3017,7 @@ function TeacherDashboard({
       currentBook,
       lastActivity
     };
-  }, [overviewBookRows, overviewStudent, submissions]);
+  }, [overviewBookRows]);
 
   useEffect(() => {
     if (!selectedSubmission) return;
@@ -3361,6 +3396,8 @@ function TeacherDashboard({
               </div>
             </div>
             <div className="studentWorkbookList">
+              {overviewLoading && <p role="status">학생 현황을 불러오는 중입니다.</p>}
+              {overviewError && <p role="alert">{overviewError}</p>}
               {overviewBookRows.map((row) => {
                 const status =
                   row.total > 0 && row.accepted === row.total
@@ -3383,7 +3420,7 @@ function TeacherDashboard({
                       </div>
                       <div className="studentWorkbookCounts">
                         <span>
-                          제출 <b>{row.submitted}</b>개
+                          제출 <b>{row.submissionCount}</b>회
                         </span>
                         <span>
                           정답 <b>{row.accepted}</b>개
