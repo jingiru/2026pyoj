@@ -16,6 +16,8 @@ const { checkCodeRequirements } = load('lib/code-requirements.ts');
 const { runPythonWithSkulpt } = load('lib/skulpt-runner.ts');
 test('all ten reference solutions satisfy requirements and produce expected outputs', async () => {
   for (const row of rows) {
+    assert.ok(row.cases.length >= 5, row.id);
+    assert.equal(new Set(row.cases.map(item => item.input)).size, row.cases.length, row.id);
     assert.equal(checkCodeRequirements(row.solution, row.requirements).passed, true, row.id);
     for (const example of row.cases) {
       let actual = '', errors = [];
