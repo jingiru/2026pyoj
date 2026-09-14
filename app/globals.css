@@ -1965,13 +1965,18 @@ pre {
 }
 
 .solveTerminal {
+  display: flex;
+  flex-direction: column;
   height: 100%;
   min-height: 0;
+  overflow: hidden;
 }
 
 .solveTerminal .terminalScroll {
+  flex: 1;
   min-height: 0;
   overflow: auto;
+  overscroll-behavior: contain;
 }
 
 .solveGrid .ideHeader {
