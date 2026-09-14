@@ -95,7 +95,7 @@ function checkRequirement(
         ? ""
         : `${used
             .map((keyword) => `\`${keyword}\``)
-            .join(", ")}를 사용하지 말고 순차 구조만으로 풀어주세요.`;
+            .join(", ")}를 사용하지 말고 문제에서 지정한 구조로 풀어주세요.`;
     }
 
     case "assigned_output":
@@ -112,6 +112,31 @@ function checkRequirement(
       return hasPrintInsideForRange(facts)
         ? ""
         : "print()를 직접 반복해서 쓰지 말고, for문과 range()를 사용해 출력해주세요.";
+
+    case "for_list":
+      return facts.printCalls.some((call) => hasAncestor(call, (node) => {
+        if (node.name !== "ForStatement") return false;
+        const iterable = node.children.find((child, index) => index > node.children.findIndex((item) => item.name === "in") && child.name !== "Body");
+        if (!iterable) return false;
+        if (iterable.name === "ArrayExpression") return true;
+        if (iterable.name === "VariableName") {
+          return latestAssignment(facts.source.slice(iterable.from, iterable.to), node.from, facts.assignments)?.value.name === "ArrayExpression";
+        }
+        return callName(iterable, facts.source) === "range" && collectOutputFeatures(facts).indexing > 0;
+      })) ? "" : "리스트의 값을 for문으로 반복하여 출력해주세요. 리스트 직접 순회 또는 range()와 리스트 인덱싱을 사용할 수 있어요.";
+
+    case "while_loop":
+      return facts.printCalls.length > 0 && facts.printCalls.every((call) => {
+        if (hasAncestor(call, (node) => node.name === "WhileStatement")) return true;
+        let depends = false;
+        const args = call.children.find((node) => node.name === "ArgList");
+        if (args) walk(args, (node) => {
+          if (node.name !== "VariableName") return;
+          const assignment = latestAssignment(facts.source.slice(node.from, node.to), call.from, facts.assignments);
+          if (assignment) depends ||= hasAncestor(assignment.value, (parent) => parent.name === "WhileStatement");
+        });
+        return depends;
+      }) ? "" : "이 문제는 while문으로 출력하거나, while문에서 변경한 변수를 출력해야 해요.";
 
     case "indexing": {
       const count = collectOutputFeatures(facts).indexing;
@@ -196,7 +221,7 @@ function collectFacts(
   const keywords = new Set<string>();
 
   walk(tree, (node) => {
-    if (node.name === "if") {
+    if (["if", "for", "while"].includes(node.name)) {
       keywords.add(node.name);
     }
 
@@ -207,13 +232,13 @@ function collectFacts(
       printCalls.push(node);
     }
 
-    if (node.name === "AssignStatement") {
+    if (node.name === "AssignStatement" || node.name === "UpdateStatement") {
       const variable = node.children.find(
         (child) => child.name === "VariableName"
       );
 
       const assignIndex = node.children.findIndex(
-        (child) => child.name === "AssignOp"
+        (child) => child.name === "AssignOp" || child.name === "UpdateOp"
       );
 
       const value = node.children
@@ -236,6 +261,15 @@ function collectFacts(
     keywords,
     source
   };
+}
+
+function hasAncestor(node: ParsedNode, predicate: (node: ParsedNode) => boolean) {
+  let parent = node.parent;
+  while (parent) {
+    if (predicate(parent)) return true;
+    parent = parent.parent;
+  }
+  return false;
 }
 
 /**

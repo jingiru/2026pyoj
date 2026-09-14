@@ -22,10 +22,12 @@ export type ProblemVisibilityScope = "all" | "classes";
 export type CodeRequirement =
   | { type: "print_arguments"; minCount: number }
   | { type: "operators"; values: Array<"+" | "-" | "*" | "/" | "//" | "%"> }
-  | { type: "forbidden_keywords"; values: Array<"if"> }
+  | { type: "forbidden_keywords"; values: Array<"if" | "for" | "while"> }
   | { type: "assigned_output" }
   | { type: "reassignment" }
   | { type: "for_range" }
+  | { type: "for_list" }
+  | { type: "while_loop" }
   | { type: "indexing"; minCount: number }
   | { type: "slicing"; minCount: number }
   | { type: "functions"; names: Array<"sum" | "max" | "min" | "len" | "sorted"> }
