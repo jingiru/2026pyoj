@@ -241,8 +241,8 @@ export default function Home() {
   const [code, setCode] = useState(DEFAULT_PROBLEM.starterCode);
   const [practiceCode, setPracticeCode] = useState("print()");
   const liveCode = useLiveCode(student, screen === "solve"
-    ? { key: selectedProblem.id, title: selectedProblem.title, code }
-    : screen === "practice" ? { key: "practice", title: "자유 연습", code: practiceCode } : null);
+    ? { key: selectedProblem.id, title: `${availableBooks.find(book => book.id === selectedProblem.bookId)?.title ?? "문제 풀이"} · ${Number(formatProblemNumber(selectedProblem))}번 · ${selectedProblem.title}`, code }
+    : screen === "practice" ? { key: "practice", title: "코딩 연습 창", code: practiceCode } : null);
   const liveExtension = liveCode.shared?.key === (screen === "solve" ? selectedProblem.id : "practice") ? liveCode.extension : null;
   const [practiceCodeFontSize, setPracticeCodeFontSize] = useState(30);
   const [practiceConsoleFontSize, setPracticeConsoleFontSize] = useState(30);

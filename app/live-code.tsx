@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { createClient } from "@supabase/supabase-js";
 import * as Y from "yjs";
 import { Awareness, applyAwarenessUpdate, encodeAwarenessUpdate } from "y-protocols/awareness";
@@ -120,6 +120,7 @@ export function useLiveCode(student: Student | null, active: ActiveCode | null, 
 
 export function LiveStudentModal({ student, onClose }: { student: Student; onClose: () => void }) {
   const live = useLiveCode(student, null, true);
+  const [fontSize, setFontSize] = useState(18);
   const closeRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLElement>(null);
   const onCloseRef = useRef(onClose); onCloseRef.current = onClose;
@@ -147,9 +148,18 @@ export function LiveStudentModal({ student, onClose }: { student: Student; onClo
     return () => { document.removeEventListener("keydown", escape); previous?.focus(); };
   }, []);
   return <div className="modalBackdrop" onMouseDown={onClose}>
-    <section ref={dialogRef} className="liveCodeModal" role="dialog" aria-modal="true" aria-labelledby="live-code-title" onMouseDown={event => event.stopPropagation()}>
+    <section ref={dialogRef} className="liveCodeModal" style={{ "--live-code-font-size": `${fontSize}px` } as CSSProperties} role="dialog" aria-modal="true" aria-labelledby="live-code-title" onMouseDown={event => event.stopPropagation()}>
       <header><div><h2 id="live-code-title">{student.student_no} {student.name} · 학생 화면 보기</h2><p role="status">{live.status}</p></div><button ref={closeRef} className="ghostButton" onClick={onClose}>닫기</button></header>
-      {live.shared && <CodeMirror key={live.shared.epoch} value={live.shared.doc.getText("code").toString()} extensions={[python(), undoGuard, live.extension!, guard]} basicSetup={{ history: false }} readOnly={!live.online} editable={live.online} height="100%" />}
+      {live.shared && <>
+        <div className="liveCodeInfo"><strong>{live.shared.key === "practice" ? "코딩 연습 창" : live.shared.title}</strong>
+          <div className="liveCodeFontControls" role="group" aria-label="교사 코드 글자 크기">
+            <button type="button" className="ghostButton" aria-label="코드 글자 크기 줄이기" disabled={fontSize <= 12} onClick={() => setFontSize(size => Math.max(12, size - 2))}>A−</button>
+            <span>{fontSize}px</span>
+            <button type="button" className="ghostButton" aria-label="코드 글자 크기 키우기" disabled={fontSize >= 60} onClick={() => setFontSize(size => Math.min(60, size + 2))}>A+</button>
+          </div>
+        </div>
+        <CodeMirror key={live.shared.epoch} value={live.shared.doc.getText("code").toString()} extensions={[python(), undoGuard, live.extension!, guard]} basicSetup={{ history: false }} readOnly={!live.online} editable={live.online} height="100%" />
+      </>}
     </section>
   </div>;
 }

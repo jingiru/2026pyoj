@@ -3756,4 +3756,7 @@ kbd {
 .liveCodeModal header { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .liveCodeModal h2 { margin: 0; font-size: 20px; }
 .liveCodeModal .cm-theme { flex: 1; min-height: 0; overflow: auto; border: 1px solid #cbd5e1; }
-.liveCodeModal .cm-content { font: 18px/1.6 Consolas, monospace; }
+.liveCodeModal .cm-editor { font-size: var(--live-code-font-size, 18px); }
+.liveCodeModal .cm-content { font: var(--live-code-font-size, 18px)/1.6 Consolas, monospace; }
+.liveCodeInfo { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.liveCodeFontControls { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
