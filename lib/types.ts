@@ -28,6 +28,9 @@ export type CodeRequirement =
   | { type: "for_range" }
   | { type: "for_list" }
   | { type: "while_loop" }
+  | { type: "for_if" }
+  | { type: "while_true_if_break" }
+  | { type: "forbidden_augmented_assignment" }
   | { type: "indexing"; minCount: number }
   | { type: "slicing"; minCount: number }
   | { type: "functions"; names: Array<"sum" | "max" | "min" | "len" | "sorted"> }

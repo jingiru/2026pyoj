@@ -75,7 +75,7 @@ import {
 } from "@/lib/student-class";
 import { getAccuracy, rankStudents } from "@/lib/dashboard-ranking";
 import { runPythonWithSkulpt } from "@/lib/skulpt-runner";
-import { checkCodeRequirements } from "@/lib/code-requirements";
+import { checkCodeRequirements, hasPotentialInfiniteLoop } from "@/lib/code-requirements";
 import {
   findOrCreateGuest,
   findOrCreateStudent,
@@ -126,7 +126,8 @@ const PROBLEM_GROUP_TITLES: Record<number, string[]> = {
   7: ["리스트 인덱싱(기초)", "리스트 인덱싱(복수, 개행)"],
   8: ["문자열 인덱싱(기초)", "문자열 인덱싱(복수, 개행)"],
   9: ["리스트 슬라이싱", "문자열 슬라이싱"],
-  10: ["리스트 통계 함수 활용", "리스트 통계 함수 응용", "문자열 함수 활용", "리스트 및 문자열 정렬"]
+  10: ["리스트 통계 함수 활용", "리스트 통계 함수 응용", "문자열 함수 활용", "리스트 및 문자열 정렬"],
+  11: ["for-if 중첩", "while-if 중첩"]
 };
 
 const PRACTICE_CODE_STORAGE_KEY = "pyoj:practice-code";
@@ -268,6 +269,7 @@ export default function Home() {
   const [solvedProblemIds, setSolvedProblemIds] = useState<Set<string>>(() => new Set());
   const [runProblemIds, setRunProblemIds] = useState<Set<string>>(() => new Set());
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [infiniteLoopWarningOpen, setInfiniteLoopWarningOpen] = useState(false);
   const [autoAdvanceOnAccepted, setAutoAdvanceOnAccepted] = useState(false);
   const [solveConsoleLines, setSolveConsoleLines] = useState<string[]>([
     "실행 버튼 또는 Shift + Enter로 실행하세요."
@@ -1004,6 +1006,11 @@ export default function Home() {
 
   async function runSolveCode() {
     if (solveRunAbortControllerRef.current) return;
+    if (selectedProblem.id.startsWith("11-2-") && hasPotentialInfiniteLoop(code)) {
+      setRunProblemIds((current) => new Set(current).add(selectedProblem.id));
+      setInfiniteLoopWarningOpen(true);
+      return;
+    }
     const runId = ++solveRunIdRef.current;
     const abortController = new AbortController();
     const runInputs: string[] = [];
@@ -1889,6 +1896,30 @@ export default function Home() {
         </aside>
       )}
 
+      {infiniteLoopWarningOpen && (
+        <div className="modalBackdrop" role="presentation">
+          <section
+            className="loginModal infiniteLoopWarningModal"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="infinite-loop-warning-title"
+          >
+            <h2 id="infinite-loop-warning-title">실행 전 확인</h2>
+            <p>무한 반복에 빠질 위험성이 있는 코드입니다</p>
+            <div className="modalActions">
+              <button
+                type="button"
+                className="primaryButton"
+                autoFocus
+                onClick={() => setInfiniteLoopWarningOpen(false)}
+              >
+                확인
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
       {loginOpen && (
         <div className="modalBackdrop" role="presentation">
           <div className="loginModal" role="dialog" aria-modal="true" aria-labelledby="login-title">
@@ -2545,6 +2576,15 @@ function ProblemPane({
 }
 
 async function judgeProblemSubmission(problem: Problem, code: string): Promise<JudgeResult> {
+  if (problem.id.startsWith("11-2-") && hasPotentialInfiniteLoop(code)) {
+    return {
+      status: "wrong_answer",
+      passedCount: 0,
+      totalCount: problem.testCases.length,
+      feedback: "무한 반복에 빠질 위험성이 있어 코드를 실행하지 않았어요. break에 도달하도록 값이 바뀌는지 확인해주세요.",
+      cases: problem.testCases.map((testCase) => ({ ...testCase, actual: "실행하지 않음", passed: false }))
+    };
+  }
   const cases: JudgeResult["cases"] = [];
   let hasRuntimeError = false;
 
@@ -2557,7 +2597,7 @@ async function judgeProblemSubmission(problem: Problem, code: string): Promise<J
       output: (text) => output.push(text),
       error: (text) => errors.push(text),
       input: async () => inputQueue.shift() ?? ""
-    });
+    }, { timeLimitMs: problem.id.startsWith("11-2-") ? 2000 : undefined });
 
     const actual = errors.length > 0 ? errors.join("\n") : output.join("");
     const passed = errors.length === 0 && normalizeJudgeOutput(actual) === normalizeJudgeOutput(testCase.output);

@@ -1,4 +1,5 @@
-import type { Problem } from "./types";
+import nestedCurriculum from "@/data/nested-curriculum.json";
+import type { CodeRequirement, Problem } from "./types";
 
 export const problemBooks = [
   { id: "print-basic", order: 1, title: "출력 함수 기초" },
@@ -10,7 +11,8 @@ export const problemBooks = [
   { id: "list-index", order: 7, title: "리스트 인덱싱" },
   { id: "string-index", order: 8, title: "문자열 인덱싱" },
   { id: "slicing", order: 9, title: "슬라이싱" },
-  { id: "list-analysis", order: 10, title: "리스트 데이터 분석" }
+  { id: "list-analysis", order: 10, title: "리스트 데이터 분석" },
+  nestedCurriculum.book
 ];
 
 export const problems: Problem[] = [
@@ -82,7 +84,22 @@ export const problems: Problem[] = [
     ],
     starterCode: "n = int(input())\nif n % 2 == 0:\n    print('even')\nelse:\n    print('odd')",
     hint: "% 연산자는 나머지를 구합니다."
-  }
+  },
+  ...nestedCurriculum.problems.map((problem) => ({
+    id: problem.id,
+    bookId: problem.bookId,
+    order: problem.order,
+    title: problem.title,
+    statement: problem.statement,
+    inputDescription: problem.inputDescription,
+    outputDescription: problem.outputDescription,
+    examples: problem.cases.slice(0, 1),
+    testCases: problem.cases,
+    showExample: problem.cases.length > 1,
+    starterCode: problem.starterCode,
+    hint: problem.hint,
+    codeRequirements: problem.requirements as CodeRequirement[]
+  }))
 ];
 
 export function getProblem(problemId: string) {

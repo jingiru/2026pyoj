@@ -2946,6 +2946,19 @@ kbd {
   color: var(--muted);
 }
 
+.infiniteLoopWarningModal h2 {
+  margin: 0 0 12px;
+}
+
+.infiniteLoopWarningModal p {
+  line-height: 1.6;
+  margin: 0 0 20px;
+}
+
+.infiniteLoopWarningModal .modalActions {
+  justify-content: flex-end;
+}
+
 .modalError {
   background: color-mix(in srgb, var(--rose) 10%, var(--panel));
   border: 1px solid color-mix(in srgb, var(--rose) 34%, var(--line));

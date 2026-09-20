@@ -20,6 +20,7 @@ type CodeFacts = {
   assignments: Assignment[];
   keywords: Set<string>;
   source: string;
+  tree: ParsedNode;
 };
 
 export type CodeRequirementResult = {
@@ -137,6 +138,23 @@ function checkRequirement(
         });
         return depends;
       }) ? "" : "이 문제는 while문으로 출력하거나, while문에서 변경한 변수를 출력해야 해요.";
+
+    case "for_if":
+      return hasNestedStatement(facts.tree, "ForStatement", "IfStatement")
+        ? ""
+        : "for문 안에 if문을 넣어 문제를 해결해주세요.";
+
+    case "while_true_if_break":
+      return hasWhileTrueIfBreak(facts.tree, facts.source)
+        ? ""
+        : "반드시 while True 안에 if문을 넣고, if문 안에서 break로 반복을 끝내주세요.";
+
+    case "forbidden_augmented_assignment":
+      return ["+=", "-=", "*=", "/=", "//=", "%="].some((operator) =>
+        facts.source.includes(operator)
+      )
+        ? "`+=`처럼 줄여 쓰지 말고 `n = n + 1`과 같은 모양으로 작성해주세요."
+        : "";
 
     case "indexing": {
       const count = collectOutputFeatures(facts).indexing;
@@ -259,8 +277,126 @@ function collectFacts(
     printCalls,
     assignments,
     keywords,
-    source
+    source,
+    tree
   };
+}
+
+function hasNestedStatement(tree: ParsedNode, outerName: string, innerName: string) {
+  let found = false;
+  walk(tree, (outer) => {
+    if (outer.name !== outerName) return;
+    walk(outer, (inner) => {
+      if (inner !== outer && inner.name === innerName) found = true;
+    });
+  });
+  return found;
+}
+
+function hasWhileTrueIfBreak(tree: ParsedNode, source: string) {
+  let found = false;
+  walk(tree, (whileNode) => {
+    if (whileNode.name !== "WhileStatement" || !isWhileTrue(whileNode, source)) return;
+    walk(whileNode, (ifNode) => {
+      if (ifNode.name !== "IfStatement") return;
+      walk(ifNode, (node) => {
+        if (node.name === "BreakStatement" && nearestAncestor(node, "WhileStatement") === whileNode) {
+          found = true;
+        }
+      });
+    });
+  });
+  return found;
+}
+
+/**
+ * Beginner-level preflight for the 11-2 curriculum. It deliberately checks only
+ * constant-true loops and catches the common cases that would otherwise lock the
+ * browser: no break, a break that cannot be reached, or a fixed condition value.
+ * Runtime limits remain the final safety net because termination is undecidable
+ * for arbitrary Python programs.
+ */
+export function hasPotentialInfiniteLoop(code: string) {
+  const tree = buildTree(code);
+  let risky = false;
+
+  walk(tree, (whileNode) => {
+    if (risky || whileNode.name !== "WhileStatement" || !isWhileTrue(whileNode, code)) return;
+    const breaks: ParsedNode[] = [];
+    walk(whileNode, (node) => {
+      if (node.name === "BreakStatement" && nearestAncestor(node, "WhileStatement") === whileNode) {
+        breaks.push(node);
+      }
+    });
+    if (breaks.length === 0) {
+      risky = true;
+      return;
+    }
+
+    const loopSource = code.slice(whileNode.from, whileNode.to);
+    const hasChangingInput = /\binput\s*\(/.test(loopSource);
+    const hasUpdatedCondition = breaks.some((breakNode) => {
+      const ifNode = nearestAncestor(breakNode, "IfStatement");
+      if (!ifNode) return true;
+      const condition = ifNode.children.find((child) => child.name !== "if" && child.name !== "Body");
+      if (!condition) return false;
+      const conditionSource = code.slice(condition.from, condition.to).trim();
+      if (conditionSource === "True") return true;
+      if (conditionSource === "False") return false;
+      const names = new Set<string>();
+      walk(condition, (node) => {
+        if (node.name === "VariableName") names.add(code.slice(node.from, node.to));
+      });
+      return [...names].some((name) => variableCanReachBreak(name, conditionSource, loopSource));
+    });
+    if (!hasChangingInput && !hasUpdatedCondition) risky = true;
+  });
+
+  return risky;
+}
+
+function isWhileTrue(node: ParsedNode, source: string) {
+  const condition = node.children.find((child) => child.name !== "while" && child.name !== "Body");
+  if (!condition) return false;
+  const value = source.slice(condition.from, condition.to).trim();
+  return value === "True" || value === "1";
+}
+
+function nearestAncestor(node: ParsedNode, name: string) {
+  let current = node.parent;
+  while (current) {
+    if (current.name === name) return current;
+    current = current.parent;
+  }
+  return undefined;
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function variableCanReachBreak(name: string, conditionSource: string, loopSource: string) {
+  const escapedName = escapeRegExp(name);
+  const assignmentPattern = new RegExp(`\\b${escapedName}\\s*=(?!=)\\s*([^\\n#]+)`, "g");
+  const assignments = [...loopSource.matchAll(assignmentPattern)].map((match) => match[1].trim());
+
+  return assignments.some((value) => {
+    if (/\binput\s*\(/.test(value)) return true;
+    if (value === name) return false;
+
+    const selfUpdate = value.match(new RegExp(`^${escapedName}\\s*([+-])\\s*(-?\\d+(?:\\.\\d+)?)$`));
+    if (selfUpdate) return Number(selfUpdate[2]) !== 0;
+
+    const fixedValue = value.match(/^(?:-?\d+(?:\.\d+)?|True|False|'[^']*'|"[^"]*")$/)?.[0];
+    if (fixedValue) {
+      const equalsFixed = new RegExp(
+        `^(?:${escapedName}\\s*==\\s*${escapeRegExp(fixedValue)}|${escapeRegExp(fixedValue)}\\s*==\\s*${escapedName})$`
+      );
+      return equalsFixed.test(conditionSource);
+    }
+
+    return true;
+  });
 }
 
 function hasAncestor(node: ParsedNode, predicate: (node: ParsedNode) => boolean) {
