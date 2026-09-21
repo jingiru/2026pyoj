@@ -410,7 +410,7 @@ button {
 .challengeTimer { display: flex; align-items: center; justify-content: center; gap: 10px; background: var(--panel); border: 1px solid var(--line); padding: 15px 22px; border-radius: 10px; font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; min-width: 150px; }
 .challengeTimer svg { width: 22px; height: 22px; }
 .challengeTimer.ended { color: var(--rose); }
-.challengeTimer.secretEnabled span { cursor: default; touch-action: manipulation; user-select: none; }
+.challengeTimer.secretEnabled { cursor: default; touch-action: manipulation; user-select: none; }
 .challengeTeacherTimer { display: flex; align-items: stretch; gap: 7px; }
 .challengeTeacherTimer .iconButton { width: 48px; height: auto; border: 1px solid var(--line); background: var(--panel); }
 .challengeFullscreenTimer { position: fixed; inset: 0; z-index: 1000; display: grid; place-content: center; justify-items: center; gap: 28px; background: var(--bg); color: var(--ink); padding: 48px; text-align: center; }

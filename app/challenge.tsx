@@ -34,9 +34,10 @@ function remainingLabel(challenge: Challenge, now: number) {
   const seconds = Math.floor(remaining / 1_000) % 60;
   return hours > 0 ? `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}` : `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
-function ChallengeTimer({ challenge, now, large = false, onEndedTripleClick }: { challenge: Challenge; now: number; large?: boolean; onEndedTripleClick?: () => void }) {
+function ChallengeTimer({ challenge, now, large = false, onTripleClick }: { challenge: Challenge; now: number; large?: boolean; onTripleClick?: () => void }) {
   const phase = challengePhase(challenge, now);
-  return <div className={`challengeTimer ${phase === "ended" ? "ended" : ""} ${large ? "large" : ""} ${phase === "ended" && onEndedTripleClick ? "secretEnabled" : ""}`} role="timer" aria-label={`남은 시간 ${remainingLabel(challenge, now)}`}><Clock3 aria-hidden="true" /><span onClick={event => { if (phase === "ended" && event.detail === 3) onEndedTripleClick?.(); }}>{remainingLabel(challenge, now)}</span></div>;
+  const secretEnabled = phase !== "waiting" && Boolean(onTripleClick);
+  return <div className={`challengeTimer ${phase === "ended" ? "ended" : ""} ${large ? "large" : ""} ${secretEnabled ? "secretEnabled" : ""}`} role="timer" aria-label={`남은 시간 ${remainingLabel(challenge, now)}`} onClick={event => { if (secretEnabled && event.detail === 3) onTripleClick?.(); }}><Clock3 aria-hidden="true" /><span>{remainingLabel(challenge, now)}</span></div>;
 }
 
 export default function ChallengeExperience({ mode, student, colorMode, onMode, onClose, CodeEditor, ProblemPane }: { mode: Mode; student: Student | null; colorMode: "light" | "dark"; onMode: (mode: Mode) => void; onClose: () => void; CodeEditor: ComponentType<EditorProps>; ProblemPane: ComponentType<PaneProps> }) {
@@ -103,7 +104,7 @@ function ChallengeStudent({ CodeEditor, ProblemPane, colorMode, onReenter }: { C
   if (!session) return <section className="challengeWaiting"><Trophy size={42} /><h1>챌린지 입장 확인</h1><p role="status">{error || "참여 정보를 불러오는 중입니다…"}</p>{error && <button className="primaryButton" onClick={onReenter}>입장코드 입력</button>}</section>;
   const { challenge, participant, submissions } = session; const phase = challengePhase(challenge, now); const problems = challenge.problem_snapshots; const problem = problems[selected] ?? problems[0]; const connected = performance.now() - lastSync < 12000 && !error;
   return <section className="challengeView">
-    <header className="challengeBar"><div><span className="pill">챌린지 · {participant.student_no} {participant.name}</span><h1>{challenge.title}</h1></div><ChallengeTimer challenge={challenge} now={now} onEndedTripleClick={() => setArcadeOpen(true)} /><button className="ghostButton" onClick={() => setHistoryOpen(true)}>내 제출 기록</button></header>
+    <header className="challengeBar"><div><span className="pill">챌린지 · {participant.student_no} {participant.name}</span><h1>{challenge.title}</h1></div><ChallengeTimer challenge={challenge} now={now} onTripleClick={() => setArcadeOpen(true)} /><button className="ghostButton" onClick={() => setHistoryOpen(true)}>내 제출 기록</button></header>
     {error && <p className="modalError" role="alert">{error} 제출은 연결이 복구되면 가능합니다.</p>}
     {phase === "waiting" ? <div className="challengeWaiting"><Trophy size={48} /><h2>입장했습니다. 선생님의 시작을 기다려주세요.</h2><p>제한시간 {challenge.duration_minutes}분 · 시작하면 문제가 자동으로 공개됩니다.</p></div> : <>{phase === "ended" && <div className="notice">제한시간이 끝났습니다. 제출은 마감되었으며, 추가 시간이 부여되면 자동으로 다시 열립니다.</div>}<div className="challengeSolveGrid">
       <aside className="problemList"><div className="sectionTitle">문항</div>{problems.map((item, index) => { const records = submissions.filter(row => row.problem_id === item.id); const status = records.some(row => row.status === "accepted") ? "accepted" : records.at(-1)?.status; return <button className={`problemItem ${item.id === problem?.id ? "active" : ""} ${status === "accepted" ? "solved" : ""}`} key={item.id} onClick={() => setSelected(index)}><span>{index + 1}</span><strong>{statusLabel(status)}</strong></button>; })}</aside>
