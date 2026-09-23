@@ -2300,7 +2300,7 @@ function CodeEditor({
           caretColor: colorMode === "dark" ? "#ffffff" : "#111827",
           fontFamily: "Consolas, 'Courier New', monospace",
           fontSize: `${fontSize}px`,
-          lineHeight: "1.6",
+          lineHeight: "1.3",
           minHeight: "340px",
           padding: "18px"
         },
