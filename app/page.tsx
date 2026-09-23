@@ -55,6 +55,7 @@ import {
 import {
   FormEvent,
   KeyboardEvent,
+  MouseEvent,
   useEffect,
   useMemo,
   useRef,
@@ -305,6 +306,8 @@ export default function Home() {
   const [personalSubmissions, setPersonalSubmissions] = useState<SubmissionWithStudent[]>([]);
   const [personalHistoryOpen, setPersonalHistoryOpen] = useState(false);
   const [teacherStudents, setTeacherStudents] = useState<Student[]>([]);
+  const [practiceLivePickerOpen, setPracticeLivePickerOpen] = useState(false);
+  const [practiceLiveStudent, setPracticeLiveStudent] = useState<Student | null>(null);
   const [teacherDashboardBookId, setTeacherDashboardBookId] = useState("");
   const [teacherDashboardClassId, setTeacherDashboardClassId] = useState(
     DEFAULT_TEACHER_DASHBOARD_CLASS_ID
@@ -651,6 +654,21 @@ export default function Home() {
     setTeacherPassword("");
     setTeacherLoginError("");
     setTeacherLoginOpen(true);
+  }
+
+  function openPracticeLivePicker(event: MouseEvent<HTMLElement>) {
+    if (!event.ctrlKey || event.button !== 0) return;
+    event.preventDefault();
+
+    if (!isTeacherAuthenticated) {
+      setTeacherPassword("");
+      setTeacherLoginError("학생 화면 보기는 교사 로그인이 필요합니다.");
+      setTeacherLoginOpen(true);
+      return;
+    }
+
+    setPracticeLivePickerOpen(true);
+    void refreshDashboard();
   }
 
   async function handleTeacherLogin(event: FormEvent<HTMLFormElement>) {
@@ -1394,8 +1412,8 @@ export default function Home() {
             className={`practiceIntro ${practiceHeaderCollapsed ? "collapsed" : ""}`}
             aria-hidden={practiceHeaderCollapsed}
           >
-            <span className="pill">코딩 연습</span>
-            <h1>파이썬 연습을 위한 통합 개발 환경(IDE)</h1>
+            <span className="pill" onClick={openPracticeLivePicker}>코딩 연습</span>
+            <h1 onClick={openPracticeLivePicker}>파이썬 연습을 위한 통합 개발 환경(IDE)</h1>
           </div>
           <div
             className="practiceGrid"
@@ -1830,6 +1848,54 @@ export default function Home() {
           onCurriculumChanged={refreshCurriculum}
           onLogout={() => void logoutTeacher()}
         />
+      )}
+
+      {practiceLivePickerOpen && (
+        <div className="modalBackdrop" role="presentation" onMouseDown={() => setPracticeLivePickerOpen(false)}>
+          <section
+            className="practiceLivePicker"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="practice-live-picker-title"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <div className="practiceLivePickerHeader">
+              <div>
+                <span className="pill">실시간 학생 화면</span>
+                <h2 id="practice-live-picker-title">학생 선택</h2>
+              </div>
+              <button type="button" className="ghostButton" onClick={() => setPracticeLivePickerOpen(false)}>닫기</button>
+            </div>
+            <p className="helperText">현재 코딩 화면을 확인할 학생을 선택하세요.</p>
+            <div className="practiceLiveStudentList">
+              {teacherStudents
+                .filter((candidate) => !candidate.is_guest)
+                .sort((left, right) => left.student_no.localeCompare(right.student_no, "ko") || left.name.localeCompare(right.name, "ko"))
+                .map((candidate) => (
+                  <button
+                    key={candidate.id}
+                    type="button"
+                    className="practiceLiveStudentButton"
+                    onClick={() => {
+                      setPracticeLivePickerOpen(false);
+                      setPracticeLiveStudent(candidate);
+                    }}
+                  >
+                    <strong>{candidate.student_no}</strong>
+                    <span>{candidate.name}</span>
+                  </button>
+                ))}
+              {!loading && teacherStudents.filter((candidate) => !candidate.is_guest).length === 0 && (
+                <p className="emptyState">등록된 학생이 없습니다.</p>
+              )}
+              {loading && teacherStudents.length === 0 && <p className="emptyState">학생 목록을 불러오는 중…</p>}
+            </div>
+          </section>
+        </div>
+      )}
+
+      {practiceLiveStudent && (
+        <LiveStudentModal student={practiceLiveStudent} onClose={() => setPracticeLiveStudent(null)} />
       )}
 
       {screen === "solve" && (problemFailureCounts[selectedProblem.id] ?? 0) >= 3 && (
