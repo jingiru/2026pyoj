@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { isTeacherRequestAuthenticated } from "@/lib/teacher-auth";
 import { loadCurriculum } from "@/lib/curriculum-server";
 import { allRows, challengeDb, fail, generateChallengeEntryCode } from "@/lib/challenge-server";
-import type { Challenge, ChallengeParticipant, ChallengeSubmission } from "@/lib/challenge-types";
+import type { BonusCriterion, Challenge, ChallengeBonusScore, ChallengeParticipant, ChallengeSubmission } from "@/lib/challenge-types";
 
 export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
@@ -26,11 +26,12 @@ export async function GET(request: NextRequest) {
         .order("received_at", { ascending: false }).order("id").range(from, to));
       return NextResponse.json({ ok: true, submissions });
     }
-    const [participants, submissions] = await Promise.all([
+    const [participants, submissions, bonusScores] = await Promise.all([
       allRows<ChallengeParticipant>((from, to) => db.from("challenge_participants").select("id,challenge_id,student_no,name,joined_at").eq("challenge_id", id).order("student_no").order("id").range(from, to)),
-      allRows<ChallengeSubmission>((from, to) => db.from("challenge_submissions").select("id,participant_id,challenge_id,problem_id,status,received_at,passed_count,total_count").eq("challenge_id", id).order("received_at").order("id").range(from, to))
+      allRows<ChallengeSubmission>((from, to) => db.from("challenge_submissions").select("id,participant_id,challenge_id,problem_id,status,received_at,passed_count,total_count").eq("challenge_id", id).order("received_at").order("id").range(from, to)),
+      allRows<ChallengeBonusScore>((from, to) => db.from("challenge_bonus_scores").select("challenge_id,participant_id,criterion_id,score").eq("challenge_id", id).range(from, to))
     ]);
-    return NextResponse.json({ ok: true, challenge, participants, submissions, serverNow: new Date().toISOString() });
+    return NextResponse.json({ ok: true, challenge, participants, submissions, bonusScores, serverNow: new Date().toISOString() });
   } catch (error) { return fail(error, 500); }
 }
 
@@ -39,6 +40,17 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const db = challengeDb();
+    if (body.action === "set_bonus_score") {
+      if (typeof body.id !== "string" || typeof body.participantId !== "string" || typeof body.criterionId !== "string" ||
+        typeof body.score !== "number" || !Number.isFinite(body.score)) return fail(new Error("부가점수 요청을 확인해주세요."));
+      const { data: challenge, error: challengeError } = await db.from("challenges").select("bonus_criteria").eq("id", body.id).single();
+      if (challengeError) throw challengeError;
+      const criterion = (challenge.bonus_criteria as BonusCriterion[]).find(item => item.id === body.criterionId);
+      if (!criterion || !criterion.score_options.includes(body.score) || body.score < 0 || body.score > criterion.max_score) return fail(new Error("미리 설정한 점수표에서 점수를 선택해주세요."));
+      const { data, error } = await db.from("challenge_bonus_scores").upsert({ challenge_id: body.id, participant_id: body.participantId, criterion_id: body.criterionId, score: body.score, updated_at: new Date().toISOString() }, { onConflict: "challenge_id,participant_id,criterion_id" }).select("challenge_id,participant_id,criterion_id,score").single();
+      if (error) throw error;
+      return NextResponse.json({ ok: true, bonusScore: data });
+    }
     if (body.action === "create") {
       if (typeof body.title !== "string" || !body.title.trim() || body.title.length > 100 ||
         !Number.isInteger(body.minutes) || body.minutes < 1 || body.minutes > 480 ||
@@ -46,12 +58,30 @@ export async function POST(request: NextRequest) {
         body.problemIds.some((id: unknown) => typeof id !== "string") || new Set(body.problemIds).size !== body.problemIds.length) {
         return fail(new Error("제목, 제한시간(1~480분), 문제(1~50개)를 확인해주세요."));
       }
+      const pointEntries = Array.isArray(body.problemPoints) ? body.problemPoints : [];
+      const points = new Map(pointEntries.map((entry: unknown) => {
+        const item = entry as { id?: unknown; points?: unknown }; return [item.id, item.points];
+      }));
+      if (body.problemIds.some((id: string) => typeof points.get(id) !== "number" || !Number.isFinite(points.get(id)) || Number(points.get(id)) <= 0)) return fail(new Error("모든 문제의 배점은 0보다 커야 합니다."));
+      const scoring = body.scoring?.mode === "correct_count"
+        ? { mode: "correct_count", base_score: Number(body.scoring.base_score), free_correct_count: 1, points_per_additional: Number(body.scoring.points_per_additional) }
+        : { mode: "problem_points" };
+      if (scoring.mode === "correct_count") {
+        const countScoring = scoring as { mode: "correct_count"; base_score: number; points_per_additional: number };
+        if (!Number.isFinite(countScoring.base_score) || countScoring.base_score < 0 || !Number.isFinite(countScoring.points_per_additional) || countScoring.points_per_additional <= 0) return fail(new Error("정답 개수별 점수 설정을 확인해주세요."));
+      }
+      const bonusCriteria = (Array.isArray(body.bonusCriteria) ? body.bonusCriteria : []) as BonusCriterion[];
+      const validBonus = bonusCriteria.length <= 10 && new Set(bonusCriteria.map(item => item.id)).size === bonusCriteria.length && bonusCriteria.every(item =>
+        typeof item.id === "string" && /^[a-zA-Z0-9-]{1,80}$/.test(item.id) && typeof item.label === "string" && item.label.trim().length > 0 && item.label.length <= 40 &&
+        typeof item.max_score === "number" && Number.isFinite(item.max_score) && item.max_score > 0 && Array.isArray(item.score_options) && item.score_options.length > 0 &&
+        item.score_options.every(score => typeof score === "number" && Number.isFinite(score) && score >= 0 && score <= item.max_score) && new Set(item.score_options).size === item.score_options.length);
+      if (!validBonus) return fail(new Error("부가점수 항목과 점수표를 확인해주세요."));
       const { problems } = await loadCurriculum(db, false);
-      const snapshots = body.problemIds.map((id: string) => problems.find((problem) => problem.id === id));
+      const snapshots = body.problemIds.map((id: string) => { const problem = problems.find(item => item.id === id); return problem ? { ...problem, points: Number(points.get(id)) } : undefined; });
       if (snapshots.some((problem: typeof problems[number] | undefined) => !problem || !problem.testCases.length)) return fail(new Error("선택한 문제에 채점 테스트가 없습니다."));
       for (let attempt = 0; attempt < 3; attempt++) {
         const { data, error } = await db.from("challenges").insert({ title: body.title.trim(), duration_minutes: body.minutes,
-          show_leaderboard: body.showLeaderboard === true, entry_code: generateChallengeEntryCode(), problem_snapshots: snapshots }).select("*").single();
+          show_leaderboard: body.showLeaderboard === true, entry_code: generateChallengeEntryCode(), problem_snapshots: snapshots, scoring, bonus_criteria: bonusCriteria }).select("*").single();
         if (!error) return NextResponse.json({ ok: true, challenge: data });
         if (error.code !== "23505") throw error;
       }

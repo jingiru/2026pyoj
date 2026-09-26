@@ -1,5 +1,12 @@
 import type { Problem, SubmissionStatus } from "./types";
 
+export type ChallengeProblem = Problem & { points?: number };
+export type ChallengeScoring =
+  | { mode: "problem_points" }
+  | { mode: "correct_count"; base_score: number; free_correct_count: number; points_per_additional: number };
+export type BonusCriterion = { id: string; label: string; max_score: number; score_options: number[] };
+export type ChallengeBonusScore = { challenge_id: string; participant_id: string; criterion_id: string; score: number };
+
 export type Challenge = {
   id: string;
   title: string;
@@ -9,7 +16,9 @@ export type Challenge = {
   started_at: string | null;
   ends_at: string | null;
   created_at: string;
-  problem_snapshots: Problem[];
+  problem_snapshots: ChallengeProblem[];
+  scoring?: ChallengeScoring;
+  bonus_criteria?: BonusCriterion[];
 };
 export type ChallengeParticipant = {
   id: string;
@@ -34,8 +43,33 @@ export type ChallengeBoard = {
   challenge: Challenge;
   participants: ChallengeParticipant[];
   submissions: ChallengeSubmission[];
+  bonusScores: ChallengeBonusScore[];
   serverNow: string;
 };
+
+export function problemPoints(problem: ChallengeProblem) {
+  return Number.isFinite(problem.points) && (problem.points ?? 0) > 0 ? Number(problem.points) : 1;
+}
+
+export function challengeProblemMax(challenge: Pick<Challenge, "problem_snapshots" | "scoring">) {
+  if (challenge.scoring?.mode === "correct_count") {
+    const count = challenge.problem_snapshots.length;
+    return challenge.scoring.base_score + Math.max(0, count - challenge.scoring.free_correct_count) * challenge.scoring.points_per_additional;
+  }
+  return challenge.problem_snapshots.reduce((sum, problem) => sum + problemPoints(problem), 0);
+}
+
+export function challengeBonusMax(challenge: Pick<Challenge, "bonus_criteria">) {
+  return (challenge.bonus_criteria ?? []).reduce((sum, criterion) => sum + criterion.max_score, 0);
+}
+
+export function earnedProblemScore(challenge: Pick<Challenge, "problem_snapshots" | "scoring">, submissions: ChallengeSubmission[]) {
+  const accepted = new Set(submissions.filter(row => row.status === "accepted").map(row => row.problem_id));
+  if (challenge.scoring?.mode === "correct_count") {
+    return challenge.scoring.base_score + Math.max(0, accepted.size - challenge.scoring.free_correct_count) * challenge.scoring.points_per_additional;
+  }
+  return challenge.problem_snapshots.reduce((sum, problem) => sum + (accepted.has(problem.id) ? problemPoints(problem) : 0), 0);
+}
 
 export function challengePhase(challenge: Pick<Challenge, "started_at" | "ends_at">, now = Date.now()) {
   if (!challenge.started_at) return "waiting";

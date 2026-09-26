@@ -19,7 +19,7 @@ function load(relative, overrides = {}) {
   new Function("require", "module", "exports", compiled)(localRequire, mod, mod.exports);
   return mod.exports;
 }
-const { challengePhase, elapsedLabel, firstSolvers, publicChallenge } = load("lib/challenge-types.ts");
+const { challengeBonusMax, challengePhase, challengeProblemMax, earnedProblemScore, elapsedLabel, firstSolvers, publicChallenge } = load("lib/challenge-types.ts");
 const { judgeChallenge } = load("lib/challenge-judge.ts");
 const { CHALLENGE_CODE_ALPHABET, generateChallengeEntryCode } = load("lib/challenge-server.ts");
 const { buildChallengeResultsWorkbook } = load("lib/challenge-export.ts");
@@ -32,6 +32,19 @@ test("challenge timing: pre-start, exact deadline, extended deadline and elapsed
   assert.equal(challengePhase(challenge, Date.parse(challenge.ends_at)), "ended");
   assert.equal(challengePhase({ ...challenge, ends_at: "2026-09-06T01:45:00Z" }, Date.parse(challenge.ends_at)), "running");
   assert.equal(elapsedLabel(challenge.started_at, "2026-09-06T01:12:34Z"), "12:34");
+});
+
+test("challenge scores support problem weights, count rules and decimal bonus maxima", () => {
+  const weighted = { problem_snapshots: [{ id: "p1", points: 1.5 }, { id: "p2", points: 2.5 }], scoring: { mode: "problem_points" }, bonus_criteria: [{ id: "code", label: "코드 이해도", max_score: 2.5, score_options: [0, 1.5, 2.5] }] };
+  const accepted = [{ problem_id: "p2", status: "accepted" }];
+  assert.equal(challengeProblemMax(weighted), 4);
+  assert.equal(challengeBonusMax(weighted), 2.5);
+  assert.equal(earnedProblemScore(weighted, accepted), 2.5);
+  const countBased = { ...weighted, problem_snapshots: [...weighted.problem_snapshots, { id: "p3", points: 10 }, { id: "p4", points: 10 }, { id: "p5", points: 10 }], scoring: { mode: "correct_count", base_score: 4, free_correct_count: 1, points_per_additional: 1 } };
+  assert.equal(challengeProblemMax(countBased), 8);
+  assert.equal(earnedProblemScore(countBased, []), 4);
+  assert.equal(earnedProblemScore(countBased, [{ problem_id: "p1", status: "accepted" }]), 4);
+  assert.equal(earnedProblemScore(countBased, [{ problem_id: "p1", status: "accepted" }, { problem_id: "p2", status: "accepted" }]), 5);
 });
 test("entry codes use only uppercase, visually distinct characters", () => {
   assert.equal(CHALLENGE_CODE_ALPHABET, "ACDEFGHJKLMNPQRSTUVWXYZ2345679");

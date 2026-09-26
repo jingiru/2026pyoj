@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { allRows, challengeDb, fail, identity, newIdentity, participantFor, setIdentity, tokenHash } from "@/lib/challenge-server";
-import { publicChallenge, type Challenge, type ChallengeSubmission } from "@/lib/challenge-types";
+import { publicChallenge, type Challenge, type ChallengeBonusScore, type ChallengeSubmission } from "@/lib/challenge-types";
 
 export const dynamic = "force-dynamic";
 export async function POST(request: NextRequest) {
@@ -41,6 +41,8 @@ export async function GET(request: NextRequest) {
     const submissions = await allRows<ChallengeSubmission>((from, to) => db.from("challenge_submissions")
       .select("id,participant_id,challenge_id,problem_id,status,received_at,feedback,passed_count,total_count")
       .eq("challenge_id", id).eq("participant_id", participant.id).order("received_at").order("id").range(from, to));
+    const bonusScores = await allRows<ChallengeBonusScore>((from, to) => db.from("challenge_bonus_scores").select("challenge_id,participant_id,criterion_id,score")
+      .eq("challenge_id", id).eq("participant_id", participant.id).range(from, to));
     let leaderboard = null;
     if (challenge.show_leaderboard && challenge.started_at) {
       const [participants, accepted] = await Promise.all([
@@ -49,6 +51,6 @@ export async function GET(request: NextRequest) {
       ]);
       leaderboard = { participants, submissions: accepted };
     }
-    return NextResponse.json({ ok: true, participant, challenge: publicChallenge(challenge), submissions, leaderboard, serverNow: new Date().toISOString() });
+    return NextResponse.json({ ok: true, participant, challenge: publicChallenge(challenge), submissions, bonusScores, leaderboard, serverNow: new Date().toISOString() });
   } catch (error) { return fail(error, 500); }
 }
