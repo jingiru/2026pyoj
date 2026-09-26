@@ -1,9 +1,11 @@
 import type { Problem, SubmissionStatus } from "./types";
 
 export type ChallengeProblem = Problem & { points?: number };
+export type ChallengeScoringGroup = { id: string; label: string; problem_ids: string[]; base_score: number; free_correct_count: number; points_per_additional: number };
 export type ChallengeScoring =
   | { mode: "problem_points" }
-  | { mode: "correct_count"; base_score: number; free_correct_count: number; points_per_additional: number };
+  | { mode: "correct_count"; base_score: number; free_correct_count: number; points_per_additional: number }
+  | { mode: "grouped_correct_count"; groups: ChallengeScoringGroup[] };
 export type BonusCriterion = { id: string; label: string; max_score: number; score_options: number[] };
 export type ChallengeBonusScore = { challenge_id: string; participant_id: string; criterion_id: string; score: number };
 
@@ -52,6 +54,7 @@ export function problemPoints(problem: ChallengeProblem) {
 }
 
 export function challengeProblemMax(challenge: Pick<Challenge, "problem_snapshots" | "scoring">) {
+  if (challenge.scoring?.mode === "grouped_correct_count") return challenge.scoring.groups.reduce((sum, group) => sum + group.base_score + Math.max(0, group.problem_ids.length - group.free_correct_count) * group.points_per_additional, 0);
   if (challenge.scoring?.mode === "correct_count") {
     const count = challenge.problem_snapshots.length;
     return challenge.scoring.base_score + Math.max(0, count - challenge.scoring.free_correct_count) * challenge.scoring.points_per_additional;
@@ -65,6 +68,10 @@ export function challengeBonusMax(challenge: Pick<Challenge, "bonus_criteria">) 
 
 export function earnedProblemScore(challenge: Pick<Challenge, "problem_snapshots" | "scoring">, submissions: ChallengeSubmission[]) {
   const accepted = new Set(submissions.filter(row => row.status === "accepted").map(row => row.problem_id));
+  if (challenge.scoring?.mode === "grouped_correct_count") return challenge.scoring.groups.reduce((sum, group) => {
+    const solved = group.problem_ids.filter(id => accepted.has(id)).length;
+    return sum + group.base_score + Math.max(0, solved - group.free_correct_count) * group.points_per_additional;
+  }, 0);
   if (challenge.scoring?.mode === "correct_count") {
     return challenge.scoring.base_score + Math.max(0, accepted.size - challenge.scoring.free_correct_count) * challenge.scoring.points_per_additional;
   }

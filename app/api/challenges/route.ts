@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { isTeacherRequestAuthenticated } from "@/lib/teacher-auth";
 import { loadCurriculum } from "@/lib/curriculum-server";
 import { allRows, challengeDb, fail, generateChallengeEntryCode } from "@/lib/challenge-server";
-import type { BonusCriterion, Challenge, ChallengeBonusScore, ChallengeParticipant, ChallengeSubmission } from "@/lib/challenge-types";
+import type { BonusCriterion, Challenge, ChallengeBonusScore, ChallengeParticipant, ChallengeScoringGroup, ChallengeSubmission } from "@/lib/challenge-types";
 
 export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
@@ -63,12 +63,23 @@ export async function POST(request: NextRequest) {
         const item = entry as { id?: unknown; points?: unknown }; return [item.id, item.points];
       }));
       if (body.problemIds.some((id: string) => typeof points.get(id) !== "number" || !Number.isFinite(points.get(id)) || Number(points.get(id)) <= 0)) return fail(new Error("모든 문제의 배점은 0보다 커야 합니다."));
-      const scoring = body.scoring?.mode === "correct_count"
-        ? { mode: "correct_count", base_score: Number(body.scoring.base_score), free_correct_count: 1, points_per_additional: Number(body.scoring.points_per_additional) }
-        : { mode: "problem_points" };
+      const scoring = body.scoring?.mode === "grouped_correct_count"
+        ? { mode: "grouped_correct_count", groups: body.scoring.groups as ChallengeScoringGroup[] }
+        : body.scoring?.mode === "correct_count"
+          ? { mode: "correct_count", base_score: Number(body.scoring.base_score), free_correct_count: 1, points_per_additional: Number(body.scoring.points_per_additional) }
+          : { mode: "problem_points" };
       if (scoring.mode === "correct_count") {
         const countScoring = scoring as { mode: "correct_count"; base_score: number; points_per_additional: number };
         if (!Number.isFinite(countScoring.base_score) || countScoring.base_score < 0 || !Number.isFinite(countScoring.points_per_additional) || countScoring.points_per_additional <= 0) return fail(new Error("정답 개수별 점수 설정을 확인해주세요."));
+      }
+      if (scoring.mode === "grouped_correct_count") {
+        const groups = Array.isArray(scoring.groups) ? scoring.groups : [];
+        const assigned = groups.flatMap(group => Array.isArray(group.problem_ids) ? group.problem_ids : []);
+        const validGroups = groups.length > 0 && groups.length <= body.problemIds.length && new Set(groups.map(group => group.id)).size === groups.length &&
+          assigned.length === body.problemIds.length && new Set(assigned).size === assigned.length && body.problemIds.every((id: string) => assigned.includes(id)) &&
+          groups.every(group => typeof group.id === "string" && /^[a-zA-Z0-9-]{1,80}$/.test(group.id) && typeof group.label === "string" && group.label.trim().length > 0 && group.label.length <= 40 &&
+            Number.isFinite(group.base_score) && group.base_score >= 0 && group.free_correct_count === 1 && Number.isFinite(group.points_per_additional) && group.points_per_additional > 0);
+        if (!validGroups) return fail(new Error("그룹별 점수 설정을 확인해주세요."));
       }
       const bonusCriteria = (Array.isArray(body.bonusCriteria) ? body.bonusCriteria : []) as BonusCriterion[];
       const validBonus = bonusCriteria.length <= 10 && new Set(bonusCriteria.map(item => item.id)).size === bonusCriteria.length && bonusCriteria.every(item =>

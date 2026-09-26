@@ -519,6 +519,12 @@ label.challengeCheckbox { display: flex; flex-direction: row; align-items: cente
 .challengePointButtons button:disabled { opacity: .38; cursor: not-allowed; }
 .challengeScoreRule { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
 .challengeScoreRule p { grid-column: 1 / -1; margin: 0; color: var(--muted); }
+.challengeScoreGroups { display: grid; gap: 10px; margin-top: 12px; }
+.challengeScoreGroups > p { margin: 0; }
+.challengeScoreGroup { display: grid; grid-template-columns: minmax(180px, 1.2fr) minmax(120px, .7fr) minmax(180px, 1fr) auto; align-items: end; gap: 10px; border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
+.challengeScoreGroup label { margin: 0; }
+.challengeScoreGroup p { margin: 6px 0 0; color: var(--muted); font-size: 12px; }
+.challengeScoreGroup strong { align-self: center; color: var(--primary); white-space: nowrap; }
 .challengeBonusSetup { display: grid; gap: 10px; margin-top: 12px; }
 .challengeBonusCriterion { display: grid; grid-template-columns: minmax(150px, 1fr) 120px minmax(220px, 1.5fr) 40px; align-items: end; gap: 8px; border-top: 1px solid var(--line); padding-top: 10px; }
 .challengeBonusCriterion label { margin: 0; }
@@ -540,7 +546,7 @@ label.challengeCheckbox { display: flex; flex-direction: row; align-items: cente
 @media (max-width: 520px) {
   .choiceContact { align-items: flex-start; flex-direction: column; gap: 5px; }
 }
-@media (max-width: 650px) { .challengeSolveGrid { grid-template-columns: 1fr; } .challengeSolveGrid .problemList { position: static; display: flex; align-items: center; gap: 8px; overflow-x: auto; } .challengeSolveGrid .problemItem { min-width: 95px; margin: 0; } .challengeControls, .challengeCreateBasics, .challengeScoreRule, .challengeBonusCriterion { grid-template-columns: 1fr; } .challengePointRow { grid-template-columns: minmax(0, 1fr) 90px 20px; } .challengePointButtons { grid-column: 1 / -1; grid-row: 2; } .challengePointButtons button { flex: 1; } .challengeBar h1 { font-size: 22px; } .challengeTeacherTimer { order: 2; width: 100%; } .challengeTeacherTimer .challengeTimer { flex: 1; } .challengePickerHeader { align-items: stretch; flex-direction: column; } .challengePickerHeader input { max-width: none; } .challengeCodeDisplay { letter-spacing: .04em; } .challengeConsoleActions { align-items: flex-end; flex-direction: column; } }
+@media (max-width: 650px) { .challengeSolveGrid { grid-template-columns: 1fr; } .challengeSolveGrid .problemList { position: static; display: flex; align-items: center; gap: 8px; overflow-x: auto; } .challengeSolveGrid .problemItem { min-width: 95px; margin: 0; } .challengeControls, .challengeCreateBasics, .challengeScoreRule, .challengeScoreGroup, .challengeBonusCriterion { grid-template-columns: 1fr; } .challengePointRow { grid-template-columns: minmax(0, 1fr) 90px 20px; } .challengePointButtons { grid-column: 1 / -1; grid-row: 2; } .challengePointButtons button { flex: 1; } .challengeBar h1 { font-size: 22px; } .challengeTeacherTimer { order: 2; width: 100%; } .challengeTeacherTimer .challengeTimer { flex: 1; } .challengePickerHeader { align-items: stretch; flex-direction: column; } .challengePickerHeader input { max-width: none; } .challengeCodeDisplay { letter-spacing: .04em; } .challengeConsoleActions { align-items: flex-end; flex-direction: column; } }
 
 /* Challenge completion easter egg arcade */
 .loginModal.arcadeModal { max-width: 860px; overflow-x: hidden; }

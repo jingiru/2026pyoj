@@ -45,6 +45,15 @@ test("challenge scores support problem weights, count rules and decimal bonus ma
   assert.equal(earnedProblemScore(countBased, []), 4);
   assert.equal(earnedProblemScore(countBased, [{ problem_id: "p1", status: "accepted" }]), 4);
   assert.equal(earnedProblemScore(countBased, [{ problem_id: "p1", status: "accepted" }, { problem_id: "p2", status: "accepted" }]), 5);
+  const grouped = { ...countBased, scoring: { mode: "grouped_correct_count", groups: [
+    { id: "easy", label: "쉬운 문제", problem_ids: ["p1", "p2", "p3", "p4", "p5"], base_score: 4, free_correct_count: 1, points_per_additional: 1 },
+    { id: "hard", label: "어려운 문제", problem_ids: ["p6", "p7", "p8", "p9", "p10"], base_score: 4, free_correct_count: 1, points_per_additional: 2 }
+  ] } };
+  assert.equal(challengeProblemMax(grouped), 20);
+  assert.equal(earnedProblemScore(grouped, []), 8);
+  assert.equal(earnedProblemScore(grouped, [
+    { problem_id: "p1", status: "accepted" }, { problem_id: "p2", status: "accepted" }, { problem_id: "p6", status: "accepted" }, { problem_id: "p7", status: "accepted" }, { problem_id: "p8", status: "accepted" }
+  ]), 13);
 });
 test("entry codes use only uppercase, visually distinct characters", () => {
   assert.equal(CHALLENGE_CODE_ALPHABET, "ACDEFGHJKLMNPQRSTUVWXYZ2345679");
