@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type FormEvent, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { ArrowDown, ArrowUp, Check, Clock3, Copy, Download, Expand, Minimize2, Play, Plus, Send, Square, Trash2, Trophy, X } from "lucide-react";
 import type { Problem, ProblemBook, Student } from "@/lib/types";
 import { challengeBonusMax, challengePhase, challengeProblemMax, earnedProblemScore, elapsedLabel, firstSolvers, problemPoints, type BonusCriterion, type Challenge, type ChallengeBoard, type ChallengeBonusScore, type ChallengeParticipant, type ChallengeScoringGroup, type ChallengeSubmission } from "@/lib/challenge-types";
@@ -93,7 +94,9 @@ function ChallengeModal({ title, children, onClose, wide = false, className = ""
 
 function ChallengeStudent({ CodeEditor, ProblemPane, colorMode, onReenter }: { CodeEditor: ComponentType<EditorProps>; ProblemPane: ComponentType<PaneProps>; colorMode: "light" | "dark"; onReenter: () => void }) {
   const [session, setSession] = useState<Session | null>(null); const [error, setError] = useState(""); const [selected, setSelected] = useState(0); const [now, setNow] = useState(Date.now());
+  const [headerSlot, setHeaderSlot] = useState<HTMLElement | null>(null);
   const clock = useRef({ server: Date.now(), local: 0 }); const [lastSync, setLastSync] = useState(0); const [autoNext, setAutoNext] = useState(false); const [arcadeOpen, setArcadeOpen] = useState(false);
+  useEffect(() => { setHeaderSlot(document.getElementById("challenge-header-slot")); }, []);
   const refresh = useCallback(async () => {
     const id = new URL(window.location.href).searchParams.get("challenge") || read("pyoj:challenge-id"); if (!id) { setError("입장코드를 입력해주세요."); return; }
     try { const data = await api<Session>(`/api/challenges/session?id=${encodeURIComponent(id)}`); setSession(data); clock.current = { server: Date.parse(data.serverNow), local: performance.now() }; setNow(Date.parse(data.serverNow)); setLastSync(performance.now()); setError(""); }
@@ -107,7 +110,7 @@ function ChallengeStudent({ CodeEditor, ProblemPane, colorMode, onReenter }: { C
   const { challenge, participant, submissions } = session; const phase = challengePhase(challenge, now); const problems = challenge.problem_snapshots; const problem = problems[selected] ?? problems[0]; const connected = performance.now() - lastSync < 12000 && !error;
   const validBonusIds = new Set((challenge.bonus_criteria ?? []).map(item => item.id)); const earned = earnedProblemScore(challenge, submissions) + session.bonusScores.filter(row => validBonusIds.has(row.criterion_id)).reduce((sum, row) => sum + Number(row.score), 0); const total = challengeProblemMax(challenge) + challengeBonusMax(challenge);
   return <section className="challengeView">
-    <header className="challengeBar challengeStudentBar"><strong className="challengeStudentTitle">{challenge.title}</strong><span className="challengeStudentIdentity">{participant.student_no} {participant.name}</span><div className="challengeScore" aria-label={`현재 점수 ${scoreLabel(earned)}점, 총 ${scoreLabel(total)}점`}>{scoreLabel(earned)}점 / {scoreLabel(total)}점</div><ChallengeTimer challenge={challenge} now={now} onTripleClick={() => setArcadeOpen(true)} /></header>
+    {headerSlot && createPortal(<div className="challengeStudentBar"><strong className="challengeStudentTitle">{challenge.title}</strong><div className="challengeScore" aria-label={`현재 점수 ${scoreLabel(earned)}점, 총 ${scoreLabel(total)}점`}>{scoreLabel(earned)}점 / {scoreLabel(total)}점</div><ChallengeTimer challenge={challenge} now={now} onTripleClick={() => setArcadeOpen(true)} /></div>, headerSlot)}
     {error && <p className="modalError" role="alert">{error} 제출은 연결이 복구되면 가능합니다.</p>}
     {phase === "waiting" ? <div className="challengeWaiting"><Trophy size={48} /><h2>입장했습니다. 선생님의 시작을 기다려주세요.</h2><p>제한시간 {challenge.duration_minutes}분 · 시작하면 문제가 자동으로 공개됩니다.</p></div> : <>{phase === "ended" && <div className="notice">제한시간이 끝났습니다. 제출은 마감되었으며, 추가 시간이 부여되면 자동으로 다시 열립니다.</div>}<div className="challengeSolveGrid">
       <aside className="problemList"><div className="sectionTitle">문항</div>{problems.map((item, index) => { const records = submissions.filter(row => row.problem_id === item.id); const accepted = records.filter(row => row.status === "accepted").at(-1); const latest = accepted ?? records.at(-1); const status = accepted ? "accepted" : latest?.status; const warning = challenge.allow_requirement_failure && challenge.show_code_requirement_status && accepted?.requirement_passed === false; return <button className={`problemItem ${item.id === problem?.id ? "active" : ""} ${status === "accepted" ? "solved" : ""} ${warning ? "requirementWarning" : ""}`} key={item.id} onClick={() => setSelected(index)}>{warning && <i title="코드 조건 미준수" aria-label="코드 조건 미준수">!</i>}<span>{index + 1}</span><strong>{statusLabel(status)}</strong><small>{scoreLabel(problemPoints(item))}점</small></button>; })}</aside>

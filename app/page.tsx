@@ -2157,6 +2157,7 @@ function Header({
           <span>{student ? `${student.student_no} ${student.name}` : "초보자를 위한 파이썬 첫걸음 by 진기루T"}</span>
         </div>
       </button>
+      <div id="challenge-header-slot" className="challengeHeaderSlot" />
       <div className="modeSwitch" aria-label="화면 선택">
         {student && (
           <button className="logoutNavButton" onClick={onLogout}>
