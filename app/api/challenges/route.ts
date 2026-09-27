@@ -51,6 +51,24 @@ export async function POST(request: NextRequest) {
       if (error) throw error;
       return NextResponse.json({ ok: true, bonusScore: data });
     }
+    if (body.action === "set_bonus_scores") {
+      if (typeof body.id !== "string" || typeof body.criterionId !== "string" ||
+        typeof body.score !== "number" || !Number.isFinite(body.score) || !Array.isArray(body.participantIds) ||
+        !body.participantIds.length || body.participantIds.length > 5000 || body.participantIds.some((id: unknown) => typeof id !== "string") ||
+        new Set(body.participantIds).size !== body.participantIds.length) return fail(new Error("일괄 부가점수 요청을 확인해주세요."));
+      const { data: challenge, error: challengeError } = await db.from("challenges").select("bonus_criteria").eq("id", body.id).single();
+      if (challengeError) throw challengeError;
+      const criterion = (challenge.bonus_criteria as BonusCriterion[]).find(item => item.id === body.criterionId);
+      if (!criterion || !criterion.score_options.includes(body.score) || body.score < 0 || body.score > criterion.max_score) return fail(new Error("미리 설정한 점수표에서 점수를 선택해주세요."));
+      const participants = await allRows<Pick<ChallengeParticipant, "id">>((from, to) => db.from("challenge_participants").select("id").eq("challenge_id", body.id).range(from, to));
+      const validParticipantIds = new Set(participants.map(item => item.id));
+      if (body.participantIds.some((id: string) => !validParticipantIds.has(id))) return fail(new Error("해당 챌린지에 참여한 학생만 선택할 수 있습니다."));
+      const updatedAt = new Date().toISOString();
+      const rows = body.participantIds.map((participantId: string) => ({ challenge_id: body.id, participant_id: participantId, criterion_id: body.criterionId, score: body.score, updated_at: updatedAt }));
+      const { data, error } = await db.from("challenge_bonus_scores").upsert(rows, { onConflict: "challenge_id,participant_id,criterion_id" }).select("challenge_id,participant_id,criterion_id,score");
+      if (error) throw error;
+      return NextResponse.json({ ok: true, bonusScores: data });
+    }
     if (body.action === "delete") {
       if (typeof body.id !== "string") return fail(new Error("삭제할 챌린지를 확인해주세요."));
       const { error } = await db.from("challenges").delete().eq("id", body.id);

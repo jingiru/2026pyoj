@@ -503,6 +503,11 @@ button {
 .challengeBonusButtons { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; min-width: 130px; }
 .challengeBonusButtons button { border: 1px solid var(--line); border-radius: 5px; background: var(--bg); color: var(--ink); padding: 5px 8px; font: inherit; cursor: pointer; }
 .challengeBonusButtons button.active { border-color: var(--primary); background: var(--primary); color: white; font-weight: 800; }
+.challengeBonusBulk { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--primary) 3%, var(--panel)); }
+.challengeBonusBulk > strong { align-self: center; margin-right: auto; }
+.challengeBonusBulk label { display: grid; gap: 4px; margin: 0; color: var(--muted); font-size: 12px; }
+.challengeBonusBulk select { min-width: 110px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--ink); font: inherit; }
+.challengeBonusBulk button { min-height: 37px; }
 .challengeCreate { display: grid; gap: 12px; }
 .challengeCreate h3 { margin: 10px 0; }
 .challengeCreateBasics { display: grid; grid-template-columns: minmax(0, 1fr) 150px minmax(270px, 300px); gap: 12px; align-items: end; }
