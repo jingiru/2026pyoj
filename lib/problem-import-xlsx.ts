@@ -29,7 +29,6 @@ export const PROBLEM_IMPORT_HEADERS = [
   "출력7",
   "입력8",
   "출력8",
-  "모범답안",
   "스켈레톤"
 ] as const;
 
@@ -89,8 +88,7 @@ export async function parseProblemWorkbook(file: File): Promise<ImportedProblem[
       inputDescription,
       outputDescription,
       hint: toDisplayText(row[10]),
-      starterCode: toText(row[28]),
-      solutionCode: toText(row[27]),
+      starterCode: toText(row[27]),
       testCases
     });
   }
@@ -128,7 +126,6 @@ export async function downloadProblemImportTemplate() {
     "",
     "",
     "",
-    "print(1)",
     "print()"
   ];
   const workbook = new ExcelJS.Workbook();
@@ -136,7 +133,7 @@ export async function downloadProblemImportTemplate() {
   worksheet.addRow(Array.from(PROBLEM_IMPORT_HEADERS));
   worksheet.addRow(sample);
   worksheet.columns = PROBLEM_IMPORT_HEADERS.map((header) => ({
-    width: ["문제 내용", "모범답안", "스켈레톤"].includes(header) ? 34 : 18
+    width: ["문제 내용", "스켈레톤"].includes(header) ? 34 : 18
   }));
   worksheet.getRow(1).font = { bold: true };
   worksheet.views = [{ state: "frozen", ySplit: 1 }];

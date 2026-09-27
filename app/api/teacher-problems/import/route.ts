@@ -79,20 +79,6 @@ export async function POST(request: NextRequest) {
       if (error) throw error;
     }
 
-    const solutionRows = problems
-      .filter((problem) => problem.solutionCode !== "")
-      .map((problem) => ({
-        problem_id: problem.id,
-        language: "python",
-        code: problem.solutionCode,
-        is_primary: true,
-        updated_at: new Date().toISOString()
-      }));
-    for (const chunk of chunks(solutionRows, 100)) {
-      const { error } = await supabase.from("reference_solutions").upsert(chunk, { onConflict: "problem_id" });
-      if (error) throw error;
-    }
-
     for (const chunk of chunks(ids, CHUNK_SIZE)) {
       const { error } = await supabase
         .from("problems")
@@ -103,7 +89,6 @@ export async function POST(request: NextRequest) {
 
     let verifiedProblems = 0;
     let verifiedTestCases = 0;
-    let verifiedSolutions = 0;
     for (const chunk of chunks(ids, CHUNK_SIZE)) {
       const [{ count: problemCount, error: problemError }, { count: caseCount, error: caseError }] =
         await Promise.all([
@@ -115,31 +100,18 @@ export async function POST(request: NextRequest) {
       verifiedProblems += problemCount ?? 0;
       verifiedTestCases += caseCount ?? 0;
     }
-    const solutionIds = solutionRows.map((row) => row.problem_id);
-    for (const chunk of chunks(solutionIds, CHUNK_SIZE)) {
-      const { count, error } = await supabase
-        .from("reference_solutions")
-        .select("*", { count: "exact", head: true })
-        .in("problem_id", chunk);
-      if (error) throw error;
-      verifiedSolutions += count ?? 0;
-    }
-
     const result: ProblemImportResult = {
       total: problems.length,
       inserted: problems.length - existingIds.size,
       updated: existingIds.size,
       books: bookRows.length,
       testCases: testCaseRows.length,
-      solutions: solutionRows.length,
       verifiedProblems,
       verifiedTestCases,
-      verifiedSolutions,
       warnings: []
     };
     if (verifiedProblems !== problems.length) result.warnings.push("DB에서 확인된 문제 수가 업로드 수와 다릅니다.");
     if (verifiedTestCases !== testCaseRows.length) result.warnings.push("DB에서 확인된 테스트케이스 수가 다릅니다.");
-    if (verifiedSolutions !== solutionRows.length) result.warnings.push("DB에서 확인된 모범답안 수가 다릅니다.");
 
     return NextResponse.json({ ok: true, result });
   } catch (error) {

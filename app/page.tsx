@@ -4590,12 +4590,11 @@ function TeacherProblemManager({
               <ImportResultItem label="기존 수정" value={importResult.updated} />
               <ImportResultItem label="문제집" value={importResult.books} />
               <ImportResultItem label="테스트케이스" value={importResult.testCases} />
-              <ImportResultItem label="모범답안" value={importResult.solutions} />
             </div>
             <div className="importVerification">
               <CheckCircle2 size={18} />
               DB 확인: 문제 {importResult.verifiedProblems}개 · 테스트케이스{" "}
-              {importResult.verifiedTestCases}개 · 모범답안 {importResult.verifiedSolutions}개
+              {importResult.verifiedTestCases}개
             </div>
             {importResult.warnings.length > 0 && (
               <ul className="importWarnings">

@@ -16,7 +16,6 @@ export type ImportedProblem = {
   outputDescription: string;
   hint: string;
   starterCode: string;
-  solutionCode: string;
   testCases: ImportedTestCase[];
 };
 
@@ -26,9 +25,7 @@ export type ProblemImportResult = {
   updated: number;
   books: number;
   testCases: number;
-  solutions: number;
   verifiedProblems: number;
   verifiedTestCases: number;
-  verifiedSolutions: number;
   warnings: string[];
 };
