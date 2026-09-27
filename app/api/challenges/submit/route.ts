@@ -20,10 +20,15 @@ export async function POST(request: NextRequest) {
     });
     if (error) return fail(error, 409);
     if (!receipt.fresh) return NextResponse.json({ ok: true, submission: receipt.submission });
-    const { data: challengeSettings, error: settingsError } = await db.from("challenges").select("enforce_code_requirements").eq("id", body.challengeId).single();
+    const { data: challengeSettings, error: settingsError } = await db.from("challenges").select("allow_requirement_failure").eq("id", body.challengeId).single();
     if (settingsError) throw settingsError;
     let result;
-    try { result = await judgeChallenge(receipt.problem as Problem, body.code, challengeSettings.enforce_code_requirements === true); }
+    try {
+      result = await judgeChallenge(receipt.problem as Problem, body.code, true);
+      if (result.status === "accepted" && result.requirement_passed === false && challengeSettings.allow_requirement_failure !== true) {
+        result = { ...result, status: "code_requirement_failed", feedback: result.requirement_feedback || "코드 조건을 확인해주세요." };
+      }
+    }
     catch (error) {
       console.error("[Challenge judge]", error);
       result = { status: "runtime_error", passed_count: 0, total_count: receipt.problem.testCases.length, feedback: "채점 실행이 중단되었습니다. 코드를 확인한 후 다시 제출해주세요." };

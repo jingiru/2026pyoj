@@ -174,7 +174,7 @@ test("submission route uses server verdict and preserves database reception time
   const db = {
     rpc: async (_, args) => { rpcArgs = args; return { data: { fresh: true, problem, submission: { id: "receipt-1", received_at: received } } }; },
     from: table => table === "challenges"
-      ? { select: () => { const query = { eq: () => query, single: async () => ({ data: { enforce_code_requirements: true } }) }; return query; } }
+      ? { select: () => { const query = { eq: () => query, single: async () => ({ data: { allow_requirement_failure: false } }) }; return query; } }
       : { update: value => { saved = value; const query = { eq: () => query, select: () => query, single: async () => ({ data: { ...saved, id: "receipt-1", received_at: received } }) }; return query; } }
   };
   const route = load("app/api/challenges/submit/route.ts", {

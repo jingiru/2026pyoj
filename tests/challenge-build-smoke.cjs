@@ -17,7 +17,7 @@ async function main() {
     const url = new URL(request.url, "http://localhost");
     response.setHeader("Content-Type", "application/json");
     if (url.pathname === "/rest/v1/challenge_participants") return response.end(JSON.stringify([participant]));
-    if (url.pathname === "/rest/v1/challenges") return response.end(JSON.stringify([{ enforce_code_requirements: true }]));
+    if (url.pathname === "/rest/v1/challenges") return response.end(JSON.stringify([{ allow_requirement_failure: false }]));
     if (url.pathname === "/rest/v1/rpc/challenge_receive_submission") {
       assert.equal(body.p_participant, participant.id);
       if (body.p_code === "# expired") { response.statusCode = 400; return response.end(JSON.stringify({ message: "제출 시간이 종료되었습니다." })); }

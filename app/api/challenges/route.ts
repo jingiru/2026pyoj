@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
       for (let attempt = 0; attempt < 3; attempt++) {
         const { data, error } = await db.from("challenges").insert({ title: body.title.trim(), duration_minutes: body.minutes,
           show_leaderboard: body.showLeaderboard === true, entry_code: generateChallengeEntryCode(), problem_snapshots: snapshots, scoring, bonus_criteria: bonusCriteria,
-          enforce_code_requirements: body.enforceCodeRequirements === true, show_code_requirement_status: body.enforceCodeRequirements === true && body.showCodeRequirementStatus === true }).select("*").single();
+          allow_requirement_failure: body.allowRequirementFailure === true, show_code_requirement_status: body.allowRequirementFailure === true && body.showCodeRequirementStatus === true }).select("*").single();
         if (!error) return NextResponse.json({ ok: true, challenge: data });
         if (error.code !== "23505") throw error;
       }

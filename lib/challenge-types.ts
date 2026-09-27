@@ -21,7 +21,7 @@ export type Challenge = {
   problem_snapshots: ChallengeProblem[];
   scoring?: ChallengeScoring;
   bonus_criteria?: BonusCriterion[];
-  enforce_code_requirements?: boolean;
+  allow_requirement_failure?: boolean;
   show_code_requirement_status?: boolean;
 };
 export type ChallengeParticipant = {
@@ -71,7 +71,7 @@ export function challengeBonusMax(challenge: Pick<Challenge, "bonus_criteria">) 
 }
 
 export function earnedProblemScore(challenge: Pick<Challenge, "problem_snapshots" | "scoring">, submissions: ChallengeSubmission[]) {
-  const accepted = new Set(submissions.filter(row => row.status === "accepted" || row.status === "code_requirement_failed").map(row => row.problem_id));
+  const accepted = new Set(submissions.filter(row => row.status === "accepted").map(row => row.problem_id));
   if (challenge.scoring?.mode === "grouped_correct_count") return challenge.scoring.groups.reduce((sum, group) => {
     const solved = group.problem_ids.filter(id => accepted.has(id)).length;
     return sum + group.base_score + Math.max(0, solved - group.free_correct_count) * group.points_per_additional;
