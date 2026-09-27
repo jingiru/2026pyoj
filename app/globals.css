@@ -451,6 +451,7 @@ button {
 .challengeInputHelp { color: var(--muted); display: block; font-size: 12px; font-weight: 500; margin-top: 6px; }
 .challengeModal { max-height: 90dvh; overflow-y: auto; }
 .challengeModal.wide { max-width: 980px; }
+.challengeModal.challengeCreateModal { width: min(1240px, calc(100vw - 36px)); max-width: 1240px; }
 .challengeModal h2 { padding-right: 30px; margin-top: 0; font-size: 23px; }
 .challengeTabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 18px 0; }
 .challengeTabs button { background: var(--bg); color: var(--muted); border: 1px solid var(--line); border-radius: 6px; padding: 10px; }
@@ -500,22 +501,27 @@ button {
 label.challengeCheckbox { display: flex; flex-direction: row; align-items: center; gap: 10px; padding: 8px; margin: 0; }
 .challengeCheckbox input { width: 18px; height: 18px; flex: 0 0 18px; }
 .challengeCheckbox small { display: block; color: var(--muted); margin-top: 3px; }
-.challengeProblemBrowser { display: grid; grid-template-columns: 190px 130px minmax(0, 1fr); border: 1px solid var(--line); border-radius: 9px; min-height: 290px; max-height: 390px; overflow: hidden; }
-.challengeProblemBrowser nav, .challengeProblemPicker { display: flex; flex-direction: column; gap: 4px; overflow-y: auto; padding: 12px; }
-.challengeProblemBrowser nav { border-right: 1px solid var(--line); background: color-mix(in srgb, var(--bg) 65%, var(--panel)); }
+.challengeProblemBrowser { display: grid; grid-template-columns: var(--challenge-book-width, 250px) 8px var(--challenge-group-width, 180px) 8px minmax(420px, 1fr); border: 1px solid var(--line); border-radius: 9px; min-height: 290px; max-height: 390px; overflow: hidden; }
+.challengeProblemBrowser nav, .challengeProblemPicker { display: flex; flex-direction: column; gap: 1px; min-width: 0; overflow-y: auto; padding: 8px; }
+.challengeProblemBrowser nav { background: color-mix(in srgb, var(--bg) 65%, var(--panel)); }
 .challengeProblemBrowser nav > strong, .challengeProblemPicker > strong { padding: 5px 8px 10px; font-size: 13px; color: var(--muted); }
-.challengeProblemBrowser nav button { display: flex; flex-direction: row; align-items: center; gap: 6px; border: 0; border-radius: 7px; background: transparent; color: var(--ink); padding: 8px 10px; text-align: left; white-space: nowrap; }
+.challengeProblemBrowser nav button { display: flex; flex-direction: row; align-items: center; gap: 6px; border: 0; border-radius: 7px; background: transparent; color: var(--ink); padding: 5px 8px; text-align: left; white-space: nowrap; }
 .challengeProblemBrowser nav button b { flex: 0 0 auto; }
 .challengeProblemBrowser nav button span { min-width: 0; overflow: hidden; color: var(--muted); font-size: 12px; text-overflow: ellipsis; }
 .challengeProblemBrowser nav button:hover, .challengeProblemBrowser nav button.active { background: color-mix(in srgb, var(--primary) 11%, var(--panel)); color: var(--primary); }
 .challengeProblemBrowser nav button.active { font-weight: 800; }
 .challengeProblemPicker .challengeCheckbox { border-radius: 7px; }
 .challengeProblemPicker .challengeCheckbox:hover { background: color-mix(in srgb, var(--primary) 7%, var(--panel)); }
-.challengeBulkCheckbox { position: sticky; top: -12px; z-index: 2; min-height: 53px; border-bottom: 1px solid var(--line); border-radius: 0; background: var(--panel); }
-.challengeProblemBrowser nav .challengeBulkCheckbox { margin: -12px -12px 4px; padding: 10px 12px; }
+.challengeColumnResizer { position: relative; z-index: 3; width: 8px; min-width: 8px; border: 0; border-right: 1px solid var(--line); border-left: 1px solid var(--line); border-radius: 0; background: color-mix(in srgb, var(--line) 32%, transparent); padding: 0; cursor: col-resize; touch-action: none; }
+.challengeColumnResizer::after { content: ""; position: absolute; top: 50%; left: 2px; width: 2px; height: 36px; border-radius: 2px; background: var(--muted); opacity: .35; transform: translateY(-50%); }
+.challengeColumnResizer:hover, .challengeColumnResizer:focus-visible { background: color-mix(in srgb, var(--primary) 18%, var(--panel)); outline: none; }
+.challengeColumnResizer:hover::after, .challengeColumnResizer:focus-visible::after { background: var(--primary); opacity: 1; }
+.challengeBulkCheckbox { position: sticky; top: -8px; z-index: 2; min-height: 44px; border-bottom: 1px solid var(--line); border-radius: 0; background: var(--panel); }
+.challengeProblemBrowser nav .challengeBulkCheckbox { margin: -8px -8px 3px; padding: 6px 10px; }
 .challengeBulkCheckbox span { min-width: 0; }
 .challengeBulkCheckbox b { display: block; white-space: nowrap; }
-.challengeProblemOption { position: relative; min-height: 36px; white-space: nowrap; }
+.challengeProblemPicker > strong { padding: 2px 6px 6px; }
+.challengeProblemPicker .challengeProblemOption { position: relative; min-height: 31px; padding: 5px 7px; white-space: nowrap; }
 .challengeProblemOption > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .challengeProblemMeta { color: var(--muted); font-size: 12px; }
 .challengeProblemOption::after { content: attr(data-preview); position: absolute; left: 28px; top: calc(100% - 2px); z-index: 20; display: none; width: min(520px, calc(100% - 36px)); max-height: 120px; overflow: hidden; border: 1px solid color-mix(in srgb, var(--primary) 38%, var(--line)); border-radius: 8px; background: var(--panel); color: var(--ink); padding: 10px 12px; box-shadow: 0 8px 24px rgb(15 23 42 / 18%); font-size: 13px; font-weight: 400; line-height: 1.45; white-space: pre-line; }
@@ -561,7 +567,7 @@ label.challengeCheckbox { display: flex; flex-direction: row; align-items: cente
 .challengeExportOptions label { display: flex; flex-direction: row; align-items: center; gap: 10px; margin: 0; border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
 .challengeExportOptions input { width: 18px; height: 18px; }
 @media (max-width: 1200px) { .challengeSolveGrid .workspace { grid-template-columns: 1fr; } .challengeControls { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 850px) { .choiceView { grid-template-columns: minmax(0, 500px); } .choiceGrid { grid-template-columns: 1fr; width: 100%; } .choiceButton { min-height: 180px; } .challengeProblemBrowser { grid-template-columns: 150px 110px minmax(280px, 1fr); overflow-x: auto; } }
+@media (max-width: 850px) { .choiceView { grid-template-columns: minmax(0, 500px); } .choiceGrid { grid-template-columns: 1fr; width: 100%; } .choiceButton { min-height: 180px; } .challengeProblemBrowser { grid-template-columns: var(--challenge-book-width, 250px) 8px var(--challenge-group-width, 180px) 8px minmax(420px, 1fr); overflow-x: auto; } }
 
 @media (max-width: 520px) {
   .choiceContact { align-items: flex-start; flex-direction: column; gap: 5px; }
