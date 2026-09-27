@@ -405,7 +405,13 @@ button {
 .challengeView, .challengeManager { margin: 24px auto; max-width: 1800px; }
 .challengeBar { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; margin-bottom: 22px; }
 .challengeBar > div:first-child { flex: 1; }
-.challengeView > .challengeBar { position: sticky; top: 0; z-index: 5; background: var(--bg); margin-bottom: 11px; padding: 6px 0; }
+.challengeView > .challengeBar { margin-bottom: 11px; padding: 6px 0; }
+.challengeStudentBar { justify-content: center; }
+.challengeStudentTitle, .challengeStudentIdentity { white-space: nowrap; }
+.challengeStudentTitle { font-size: 18px; }
+.challengeStudentIdentity { color: var(--muted); font-weight: 700; }
+.challengeStudentBar > * + * { position: relative; margin-left: 9px; }
+.challengeStudentBar > * + *::before { content: ""; position: absolute; left: -12px; top: 50%; width: 1px; height: 20px; background: var(--line); transform: translateY(-50%); }
 .challengeBar h1 { font-size: 27px; margin: 10px 0 0; }
 .challengeTimer { display: flex; align-items: center; justify-content: center; gap: 10px; background: var(--panel); border: 1px solid var(--line); padding: 15px 22px; border-radius: 10px; font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; min-width: 150px; }
 .challengeTimer svg { width: 22px; height: 22px; }
@@ -425,7 +431,7 @@ button {
 .challengeWaiting h1, .challengeWaiting h2, .challengeWaiting p { margin: 0; }
 .challengeWaiting p { color: var(--muted); }
 .challengeSolveGrid { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 16px; align-items: start; }
-.challengeSolveGrid .problemList { position: sticky; top: 120px; padding: 12px; max-height: 70dvh; overflow-y: auto; }
+.challengeSolveGrid .problemList { max-height: none; overflow: visible; padding: 12px; }
 .challengeSolveGrid .problemItem { display: grid; grid-template-columns: auto minmax(max-content, 1fr) auto; align-items: center; column-gap: 8px; width: 100%; padding: 10px 8px; margin-top: 8px; white-space: nowrap; }
 .challengeSolveGrid .problemItem strong { font-size: 12px; }
 .challengeSolveGrid .problemItem small { color: var(--muted); font-size: 11px; }
@@ -437,7 +443,7 @@ button {
 .challengeIde .ideHeader { flex-wrap: wrap; }
 .challengeIde .ideActions { justify-content: flex-start; }
 .challengeIdeNotice { margin: 0; padding: 10px 16px; background: color-mix(in srgb, var(--primary) 8%, var(--panel)); border-bottom: 1px solid var(--line); font-size: 14px; font-weight: 700; }
-.challengeIdeBody { height: clamp(363px, calc(90dvh - 153px), 684px); }
+.challengeIdeBody { height: clamp(480px, calc(90dvh - 100px), 740px); }
 .challengeEditorSection, .solveConsoleSection { min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
 .challengeEditor { flex: 1; min-height: 0; overflow: hidden; }
 .challengeEditor > .codeEditor, .challengeEditor > .cm-theme, .challengeEditor > div { height: 100%; min-height: 0; overflow: auto; }
@@ -449,6 +455,9 @@ button {
 .challengeTerminal .terminalScroll { padding: 10px 18px; }
 .challengeTerminal pre { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.45; }
 .challengeTerminal .terminalInputRow { font-size: inherit; }
+@media (min-width: 1600px) {
+  .challengeStudentBar { position: fixed; left: 50%; top: 4px; z-index: 20; width: max-content; max-width: calc(100vw - 900px); margin: 0; padding: 4px 10px; transform: translateX(-50%); }
+}
 .challengeInputHelp { color: var(--muted); display: block; font-size: 12px; font-weight: 500; margin-top: 6px; }
 .challengeModal { max-height: 90dvh; overflow-y: auto; }
 .challengeModal.wide { max-width: 980px; }
