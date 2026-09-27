@@ -38,3 +38,27 @@ test('list requirements reject unrolled prints and range without list indexing',
     assert.equal(checkCodeRequirements(code, rows[0].requirements).passed, false);
   }
 });
+
+test('evaluation 7-1-08 requires while and rejects for alternatives', () => {
+  const requirements = [
+    { type: 'while_loop' },
+    { type: 'forbidden_keywords', values: ['for'] }
+  ];
+
+  assert.equal(checkCodeRequirements(
+    'n = int(input())\na = 1\nwhile a <= n:\n    print(a)\n    a = a + 1',
+    requirements
+  ).passed, true);
+  assert.equal(checkCodeRequirements(
+    'n = int(input())\nfor a in range(1, n + 1):\n    print(a)',
+    requirements
+  ).passed, false);
+  assert.equal(checkCodeRequirements(
+    "n = int(input())\nprint('\\n'.join(str(a) for a in range(1, n + 1)))",
+    requirements
+  ).passed, false);
+  assert.equal(checkCodeRequirements(
+    "n = int(input())\nprint('while')",
+    requirements
+  ).passed, false);
+});
