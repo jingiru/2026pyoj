@@ -53,6 +53,7 @@ button {
   color: var(--ink);
   min-height: 100vh;
   padding: 22px;
+  position: relative;
 }
 
 .shell.darkMode {
@@ -412,6 +413,9 @@ button {
 .challengeStudentIdentity { color: var(--muted); font-weight: 700; }
 .challengeStudentBar > * + * { position: relative; margin-left: 9px; }
 .challengeStudentBar > * + *::before { content: ""; position: absolute; left: -12px; top: 50%; width: 1px; height: 20px; background: var(--line); transform: translateY(-50%); }
+.challengeStudentBar .challengeScore, .challengeStudentBar .challengeTimer { min-height: 50px; padding: 0 14px; font-size: 18px; }
+.challengeStudentBar .challengeTimer { min-width: 136px; }
+.challengeStudentBar .challengeTimer svg { width: 19px; height: 19px; }
 .challengeBar h1 { font-size: 27px; margin: 10px 0 0; }
 .challengeTimer { display: flex; align-items: center; justify-content: center; gap: 10px; background: var(--panel); border: 1px solid var(--line); padding: 15px 22px; border-radius: 10px; font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; min-width: 150px; }
 .challengeTimer svg { width: 22px; height: 22px; }
@@ -456,7 +460,7 @@ button {
 .challengeTerminal pre { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.45; }
 .challengeTerminal .terminalInputRow { font-size: inherit; }
 @media (min-width: 1600px) {
-  .challengeStudentBar { position: fixed; left: 50%; top: 4px; z-index: 20; width: max-content; max-width: calc(100vw - 900px); margin: 0; padding: 4px 10px; transform: translateX(-50%); }
+  .challengeStudentBar { position: absolute; left: 50%; top: 18px; z-index: 20; width: max-content; max-width: calc(100vw - 900px); margin: 0; padding: 0 10px; transform: translateX(-50%); }
 }
 .challengeInputHelp { color: var(--muted); display: block; font-size: 12px; font-weight: 500; margin-top: 6px; }
 .challengeModal { max-height: 90dvh; overflow-y: auto; }
