@@ -405,7 +405,7 @@ button {
 .challengeView, .challengeManager { margin: 24px auto; max-width: 1800px; }
 .challengeBar { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; margin-bottom: 22px; }
 .challengeBar > div:first-child { flex: 1; }
-.challengeView > .challengeBar { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: 12px 0; }
+.challengeView > .challengeBar { position: sticky; top: 0; z-index: 5; background: var(--bg); margin-bottom: 11px; padding: 6px 0; }
 .challengeBar h1 { font-size: 27px; margin: 10px 0 0; }
 .challengeTimer { display: flex; align-items: center; justify-content: center; gap: 10px; background: var(--panel); border: 1px solid var(--line); padding: 15px 22px; border-radius: 10px; font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; min-width: 150px; }
 .challengeTimer svg { width: 22px; height: 22px; }
@@ -424,20 +424,20 @@ button {
 .challengeWaiting svg { color: #b77913; }
 .challengeWaiting h1, .challengeWaiting h2, .challengeWaiting p { margin: 0; }
 .challengeWaiting p { color: var(--muted); }
-.challengeSolveGrid { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 16px; align-items: start; }
+.challengeSolveGrid { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 16px; align-items: start; }
 .challengeSolveGrid .problemList { position: sticky; top: 120px; padding: 12px; max-height: 70dvh; overflow-y: auto; }
-.challengeSolveGrid .problemItem { width: 100%; padding: 10px 8px; margin-top: 8px; }
+.challengeSolveGrid .problemItem { display: grid; grid-template-columns: auto minmax(max-content, 1fr) auto; align-items: center; column-gap: 8px; width: 100%; padding: 10px 8px; margin-top: 8px; white-space: nowrap; }
 .challengeSolveGrid .problemItem strong { font-size: 12px; }
-.challengeSolveGrid .problemItem small { display: block; margin-top: 3px; color: var(--muted); font-size: 11px; }
+.challengeSolveGrid .problemItem small { color: var(--muted); font-size: 11px; }
 .challengeSolveGrid .problemItem.requirementWarning { position: relative; }
 .challengeSolveGrid .problemItem.requirementWarning > i { position: absolute; top: -8px; right: -7px; display: grid; place-items: center; width: 20px; height: 20px; border: 2px solid var(--panel); border-radius: 50%; background: #dc2626; color: white; font-size: 13px; font-style: normal; font-weight: 900; line-height: 1; box-shadow: 0 2px 7px rgba(185, 28, 28, .32); }
-.challengeSolveGrid .workspace { grid-template-columns: minmax(290px, .9fr) minmax(420px, 1.1fr); gap: 16px; }
+.challengeSolveGrid .workspace { grid-template-columns: minmax(290px, .95fr) minmax(420px, 1.05fr); gap: 16px; }
 .challengeSolveGrid .problemPane { padding: 22px; }
 .challengeIde { display: block; min-width: 0; overflow: hidden; }
 .challengeIde .ideHeader { flex-wrap: wrap; }
 .challengeIde .ideActions { justify-content: flex-start; }
 .challengeIdeNotice { margin: 0; padding: 10px 16px; background: color-mix(in srgb, var(--primary) 8%, var(--panel)); border-bottom: 1px solid var(--line); font-size: 14px; font-weight: 700; }
-.challengeIdeBody { height: clamp(363px, calc(100dvh - 170px), 760px); }
+.challengeIdeBody { height: clamp(363px, calc(90dvh - 153px), 684px); }
 .challengeEditorSection, .solveConsoleSection { min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
 .challengeEditor { flex: 1; min-height: 0; overflow: hidden; }
 .challengeEditor > .codeEditor, .challengeEditor > .cm-theme, .challengeEditor > div { height: 100%; min-height: 0; overflow: auto; }
@@ -586,7 +586,7 @@ label.challengeCheckbox { display: flex; flex-direction: row; align-items: cente
 @media (max-width: 520px) {
   .choiceContact { align-items: flex-start; flex-direction: column; gap: 5px; }
 }
-@media (max-width: 650px) { .challengeSolveGrid { grid-template-columns: 1fr; } .challengeSolveGrid .problemList { position: static; display: flex; align-items: center; gap: 8px; overflow-x: auto; } .challengeSolveGrid .problemItem { min-width: 95px; margin: 0; } .challengeControls, .challengeCreateBasics, .challengeScoreRule, .challengeScoreGroup, .challengeBonusCriterion { grid-template-columns: 1fr; } .challengePointRow { grid-template-columns: minmax(0, 1fr) 90px 20px; } .challengePointButtons { grid-column: 1 / -1; grid-row: 2; } .challengePointButtons button { flex: 1; } .challengeBar h1 { font-size: 22px; } .challengeTeacherTimer { order: 2; width: 100%; } .challengeTeacherTimer .challengeTimer { flex: 1; } .challengePickerHeader { align-items: stretch; flex-direction: column; } .challengePickerHeader input { max-width: none; } .challengeCodeDisplay { letter-spacing: .04em; } .challengeConsoleActions { align-items: flex-end; flex-direction: column; } }
+@media (max-width: 650px) { .challengeSolveGrid { grid-template-columns: 1fr; } .challengeSolveGrid .problemList { position: static; display: flex; align-items: center; gap: 8px; overflow-x: auto; } .challengeSolveGrid .problemItem { min-width: 145px; margin: 0; } .challengeControls, .challengeCreateBasics, .challengeScoreRule, .challengeScoreGroup, .challengeBonusCriterion { grid-template-columns: 1fr; } .challengePointRow { grid-template-columns: minmax(0, 1fr) 90px 20px; } .challengePointButtons { grid-column: 1 / -1; grid-row: 2; } .challengePointButtons button { flex: 1; } .challengeBar h1 { font-size: 22px; } .challengeTeacherTimer { order: 2; width: 100%; } .challengeTeacherTimer .challengeTimer { flex: 1; } .challengePickerHeader { align-items: stretch; flex-direction: column; } .challengePickerHeader input { max-width: none; } .challengeCodeDisplay { letter-spacing: .04em; } .challengeConsoleActions { align-items: flex-end; flex-direction: column; } }
 
 /* Challenge completion easter egg arcade */
 .loginModal.arcadeModal { max-width: 860px; overflow-x: hidden; }
