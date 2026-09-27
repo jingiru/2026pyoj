@@ -51,7 +51,13 @@ export async function POST(request: NextRequest) {
       if (error) throw error;
       return NextResponse.json({ ok: true, bonusScore: data });
     }
-    if (body.action === "create") {
+    if (body.action === "delete") {
+      if (typeof body.id !== "string") return fail(new Error("삭제할 챌린지를 확인해주세요."));
+      const { error } = await db.from("challenges").delete().eq("id", body.id);
+      if (error) throw error;
+      return NextResponse.json({ ok: true });
+    }
+    if (body.action === "create" || body.action === "update") {
       if (typeof body.title !== "string" || !body.title.trim() || body.title.length > 100 ||
         !Number.isInteger(body.minutes) || body.minutes < 1 || body.minutes > 480 ||
         !Array.isArray(body.problemIds) || !body.problemIds.length || body.problemIds.length > 50 ||
@@ -90,10 +96,17 @@ export async function POST(request: NextRequest) {
       const { problems } = await loadCurriculum(db, false);
       const snapshots = body.problemIds.map((id: string) => { const problem = problems.find(item => item.id === id); return problem ? { ...problem, points: Number(points.get(id)) } : undefined; });
       if (snapshots.some((problem: typeof problems[number] | undefined) => !problem || !problem.testCases.length)) return fail(new Error("선택한 문제에 채점 테스트가 없습니다."));
+      const configuration = { title: body.title.trim(), duration_minutes: body.minutes,
+        show_leaderboard: body.showLeaderboard === true, problem_snapshots: snapshots, scoring, bonus_criteria: bonusCriteria,
+        allow_requirement_failure: body.allowRequirementFailure === true, show_code_requirement_status: body.allowRequirementFailure === true && body.showCodeRequirementStatus === true };
+      if (body.action === "update") {
+        if (typeof body.id !== "string") return fail(new Error("수정할 챌린지를 확인해주세요."));
+        const { data, error } = await db.from("challenges").update(configuration).eq("id", body.id).select("*").single();
+        if (error) throw error;
+        return NextResponse.json({ ok: true, challenge: data });
+      }
       for (let attempt = 0; attempt < 3; attempt++) {
-        const { data, error } = await db.from("challenges").insert({ title: body.title.trim(), duration_minutes: body.minutes,
-          show_leaderboard: body.showLeaderboard === true, entry_code: generateChallengeEntryCode(), problem_snapshots: snapshots, scoring, bonus_criteria: bonusCriteria,
-          allow_requirement_failure: body.allowRequirementFailure === true, show_code_requirement_status: body.allowRequirementFailure === true && body.showCodeRequirementStatus === true }).select("*").single();
+        const { data, error } = await db.from("challenges").insert({ ...configuration, entry_code: generateChallengeEntryCode() }).select("*").single();
         if (!error) return NextResponse.json({ ok: true, challenge: data });
         if (error.code !== "23505") throw error;
       }

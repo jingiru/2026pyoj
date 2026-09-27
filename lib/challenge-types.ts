@@ -71,7 +71,8 @@ export function challengeBonusMax(challenge: Pick<Challenge, "bonus_criteria">) 
 }
 
 export function earnedProblemScore(challenge: Pick<Challenge, "problem_snapshots" | "scoring">, submissions: ChallengeSubmission[]) {
-  const accepted = new Set(submissions.filter(row => row.status === "accepted").map(row => row.problem_id));
+  const validProblems = new Set(challenge.problem_snapshots.map(problem => problem.id));
+  const accepted = new Set(submissions.filter(row => row.status === "accepted" && validProblems.has(row.problem_id)).map(row => row.problem_id));
   if (challenge.scoring?.mode === "grouped_correct_count") return challenge.scoring.groups.reduce((sum, group) => {
     const solved = group.problem_ids.filter(id => accepted.has(id)).length;
     return sum + group.base_score + Math.max(0, solved - group.free_correct_count) * group.points_per_additional;

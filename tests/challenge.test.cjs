@@ -45,7 +45,7 @@ test("challenge scores support problem weights, count rules and decimal bonus ma
   assert.equal(earnedProblemScore(countBased, []), 4);
   assert.equal(earnedProblemScore(countBased, [{ problem_id: "p1", status: "accepted" }]), 4);
   assert.equal(earnedProblemScore(countBased, [{ problem_id: "p1", status: "accepted" }, { problem_id: "p2", status: "accepted" }]), 5);
-  const grouped = { ...countBased, scoring: { mode: "grouped_correct_count", groups: [
+  const grouped = { ...countBased, problem_snapshots: Array.from({ length: 10 }, (_, index) => ({ id: `p${index + 1}`, points: index < 5 ? 1 : 2 })), scoring: { mode: "grouped_correct_count", groups: [
     { id: "easy", label: "쉬운 문제", problem_ids: ["p1", "p2", "p3", "p4", "p5"], base_score: 4, free_correct_count: 1, points_per_additional: 1 },
     { id: "hard", label: "어려운 문제", problem_ids: ["p6", "p7", "p8", "p9", "p10"], base_score: 4, free_correct_count: 1, points_per_additional: 2 }
   ] } };

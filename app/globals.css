@@ -470,8 +470,14 @@ button {
 .challengeControls .challengeTimeAction { flex-direction: row; align-items: end; flex-wrap: wrap; }
 .challengeTimeAction label { margin: 0; }
 .challengeTimeAction input { width: 95px; }
-.challengeResultActions { display: flex; justify-content: flex-end; }
+.challengeResultActions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
 .challengeResultActions button { display: inline-flex; align-items: center; gap: 8px; }
+.challengeEditButton, .challengeDeleteButton, .challengeDeleteConfirm { border: 1px solid transparent; border-radius: 7px; padding: 10px 14px; font: inherit; font-weight: 800; cursor: pointer; }
+.challengeEditButton { border-color: #16a34a; background: color-mix(in srgb, #22c55e 13%, var(--panel)); color: #15803d; }
+.challengeDeleteButton, .challengeDeleteConfirm { border-color: #dc2626; background: color-mix(in srgb, #ef4444 12%, var(--panel)); color: #dc2626; }
+.challengeDeleteConfirm { display: flex; justify-content: center; width: 100%; }
+.challengeEditButton:disabled, .challengeDeleteButton:disabled, .challengeDeleteConfirm:disabled { opacity: .5; cursor: not-allowed; }
+.challengeDeleteWarning { border: 1px solid color-mix(in srgb, #ef4444 45%, var(--line)); border-radius: 8px; background: color-mix(in srgb, #ef4444 8%, var(--panel)); color: #b91c1c; padding: 13px; font-weight: 700; }
 .challengeResults { overflow-x: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; margin-top: 12px; }
 .challengeResults table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .challengeResults caption { text-align: left; font-weight: 800; padding: 18px; }
