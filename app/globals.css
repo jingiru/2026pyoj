@@ -404,6 +404,7 @@ button {
 .choiceButton.challenge { background: color-mix(in srgb, #f59e0b 8%, var(--panel)); }
 .choiceButton.challenge svg { color: #b77913; }
 .challengeView, .challengeManager { margin: 24px auto; max-width: 1800px; }
+.challengeView { --challenge-header-inset: clamp(0px, calc((100vw - 1764px) / 2), 40px); }
 .challengeBar { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; margin-bottom: 22px; }
 .challengeBar > div:first-child { flex: 1; }
 .challengeView > .challengeBar { margin-bottom: 11px; padding: 6px 0; }
@@ -432,16 +433,17 @@ button {
 .challengeWaiting svg { color: #b77913; }
 .challengeWaiting h1, .challengeWaiting h2, .challengeWaiting p { margin: 0; }
 .challengeWaiting p { color: var(--muted); }
-.challengeSolveGrid { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 16px; align-items: start; }
+.challengeSolveGrid { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 16px; align-items: start; margin-left: var(--challenge-header-inset); }
 .challengeSolveGrid .problemList { max-height: none; overflow: visible; padding: 12px; }
-.challengeSolveGrid .problemItem { display: grid; grid-template-columns: auto minmax(max-content, 1fr) auto; align-items: center; column-gap: 8px; width: 100%; padding: 10px 8px; margin-top: 8px; white-space: nowrap; }
+.challengeSolveGrid .problemItem { display: grid; grid-template-columns: auto auto auto; align-items: center; justify-content: start; column-gap: 4px; width: 100%; padding: 10px 8px; margin-top: 8px; white-space: nowrap; }
+.challengeSolveGrid .problemItem > span { margin-right: 4px; }
 .challengeSolveGrid .problemItem strong { font-size: 12px; }
 .challengeSolveGrid .problemItem small { color: var(--muted); font-size: 11px; }
 .challengeSolveGrid .problemItem.requirementWarning { position: relative; }
 .challengeSolveGrid .problemItem.requirementWarning > i { position: absolute; top: -8px; right: -7px; display: grid; place-items: center; width: 20px; height: 20px; border: 2px solid var(--panel); border-radius: 50%; background: #dc2626; color: white; font-size: 13px; font-style: normal; font-weight: 900; line-height: 1; box-shadow: 0 2px 7px rgba(185, 28, 28, .32); }
-.challengeSolveGrid .workspace { grid-template-columns: minmax(290px, .95fr) minmax(420px, 1.05fr); gap: 16px; }
+.challengeSolveGrid .workspace { grid-template-columns: minmax(290px, calc(47.5% + clamp(0px, calc((100vw - 1764px) / 4), 20px))) minmax(420px, 1fr); gap: 16px; }
 .challengeSolveGrid .problemPane { padding: 22px; }
-.challengeIde { display: block; min-width: 0; margin-right: clamp(0px, calc((100vw - 1764px) / 2), 40px); overflow: hidden; }
+.challengeIde { display: block; min-width: 0; margin-right: var(--challenge-header-inset); overflow: hidden; }
 .challengeIde .ideHeader { flex-wrap: wrap; }
 .challengeIde .ideActions { justify-content: flex-start; }
 .challengeIdeNotice { margin: 0; padding: 10px 16px; background: color-mix(in srgb, var(--primary) 8%, var(--panel)); border-bottom: 1px solid var(--line); font-size: 14px; font-weight: 700; }
