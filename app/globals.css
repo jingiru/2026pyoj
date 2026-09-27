@@ -437,15 +437,16 @@ button {
 .challengeIde .ideHeader { flex-wrap: wrap; }
 .challengeIde .ideActions { justify-content: flex-start; }
 .challengeIdeNotice { margin: 0; padding: 10px 16px; background: color-mix(in srgb, var(--primary) 8%, var(--panel)); border-bottom: 1px solid var(--line); font-size: 14px; font-weight: 700; }
-.challengeIdeBody { display: grid; grid-template-rows: var(--challenge-editor-height, 208px) 12px minmax(120px, 1fr); height: 356px; min-height: 300px; }
+.challengeIdeBody { height: clamp(363px, calc(100dvh - 170px), 760px); }
 .challengeEditorSection, .solveConsoleSection { min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
 .challengeEditor { flex: 1; min-height: 0; overflow: hidden; }
 .challengeEditor > .codeEditor, .challengeEditor > .cm-theme, .challengeEditor > div { height: 100%; min-height: 0; overflow: auto; }
-.challengePaneResizer { height: 12px; min-height: 12px; touch-action: none; }
+.challengePaneResizer { min-height: 10px; touch-action: none; }
 .challengePaneResizer span { width: 44px; }
 .challengeConsoleActions { display: flex; align-items: center; gap: 10px; }
 .challengeConsoleActions .ghostButton { min-height: 32px; padding: 5px 10px; }
-.challengeTerminal { flex: 1; height: auto; min-height: 0; overflow: auto; padding: 10px 18px; line-height: 1.45; }
+.challengeTerminal { flex: 1; height: 100%; min-height: 0; overflow: hidden; padding: 0; line-height: 1.45; }
+.challengeTerminal .terminalScroll { padding: 10px 18px; }
 .challengeTerminal pre { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.45; }
 .challengeTerminal .terminalInputRow { font-size: inherit; }
 .challengeInputHelp { color: var(--muted); display: block; font-size: 12px; font-weight: 500; margin-top: 6px; }
