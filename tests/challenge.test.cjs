@@ -129,7 +129,10 @@ test("server judge runs real Python against every test and ignores client scorin
 test("server judge enforces code requirements and rejects empty test suites", async () => {
   const constrained = { ...problem, codeRequirements: [{ type: "for_range" }] };
   const result = await judgeChallenge(constrained, "a = int(input())\nb = int(input())\nprint(a + b)");
-  assert.equal(result.status, "code_requirement_failed");
+  assert.equal(result.status, "accepted");
+  assert.equal(result.requirement_passed, false);
+  assert.match(result.requirement_feedback, /for/);
+  assert.equal((await judgeChallenge(constrained, "a = int(input())\nb = int(input())\nprint(a + b)", false)).requirement_passed, null);
   await assert.rejects(judgeChallenge({ ...problem, testCases: [] }, "print(1)"), /테스트/);
 });
 test("separate workers isolate simultaneous submissions", async () => {
@@ -170,11 +173,13 @@ test("submission route uses server verdict and preserves database reception time
   let saved, rpcArgs;
   const db = {
     rpc: async (_, args) => { rpcArgs = args; return { data: { fresh: true, problem, submission: { id: "receipt-1", received_at: received } } }; },
-    from: () => ({ update: value => { saved = value; const query = { eq: () => query, select: () => query, single: async () => ({ data: { ...saved, id: "receipt-1", received_at: received } }) }; return query; } })
+    from: table => table === "challenges"
+      ? { select: () => { const query = { eq: () => query, single: async () => ({ data: { enforce_code_requirements: true } }) }; return query; } }
+      : { update: value => { saved = value; const query = { eq: () => query, select: () => query, single: async () => ({ data: { ...saved, id: "receipt-1", received_at: received } }) }; return query; } }
   };
   const route = load("app/api/challenges/submit/route.ts", {
     "@/lib/challenge-server": { participantFor: async () => ({ id: "server-participant" }), challengeDb: () => db, fail: (e, status = 400) => Response.json({ message: e.message }, { status }) },
-    "@/lib/challenge-judge": { judgeChallenge: async () => ({ status: "wrong_answer", passed_count: 0, total_count: 2, feedback: "wrong" }) }
+    "@/lib/challenge-judge": { judgeChallenge: async (_problem, _code, checkRequirements) => { assert.equal(checkRequirements, true); return { status: "wrong_answer", passed_count: 0, total_count: 2, feedback: "wrong", requirement_passed: false, requirement_feedback: "for문 필요" }; } }
   });
   const response = await route.POST(new NextRequest("http://localhost/api/challenges/submit", { method: "POST", body: JSON.stringify({ challengeId: "c", problemId: "p1", code: "print(0)", requestId: "00000000-0000-4000-8000-000000000000", participant_id: "forged-student", status: "accepted", received_at: "2026-09-06T01:00:00Z" }) }));
   const result = await response.json();

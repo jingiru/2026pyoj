@@ -20,14 +20,16 @@ export async function POST(request: NextRequest) {
     });
     if (error) return fail(error, 409);
     if (!receipt.fresh) return NextResponse.json({ ok: true, submission: receipt.submission });
+    const { data: challengeSettings, error: settingsError } = await db.from("challenges").select("enforce_code_requirements").eq("id", body.challengeId).single();
+    if (settingsError) throw settingsError;
     let result;
-    try { result = await judgeChallenge(receipt.problem as Problem, body.code); }
+    try { result = await judgeChallenge(receipt.problem as Problem, body.code, challengeSettings.enforce_code_requirements === true); }
     catch (error) {
       console.error("[Challenge judge]", error);
       result = { status: "runtime_error", passed_count: 0, total_count: receipt.problem.testCases.length, feedback: "채점 실행이 중단되었습니다. 코드를 확인한 후 다시 제출해주세요." };
     }
     const { data: submission, error: saveError } = await db.from("challenge_submissions").update({ ...result, judged_at: new Date().toISOString() })
-      .eq("id", receipt.submission.id).eq("status", "pending").select("id,participant_id,challenge_id,problem_id,status,received_at,feedback,passed_count,total_count").single();
+      .eq("id", receipt.submission.id).eq("status", "pending").select("id,participant_id,challenge_id,problem_id,status,received_at,feedback,passed_count,total_count,requirement_passed,requirement_feedback").single();
     if (saveError) throw saveError;
     return NextResponse.json({ ok: true, submission });
   } catch (error) { return fail(error, 500); }

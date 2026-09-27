@@ -3,11 +3,11 @@ import { join } from "node:path";
 import { checkCodeRequirements } from "./code-requirements";
 import type { Problem, SubmissionStatus } from "./types";
 
-type Result = { status: SubmissionStatus; passed_count: number; total_count: number; feedback: string };
+type Result = { status: SubmissionStatus; passed_count: number; total_count: number; feedback: string; requirement_passed?: boolean | null; requirement_feedback?: string };
 
 // Each submission gets a separate interpreter. Student Python cannot access Node's
 // require, filesystem or network. Parent termination also bounds uncooperative code.
-export async function judgeChallenge(problem: Problem, code: string): Promise<Result> {
+export async function judgeChallenge(problem: Problem, code: string, checkRequirements = true): Promise<Result> {
   if (!problem.testCases.length) throw new Error("채점 테스트가 없는 문제입니다.");
   // Webpack's require.resolve returns module IDs; a worker needs native file paths.
   const skulptDirectory = join(process.cwd(), "node_modules", "skulpt");
@@ -48,7 +48,7 @@ export async function judgeChallenge(problem: Problem, code: string): Promise<Re
     worker.once("error", (error) => { clearTimeout(timer); reject(error); });
     worker.once("exit", () => { clearTimeout(timer); reject(new Error("채점 실행이 중단되었습니다.")); });
   });
+  if (!checkRequirements) return { ...result, requirement_passed: null, requirement_feedback: "" };
   const requirements = checkCodeRequirements(code, problem.codeRequirements);
-  if (result.status === "accepted" && !requirements.passed) return { ...result, status: "code_requirement_failed", feedback: requirements.feedback };
-  return result;
+  return { ...result, requirement_passed: requirements.passed, requirement_feedback: requirements.feedback };
 }

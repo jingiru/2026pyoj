@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
     if (error) throw error;
     const challenge = data as Challenge;
     const submissions = await allRows<ChallengeSubmission>((from, to) => db.from("challenge_submissions")
-      .select("id,participant_id,challenge_id,problem_id,status,received_at,feedback,passed_count,total_count")
+      .select("id,participant_id,challenge_id,problem_id,status,received_at,feedback,passed_count,total_count,requirement_passed,requirement_feedback")
       .eq("challenge_id", id).eq("participant_id", participant.id).order("received_at").order("id").range(from, to));
     const bonusScores = await allRows<ChallengeBonusScore>((from, to) => db.from("challenge_bonus_scores").select("challenge_id,participant_id,criterion_id,score")
       .eq("challenge_id", id).eq("participant_id", participant.id).range(from, to));
@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
     if (challenge.show_leaderboard && challenge.started_at) {
       const [participants, accepted] = await Promise.all([
         allRows((from, to) => db.from("challenge_participants").select("id,student_no,name").eq("challenge_id", id).order("id").range(from, to)),
-        allRows((from, to) => db.from("challenge_submissions").select("id,participant_id,problem_id,status,received_at").eq("challenge_id", id).eq("status", "accepted").order("received_at").order("id").range(from, to))
+        allRows((from, to) => db.from("challenge_submissions").select("id,participant_id,problem_id,status,received_at,requirement_passed").eq("challenge_id", id).eq("status", "accepted").order("received_at").order("id").range(from, to))
       ]);
       leaderboard = { participants, submissions: accepted };
     }

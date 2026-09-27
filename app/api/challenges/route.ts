@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     }
     const [participants, submissions, bonusScores] = await Promise.all([
       allRows<ChallengeParticipant>((from, to) => db.from("challenge_participants").select("id,challenge_id,student_no,name,joined_at").eq("challenge_id", id).order("student_no").order("id").range(from, to)),
-      allRows<ChallengeSubmission>((from, to) => db.from("challenge_submissions").select("id,participant_id,challenge_id,problem_id,status,received_at,passed_count,total_count").eq("challenge_id", id).order("received_at").order("id").range(from, to)),
+      allRows<ChallengeSubmission>((from, to) => db.from("challenge_submissions").select("id,participant_id,challenge_id,problem_id,status,received_at,passed_count,total_count,requirement_passed,requirement_feedback").eq("challenge_id", id).order("received_at").order("id").range(from, to)),
       allRows<ChallengeBonusScore>((from, to) => db.from("challenge_bonus_scores").select("challenge_id,participant_id,criterion_id,score").eq("challenge_id", id).range(from, to))
     ]);
     return NextResponse.json({ ok: true, challenge, participants, submissions, bonusScores, serverNow: new Date().toISOString() });
@@ -92,7 +92,8 @@ export async function POST(request: NextRequest) {
       if (snapshots.some((problem: typeof problems[number] | undefined) => !problem || !problem.testCases.length)) return fail(new Error("선택한 문제에 채점 테스트가 없습니다."));
       for (let attempt = 0; attempt < 3; attempt++) {
         const { data, error } = await db.from("challenges").insert({ title: body.title.trim(), duration_minutes: body.minutes,
-          show_leaderboard: body.showLeaderboard === true, entry_code: generateChallengeEntryCode(), problem_snapshots: snapshots, scoring, bonus_criteria: bonusCriteria }).select("*").single();
+          show_leaderboard: body.showLeaderboard === true, entry_code: generateChallengeEntryCode(), problem_snapshots: snapshots, scoring, bonus_criteria: bonusCriteria,
+          enforce_code_requirements: body.enforceCodeRequirements === true, show_code_requirement_status: body.enforceCodeRequirements === true && body.showCodeRequirementStatus === true }).select("*").single();
         if (!error) return NextResponse.json({ ok: true, challenge: data });
         if (error.code !== "23505") throw error;
       }

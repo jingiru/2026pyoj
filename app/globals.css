@@ -429,6 +429,8 @@ button {
 .challengeSolveGrid .problemItem { width: 100%; padding: 10px 8px; margin-top: 8px; }
 .challengeSolveGrid .problemItem strong { font-size: 12px; }
 .challengeSolveGrid .problemItem small { display: block; margin-top: 3px; color: var(--muted); font-size: 11px; }
+.challengeSolveGrid .problemItem.requirementWarning { position: relative; }
+.challengeSolveGrid .problemItem.requirementWarning > i { position: absolute; top: -8px; right: -7px; display: grid; place-items: center; width: 20px; height: 20px; border: 2px solid var(--panel); border-radius: 50%; background: #dc2626; color: white; font-size: 13px; font-style: normal; font-weight: 900; line-height: 1; box-shadow: 0 2px 7px rgba(185, 28, 28, .32); }
 .challengeSolveGrid .workspace { grid-template-columns: minmax(290px, .9fr) minmax(420px, 1.1fr); gap: 16px; }
 .challengeSolveGrid .problemPane { padding: 22px; }
 .challengeIde { display: block; min-width: 0; overflow: hidden; }
@@ -530,6 +532,8 @@ label.challengeCheckbox { display: flex; flex-direction: row; align-items: cente
 .challengeBonusCriterion label { margin: 0; }
 .challengeBonusCriterion small { display: block; color: var(--muted); }
 .challengeScoringSummary { border-radius: 8px; background: color-mix(in srgb, var(--primary) 9%, var(--panel)); padding: 13px; text-align: center; font-weight: 800; }
+.challengeRequirementOptions .challengeCheckbox:has(input:disabled) { opacity: .48; }
+.challengeRequirementOptions > .helperText { margin: 8px 8px 0; }
 .challengeHistory { display: grid; gap: 20px; }
 .challengeHistory pre { background: var(--bg); color: var(--ink); padding: 14px; white-space: pre-wrap; overflow-wrap: anywhere; border-radius: 6px; }
 .loginModal.challengeCodeModal { max-width: 690px; text-align: center; }
