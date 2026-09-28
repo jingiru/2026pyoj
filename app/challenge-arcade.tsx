@@ -106,8 +106,8 @@ function DirectionPad({ onMove, drop = false }: { onMove: (direction: Direction)
 
 type NestBall = { id: number; x: number; y: number; vx: number; vy: number; level: number; radius: number; born: number };
 const NEST_RADII = [13, 17, 21, 26, 32, 39, 47, 56, 65, 74, 84];
-const NEST_LEFT = 28, NEST_RIGHT = 392, NEST_FLOOR = 515, NEST_LINE = 92;
-function randomNestLevel() { const roll = Math.random(); return roll < .24 ? 0 : roll < .48 ? 1 : roll < .68 ? 2 : roll < .86 ? 3 : 4; }
+const NEST_LEFT = 12, NEST_RIGHT = 408, NEST_FLOOR = 515, NEST_LINE = 92;
+function randomNestLevel() { const roll = Math.random(); return roll < .56 ? 0 : roll < .84 ? 1 : roll < .96 ? 2 : 3; }
 
 function PythonNestGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null); const ballsRef = useRef<NestBall[]>([]); const previewRef = useRef(210); const nextRef = useRef(0); const idRef = useRef(1); const runningRef = useRef(true); const cooldownRef = useRef(false);
