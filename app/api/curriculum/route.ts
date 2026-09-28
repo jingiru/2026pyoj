@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
       ? await isValidGuestToken(supabase, guestToken)
       : false;
     const studentClassId = !isGuest && studentId ? await getStudentClassId(supabase, studentId) : null;
-    const curriculum = await loadCurriculum(supabase, !isGuest, studentClassId);
+    const curriculum = await loadCurriculum(supabase, !isGuest, studentClassId, isGuest);
     return NextResponse.json({ ok: true, ...curriculum });
   } catch (error) {
     console.error("[Curriculum]", error);

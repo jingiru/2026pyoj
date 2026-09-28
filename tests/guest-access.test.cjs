@@ -41,7 +41,7 @@ function queryReturning(data, error = null) {
   return query;
 }
 
-test("valid guests receive the full curriculum, including unpublished and class-scoped problems", async () => {
+test("valid guests receive unpublished and class-scoped problems but exclude evaluation problems", async () => {
   const { NextRequest } = require("next/server");
   const calls = [];
   const db = { from: table => {
@@ -67,6 +67,7 @@ test("valid guests receive the full curriculum, including unpublished and class-
   assert.equal(calls.length, 1);
   assert.equal(calls[0][1], false);
   assert.equal(calls[0][2], null);
+  assert.equal(calls[0][3], true);
 });
 
 test("logged-in students receive only problems published to their class", async () => {
@@ -91,6 +92,7 @@ test("logged-in students receive only problems published to their class", async 
   assert.equal(response.status, 200);
   assert.equal(calls[0][1], true);
   assert.equal(calls[0][2], "1-2");
+  assert.equal(calls[0][3], false);
 });
 
 test("guests can solve unpublished and class-scoped problems", () => {

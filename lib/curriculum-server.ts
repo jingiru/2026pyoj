@@ -26,7 +26,8 @@ type ProblemRow = {
 export async function loadCurriculum(
   supabase: SupabaseClient,
   publishedOnly: boolean,
-  studentClassId?: string | null
+  studentClassId?: string | null,
+  excludeEvaluationProblems = false
 ) {
   let bookQuery = supabase
     .from("problem_books")
@@ -46,6 +47,10 @@ export async function loadCurriculum(
     problemQuery = studentClassId
       ? problemQuery.or(`visibility_scope.eq.all,visible_class_ids.cs.["${studentClassId}"]`)
       : problemQuery.eq("visibility_scope", "all");
+  }
+
+  if (excludeEvaluationProblems) {
+    problemQuery = problemQuery.not("id", "like", "평가%");
   }
 
   const [{ data: bookRows, error: bookError }, { data: problemRows, error: problemError }] =
