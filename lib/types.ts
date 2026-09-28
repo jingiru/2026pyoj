@@ -24,6 +24,7 @@ export type CodeRequirement =
   | { type: "operators"; values: Array<"+" | "-" | "*" | "/" | "//" | "%"> }
   | { type: "forbidden_keywords"; values: Array<"if" | "for" | "while"> }
   | { type: "assigned_output" }
+  | { type: "assigned_string"; name: string; value: string }
   | { type: "reassignment" }
   | { type: "for_range" }
   | { type: "for_list" }

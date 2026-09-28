@@ -104,6 +104,15 @@ function checkRequirement(
         ? ""
         : "값을 변수에 저장한 뒤, 그 변수를 사용해 출력해주세요.";
 
+    case "assigned_string":
+      return outputDependsOnAssignedString(
+        facts,
+        requirement.name,
+        requirement.value
+      )
+        ? ""
+        : `변수 ${requirement.name}에 문자열 "${requirement.value}"만 저장한 뒤 출력에 사용해주세요.`;
+
     case "reassignment":
       return outputDependsOnReassignment(facts)
         ? ""
@@ -637,6 +646,72 @@ function outputDependsOnAssignment(
 
     return depends;
   });
+}
+
+/**
+ * 지정한 변수에 정확한 문자열 리터럴을 저장하고, 그 변수를 print()에서
+ * 직접 사용하는지 검사한다. 출력 전에 같은 변수를 다시 대입했다면 가장
+ * 최근 대입만 판정하므로 앞에 정답 값을 미리 넣는 방식으로 우회할 수 없다.
+ */
+function outputDependsOnAssignedString(
+  facts: CodeFacts,
+  variableName: string,
+  expectedValue: string
+) {
+  return facts.printCalls.some((printCall) => {
+    const args = printCall.children.find(
+      (child) => child.name === "ArgList"
+    );
+
+    if (!args) return false;
+
+    let passed = false;
+
+    walk(args, (node) => {
+      if (
+        passed ||
+        node.name !== "VariableName" ||
+        node.parent?.name === "CallExpression" ||
+        facts.source.slice(node.from, node.to) !== variableName
+      ) {
+        return;
+      }
+
+      const assignment = latestAssignment(
+        variableName,
+        printCall.from,
+        facts.assignments
+      );
+
+      if (!assignment) return;
+
+      const assignedSource = facts.source
+        .slice(assignment.value.from, assignment.value.to)
+        .trim();
+
+      passed = stringLiteralValue(assignedSource) === expectedValue;
+    });
+
+    return passed;
+  });
+}
+
+function stringLiteralValue(source: string) {
+  const quote = source[0];
+
+  if (
+    (quote !== "\"" && quote !== "'") ||
+    source.length < 2 ||
+    source.at(-1) !== quote
+  ) {
+    return undefined;
+  }
+
+  const value = source.slice(1, -1);
+
+  // 초급 문제의 단순 문자열 리터럴만 대상으로 하며 이스케이프 표현은
+  // 실제 문자로 변환하지 않는다. 따라서 "Q"와 "\\x51"은 구분된다.
+  return value;
 }
 
 /**

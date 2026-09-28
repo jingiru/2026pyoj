@@ -62,3 +62,32 @@ test('evaluation 7-1-08 requires while and rejects for alternatives', () => {
     requirements
   ).passed, false);
 });
+
+test('assigned_string requires the exact string in the named output variable', () => {
+  const requirements = [
+    { type: 'assigned_output' },
+    { type: 'operators', values: ['*'] },
+    { type: 'assigned_string', name: 'letter', value: 'Q' }
+  ];
+
+  assert.equal(checkCodeRequirements(
+    'letter = "Q"\nprint((letter + " ") * 72)',
+    requirements
+  ).passed, true);
+  assert.equal(checkCodeRequirements(
+    "letter = 'Q'\nprint((letter + ' ') * 72)",
+    requirements
+  ).passed, true);
+  assert.equal(checkCodeRequirements(
+    'letter = "Q "\nprint(letter * 72)',
+    requirements
+  ).passed, false);
+  assert.equal(checkCodeRequirements(
+    'letter = "Q"\nletter = "Q "\nprint(letter * 72)',
+    requirements
+  ).passed, false);
+  assert.equal(checkCodeRequirements(
+    'letter = "Q"\nother = "Q "\nprint(other * 72)',
+    requirements
+  ).passed, false);
+});
