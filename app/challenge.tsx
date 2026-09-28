@@ -44,6 +44,72 @@ function ChallengeTimer({ challenge, now, large = false, onTripleClick }: { chal
   return <div className={`challengeTimer ${phase === "ended" ? "ended" : ""} ${large ? "large" : ""} ${secretEnabled ? "secretEnabled" : ""}`} role="timer" aria-label={`남은 시간 ${remainingLabel(challenge, now)}`} onClick={event => { if (secretEnabled && event.detail === 3) onTripleClick?.(); }}><Clock3 aria-hidden="true" /><span>{remainingLabel(challenge, now)}</span></div>;
 }
 
+function useTeacherTimerAudio(challenge: Challenge | undefined, now: number) {
+  const audioContext = useRef<AudioContext | null>(null);
+  const audioEnabled = useRef(false);
+  const lastTick = useRef<{ timer: string; seconds: number } | null>(null);
+
+  const enableAudio = useCallback(() => {
+    audioEnabled.current = true;
+    try {
+      const context = audioContext.current ?? new AudioContext();
+      audioContext.current = context;
+      if (context.state === "suspended") void context.resume();
+    } catch {
+      // Speech may still work when Web Audio is unavailable.
+    }
+  }, []);
+
+  const beep = useCallback((duration: number, frequency: number) => {
+    const context = audioContext.current;
+    if (!audioEnabled.current || !context || context.state === "closed") return;
+    if (context.state === "suspended") void context.resume();
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    const start = context.currentTime;
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(frequency, start);
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.exponentialRampToValueAtTime(0.28, start + 0.012);
+    gain.gain.setValueAtTime(0.28, Math.max(start + 0.012, start + duration - 0.035));
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+    oscillator.connect(gain).connect(context.destination);
+    oscillator.start(start);
+    oscillator.stop(start + duration);
+  }, []);
+
+  useEffect(() => {
+    if (!challenge?.started_at || !challenge.ends_at) { lastTick.current = null; return; }
+    const end = Date.parse(challenge.ends_at);
+    if (!Number.isFinite(end)) return;
+    const seconds = Math.max(0, Math.floor((end - now) / 1_000));
+    const timer = `${challenge.id}:${challenge.ends_at}`;
+    const previous = lastTick.current;
+    lastTick.current = { timer, seconds };
+    if (!previous || previous.timer !== timer || seconds >= previous.seconds || !audioEnabled.current) return;
+
+    if (previous.seconds > 30 && seconds <= 30) {
+      const utterance = new SpeechSynthesisUtterance("30초 남았습니다");
+      utterance.lang = "ko-KR";
+      utterance.rate = 0.95;
+      const koreanVoice = window.speechSynthesis.getVoices().find(voice => voice.lang.toLowerCase().startsWith("ko"));
+      if (koreanVoice) utterance.voice = koreanVoice;
+      window.speechSynthesis.speak(utterance);
+    }
+    if (seconds >= 1 && seconds <= 10) beep(0.12, 880);
+    if (previous.seconds > 0 && seconds === 0) beep(1.2, 740);
+  }, [beep, challenge, now]);
+
+  useEffect(() => () => {
+    window.speechSynthesis.cancel();
+    const context = audioContext.current;
+    audioContext.current = null;
+    if (context && context.state !== "closed") void context.close();
+  }, []);
+
+  return enableAudio;
+}
+
 export default function ChallengeExperience({ mode, student, colorMode, onMode, onClose, CodeEditor, ProblemPane }: { mode: Mode; student: Student | null; colorMode: "light" | "dark"; onMode: (mode: Mode) => void; onClose: () => void; CodeEditor: ComponentType<EditorProps>; ProblemPane: ComponentType<PaneProps> }) {
   const [teacherEntry, setTeacherEntry] = useState(false);
   const [entryCode, setEntryCode] = useState("");
@@ -180,6 +246,7 @@ function ChallengeManager({ onReauthenticate }: { onReauthenticate: () => void }
   const [problemScoreMap, setProblemScoreMap] = useState<Record<string, number>>({}); const [scoringMode, setScoringMode] = useState<"problem_points" | "correct_count" | "grouped_correct_count">("problem_points"); const [baseScore, setBaseScore] = useState(4); const [additionalScore, setAdditionalScore] = useState(1); const [scoreGroups, setScoreGroups] = useState<ChallengeScoringGroup[]>([]); const [allowRequirementFailure, setAllowRequirementFailure] = useState(false); const [showCodeRequirementStatus, setShowCodeRequirementStatus] = useState(false); const [bonusEnabled, setBonusEnabled] = useState(false); const [bonusCriteria, setBonusCriteria] = useState<BonusCriterion[]>([]);
   const [title, setTitle] = useState(""); const [minutes, setMinutes] = useState(40); const [extra, setExtra] = useState(5); const [publicBoard, setPublicBoard] = useState(false); const [creating, setCreating] = useState(false); const [editingId, setEditingId] = useState<string | null>(null); const [deleteOpen, setDeleteOpen] = useState(false); const [scoringConfigOpen, setScoringConfigOpen] = useState(false); const [search, setSearch] = useState(""); const [error, setError] = useState(""); const [busy, setBusy] = useState(false); const [now, setNow] = useState(Date.now()); const [confirmation, setConfirmation] = useState<"start" | "extend" | null>(null); const [entryCodeOpen, setEntryCodeOpen] = useState(false); const [copied, setCopied] = useState(false); const [timerFullscreen, setTimerFullscreen] = useState(false); const [exportOpen, setExportOpen] = useState(false); const [exportOptions, setExportOptions] = useState<ExportOptions>({ includeFirstSolver: false, includeSubmissionTimes: false, includeAttemptCounts: false });
   const clock = useRef({ server: Date.now(), local: 0 }); const [history, setHistory] = useState<{ title: string; rows: ChallengeSubmission[] } | null>(null); const requestVersion = useRef(0); const fullscreenRef = useRef<HTMLDivElement>(null);
+  const enableTimerAudio = useTeacherTimerAudio(board?.challenge, now);
   useEffect(() => { if (board) setMinutes(board.challenge.duration_minutes); }, [board?.challenge.id]);
   useEffect(() => { const listener = () => { if (!document.fullscreenElement) setTimerFullscreen(false); }; document.addEventListener("fullscreenchange", listener); return () => document.removeEventListener("fullscreenchange", listener); }, []);
   const loadList = useCallback(async () => { const data = await api<{ challenges: Challenge[] }>("/api/challenges"); setChallenges(data.challenges); setSelected(old => old || data.challenges[0]?.id || ""); }, []);
@@ -194,7 +261,7 @@ function ChallengeManager({ onReauthenticate }: { onReauthenticate: () => void }
   async function create(event?: FormEvent, confirmed = false) { event?.preventDefault(); if (!confirmed) { setProblemScoreMap(scores => Object.fromEntries(chosen.map(id => [id, scores[id] ?? 1]))); if (scoringMode === "grouped_correct_count") { const assigned = scoreGroups.flatMap(group => group.problem_ids); if (assigned.length !== chosen.length || chosen.some(id => !assigned.includes(id))) { const values = [...new Set(chosen.map(id => problemScoreMap[id] ?? 1))].sort((a, b) => a - b); setScoreGroups(values.map(points => ({ id: crypto.randomUUID(), label: `${scoreLabel(points)}점 문제`, problem_ids: chosen.filter(id => (problemScoreMap[id] ?? 1) === points), base_score: 4, free_correct_count: 1, points_per_additional: points }))); } } setScoringConfigOpen(true); return; } setBusy(true); setError(""); try { const scoring = scoringMode === "problem_points" ? { mode: scoringMode } : scoringMode === "correct_count" ? { mode: scoringMode, base_score: baseScore, points_per_additional: additionalScore } : { mode: scoringMode, groups: scoreGroups }; const data = await api<{ challenge: Challenge }>("/api/challenges", { action: editingId ? "update" : "create", id: editingId, title, minutes, problemIds: chosen, problemPoints: chosen.map(id => ({ id, points: problemScoreMap[id] ?? 1 })), scoring, allowRequirementFailure, showCodeRequirementStatus, bonusCriteria: bonusEnabled ? bonusCriteria : [], showLeaderboard: publicBoard }); await loadList(); setSelected(data.challenge.id); setCreating(false); setScoringConfigOpen(false); setEditingId(null); setChosen([]); setProblemScoreMap({}); setScoreGroups([]); setAllowRequirementFailure(false); setShowCodeRequirementStatus(false); setBonusCriteria([]); setBonusEnabled(false); setTitle(""); if (editingId) await refresh(); } catch (caught) { setError(message(caught)); } finally { setBusy(false); } }
   async function openEdit() { if (!board) return; setError(""); setBusy(true); try { const data = await api<{ books: ProblemBook[]; problems: Problem[] }>("/api/teacher-problems"); const challenge = board.challenge; setBooks(data.books); setProblems(data.problems); setEditingId(challenge.id); setTitle(challenge.title); setMinutes(challenge.duration_minutes); setPublicBoard(challenge.show_leaderboard); setChosen(challenge.problem_snapshots.map(problem => problem.id)); setProblemScoreMap(Object.fromEntries(challenge.problem_snapshots.map(problem => [problem.id, problemPoints(problem)]))); const scoring = challenge.scoring; setScoringMode(scoring?.mode ?? "problem_points"); setBaseScore(scoring?.mode === "correct_count" ? scoring.base_score : 4); setAdditionalScore(scoring?.mode === "correct_count" ? scoring.points_per_additional : 1); setScoreGroups(scoring?.mode === "grouped_correct_count" ? scoring.groups : []); setAllowRequirementFailure(challenge.allow_requirement_failure === true); setShowCodeRequirementStatus(challenge.show_code_requirement_status === true); setBonusCriteria(challenge.bonus_criteria ?? []); setBonusEnabled(Boolean(challenge.bonus_criteria?.length)); const first = challenge.problem_snapshots[0]; setPickerBook(first?.bookId ?? data.books[0]?.id ?? ""); setPickerGroup(first ? problemGroup(first, data.books.find(book => book.id === first.bookId)).key : ""); setCreating(true); } catch (caught) { setError(message(caught)); } finally { setBusy(false); } }
   async function deleteChallenge() { if (!board) return; setBusy(true); setError(""); try { await api("/api/challenges", { action: "delete", id: board.challenge.id }); setDeleteOpen(false); setBoard(null); const data = await api<{ challenges: Challenge[] }>("/api/challenges"); setChallenges(data.challenges); setSelected(data.challenges[0]?.id ?? ""); } catch (caught) { setError(message(caught)); } finally { setBusy(false); } }
-  async function control() { if (!board || !confirmation) return; setBusy(true); setError(""); try { await api("/api/challenges", { action: confirmation, id: board.challenge.id, minutes: confirmation === "start" ? minutes : extra }); setConfirmation(null); await refresh(); await loadList(); } catch (caught) { setError(message(caught)); } finally { setBusy(false); } }
+  async function control() { if (!board || !confirmation) return; enableTimerAudio(); setBusy(true); setError(""); try { await api("/api/challenges", { action: confirmation, id: board.challenge.id, minutes: confirmation === "start" ? minutes : extra }); setConfirmation(null); await refresh(); await loadList(); } catch (caught) { setError(message(caught)); } finally { setBusy(false); } }
   async function inspect(participant: ChallengeParticipant, problem: Problem) { try { const data = await api<{ submissions: ChallengeSubmission[] }>(`/api/challenges?id=${selected}&participantId=${participant.id}&problemId=${encodeURIComponent(problem.id)}`); setHistory({ title: `${participant.student_no} ${participant.name} · ${problem.title}`, rows: data.submissions }); } catch (caught) { setError(message(caught)); } }
   async function setBonusScore(participantId: string, criterionId: string, score: number) { if (!board) return; try { const result = await api<{ bonusScore: ChallengeBonusScore }>("/api/challenges", { action: "set_bonus_score", id: board.challenge.id, participantId, criterionId, score }); setBoard(current => current ? { ...current, bonusScores: [...current.bonusScores.filter(row => !(row.participant_id === participantId && row.criterion_id === criterionId)), result.bonusScore] } : current); } catch (caught) { setError(message(caught)); } }
   async function setBulkBonusScore(participantIds: string[], criterionId: string, score: number) { if (!board || !participantIds.length) return; setBusy(true); setError(""); try { const result = await api<{ bonusScores: ChallengeBonusScore[] }>("/api/challenges", { action: "set_bonus_scores", id: board.challenge.id, participantIds, criterionId, score }); const changed = new Set(result.bonusScores.map(row => `${row.participant_id}:${row.criterion_id}`)); setBoard(current => current ? { ...current, bonusScores: [...current.bonusScores.filter(row => !changed.has(`${row.participant_id}:${row.criterion_id}`)), ...result.bonusScores] } : current); } catch (caught) { setError(message(caught)); } finally { setBusy(false); } }
@@ -225,7 +292,7 @@ function ChallengeManager({ onReauthenticate }: { onReauthenticate: () => void }
     if (resizing.column === "book") setBookColumnWidth(Math.max(180, Math.min(440, nextWidth))); else setGroupColumnWidth(Math.max(140, Math.min(360, nextWidth)));
   }
   const phase = board ? challengePhase(board.challenge, now) : "waiting";
-  return <section className="challengeManager"><header className="challengeBar"><div><span className="pill">교사 관리</span><h1>챌린지 관리</h1></div>{board && <div className="challengeTeacherTimer"><ChallengeTimer challenge={board.challenge} now={now} /><button className="iconButton" title="타이머 전체화면" aria-label="타이머 전체화면" onClick={() => void showFullscreenTimer()}><Expand size={19} /></button></div>}<button className="primaryButton" onClick={() => void openCreate()} disabled={busy}>새 챌린지 생성</button><button className="ghostButton" onClick={async () => { await api("/api/teacher-logout", {}); onReauthenticate(); }}>관리 로그아웃</button></header>
+  return <section className="challengeManager" onPointerDown={enableTimerAudio}><header className="challengeBar"><div><span className="pill">교사 관리</span><h1>챌린지 관리</h1></div>{board && <div className="challengeTeacherTimer"><ChallengeTimer challenge={board.challenge} now={now} /><button className="iconButton" title="타이머 전체화면" aria-label="타이머 전체화면" onClick={() => void showFullscreenTimer()}><Expand size={19} /></button></div>}<button className="primaryButton" onClick={() => void openCreate()} disabled={busy}>새 챌린지 생성</button><button className="ghostButton" onClick={async () => { await api("/api/teacher-logout", {}); onReauthenticate(); }}>관리 로그아웃</button></header>
     {error && <div className="modalError" role="alert">{error}{error.includes("인증") && <button className="ghostButton" onClick={onReauthenticate}>교사 인증</button>}</div>}
     <label className="challengeSelect">챌린지 선택<select value={selected} onChange={event => { setSelected(event.target.value); const challenge = challenges.find(item => item.id === event.target.value); if (challenge) setMinutes(challenge.duration_minutes); }}><option value="" disabled>챌린지를 선택하세요</option>{challenges.map(challenge => <option key={challenge.id} value={challenge.id}>{challenge.title} · {challenge.entry_code}</option>)}</select></label>
     {!challenges.length && !error && <div className="challengeWaiting"><Trophy size={40} /><h2>첫 챌린지를 만들어보세요.</h2><p>문제를 고르고 제한시간을 설정하면 입장코드가 생성됩니다.</p></div>}
