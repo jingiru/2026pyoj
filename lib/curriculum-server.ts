@@ -50,6 +50,7 @@ export async function loadCurriculum(
   }
 
   if (excludeEvaluationProblems) {
+    bookQuery = bookQuery.not("id", "like", "평가%");
     problemQuery = problemQuery.not("id", "like", "평가%");
   }
 

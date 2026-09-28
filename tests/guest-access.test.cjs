@@ -95,6 +95,55 @@ test("logged-in students receive only problems published to their class", async 
   assert.equal(calls[0][3], false);
 });
 
+test("guest curriculum excludes both evaluation books and their problems", async () => {
+  const filters = [];
+  const rows = {
+    problem_books: [{ id: "01" }],
+    problems: [{
+      id: "1-1-01",
+      book_id: "01",
+      title: "연습 문제",
+      statement: "문제",
+      input_description: "입력",
+      output_description: "출력",
+      starter_code: "",
+      hint: "",
+      code_requirements: [],
+      sort_order: 1,
+      is_published: true,
+      visibility_scope: "all",
+      visible_class_ids: [],
+      test_cases: []
+    }]
+  };
+  const supabase = {
+    from(table) {
+      const query = {
+        select: () => query,
+        order: () => query,
+        eq: () => query,
+        or: () => query,
+        not(column, operator, value) {
+          filters.push([table, column, operator, value]);
+          return query;
+        },
+        then(resolve) {
+          return Promise.resolve({ data: rows[table], error: null }).then(resolve);
+        }
+      };
+      return query;
+    }
+  };
+  const { loadCurriculum } = load("lib/curriculum-server.ts");
+
+  await loadCurriculum(supabase, false, null, true);
+
+  assert.deepEqual(filters, [
+    ["problem_books", "id", "like", "평가%"],
+    ["problems", "id", "like", "평가%"]
+  ]);
+});
+
 test("guests can solve unpublished and class-scoped problems", () => {
   const { canAccessPracticeProblem } = load("lib/problem-access.ts", {
     "./student-class": { getStudentClassId: () => null }
