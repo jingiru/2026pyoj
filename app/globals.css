@@ -496,6 +496,10 @@ button {
 .challengeResults th, .challengeResults td { padding: 12px; border-bottom: 1px solid var(--line); text-align: center; white-space: nowrap; }
 .challengeResults thead { background: color-mix(in srgb, var(--primary) 5%, var(--panel)); }
 .challengeResults th small { display: inline-block; max-width: 150px; overflow: hidden; text-overflow: ellipsis; font-weight: 400; }
+.challengeProblemHeader { position: relative; }
+.challengeProblemHeader::after { content: attr(data-preview); position: absolute; left: 0; top: calc(100% - 2px); z-index: 20; display: none; width: min(520px, calc(100vw - 48px)); max-height: 120px; overflow: hidden; border: 1px solid color-mix(in srgb, var(--primary) 38%, var(--line)); border-radius: 8px; background: var(--panel); color: var(--ink); padding: 10px 12px; box-shadow: 0 8px 24px rgb(15 23 42 / 18%); font-size: 13px; font-weight: 400; line-height: 1.45; text-align: left; white-space: pre-line; }
+.challengeProblemHeader.alignEnd::after { left: auto; right: 0; }
+.challengeProblemHeader:hover::after { display: block; }
 .challengeCell { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; border: 0; background: transparent; color: inherit; width: 100%; min-height: 64px; padding: 0; font-size: 13px; }
 .challengeCell small { color: var(--muted); }
 .challengeAccepted { background: color-mix(in srgb, #22c55e 10%, var(--panel)); }
