@@ -6,15 +6,15 @@ import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Bug, Code2, Gamepad2, Rotate
 type GameId = "merge" | "nest" | "snake";
 
 const PYTHON_LEVELS = [
-  { icon: "💬", name: "print", code: 'print("Hi")' },
-  { icon: "🧩", name: "조건문", code: "if ready:" },
-  { icon: "🔁", name: "반복문", code: "for item in data:" },
-  { icon: "⚙️", name: "함수", code: "def solve():" },
-  { icon: "📦", name: "모듈", code: "import tools" },
-  { icon: "🗂️", name: "패키지", code: "from app import *" },
-  { icon: "🎮", name: "게임", code: "run(game)" },
-  { icon: "🚀", name: "로켓", code: "launch()" },
-  { icon: "🌌", name: "우주", code: "import universe" },
+  { icon: "💬", name: "print" },
+  { icon: "🧩", name: "조건문" },
+  { icon: "🔁", name: "반복문" },
+  { icon: "⚙️", name: "함수" },
+  { icon: "📦", name: "모듈" },
+  { icon: "🗂️", name: "패키지" },
+  { icon: "🎮", name: "게임" },
+  { icon: "🚀", name: "로켓" },
+  { icon: "🌌", name: "우주" },
 ] as const;
 
 const NEST_LEVELS = [
@@ -23,8 +23,12 @@ const NEST_LEVELS = [
   { icon: "🐍", name: "코딩 뱀", color: "#bbf7d0" },
   { icon: "🔁", name: "루프 뱀", color: "#86efac" },
   { icon: "🔎", name: "디버거", color: "#fde68a" },
+  { icon: "⌨️", name: "코드 장인", color: "#fdba74" },
+  { icon: "🤖", name: "자동화 뱀", color: "#f9a8d4" },
   { icon: "🧙", name: "파이썬 마법사", color: "#c4b5fd" },
+  { icon: "🧠", name: "AI 파이썬", color: "#a5b4fc" },
   { icon: "🚀", name: "우주 파이썬", color: "#93c5fd" },
+  { icon: "🌌", name: "전설의 파이썬", color: "#67e8f9" },
 ] as const;
 
 export default function ChallengeArcade() {
@@ -48,42 +52,50 @@ function ArcadeFrame({ title, onBack, children }: { title: string; onBack: () =>
 
 type Direction = "left" | "right" | "up" | "down";
 
-function emptyMergeGrid() { return Array<number>(16).fill(0); }
-function addMergeTile(grid: number[]) {
-  const empty = grid.map((value, index) => value === 0 ? index : -1).filter(index => index >= 0);
-  if (!empty.length) return grid;
-  const next = [...grid]; next[empty[Math.floor(Math.random() * empty.length)]] = Math.random() < .86 ? 1 : 2; return next;
+type MergeTile = { id: number; level: number; index: number; effect?: "spawn" | "merge" };
+type MergeGroup = { sources: MergeTile[]; level: number; index: number };
+
+function addMergeTile(tiles: MergeTile[], nextId: () => number): MergeTile[] {
+  const occupied = new Set(tiles.map(tile => tile.index)); const empty = Array.from({ length: 16 }, (_, index) => index).filter(index => !occupied.has(index));
+  if (!empty.length) return tiles;
+  return [...tiles, { id: nextId(), index: empty[Math.floor(Math.random() * empty.length)], level: Math.random() < .86 ? 1 : 2, effect: "spawn" as const }];
 }
-function startMergeGrid() { return addMergeTile(addMergeTile(emptyMergeGrid())); }
-function moveMergeGrid(grid: number[], direction: Direction) {
-  const next = Array<number>(16).fill(0); let gained = 0;
+function moveMergeTiles(tiles: MergeTile[], direction: Direction) {
+  const moving: MergeTile[] = []; const groups: MergeGroup[] = []; let gained = 0;
   const indexAt = (line: number, spot: number) => direction === "left" ? line * 4 + spot : direction === "right" ? line * 4 + (3 - spot) : direction === "up" ? spot * 4 + line : (3 - spot) * 4 + line;
   for (let line = 0; line < 4; line++) {
-    const values = Array.from({ length: 4 }, (_, spot) => grid[indexAt(line, spot)]).filter(Boolean);
-    const merged: number[] = [];
-    for (let spot = 0; spot < values.length; spot++) {
-      if (values[spot] === values[spot + 1]) { const level = Math.min(PYTHON_LEVELS.length, values[spot] + 1); merged.push(level); gained += 2 ** level; spot++; }
-      else merged.push(values[spot]);
+    const lineTiles = Array.from({ length: 4 }, (_, spot) => tiles.find(tile => tile.index === indexAt(line, spot))).filter((tile): tile is MergeTile => Boolean(tile));
+    const lineGroups: MergeGroup[] = [];
+    for (const tile of lineTiles) {
+      const previous = lineGroups.at(-1);
+      if (previous && previous.sources.length === 1 && previous.level === tile.level) {
+        previous.sources.push(tile); previous.level = Math.min(PYTHON_LEVELS.length, tile.level + 1); gained += 2 ** previous.level;
+      } else lineGroups.push({ sources: [tile], level: tile.level, index: indexAt(line, lineGroups.length) });
     }
-    merged.forEach((value, spot) => { next[indexAt(line, spot)] = value; });
+    groups.push(...lineGroups);
   }
-  const changed = next.some((value, index) => value !== grid[index]);
-  return { grid: changed ? addMergeTile(next) : grid, gained, changed };
+  for (const group of groups) for (const tile of group.sources) moving.push({ ...tile, index: group.index, effect: undefined });
+  const final = groups.map(group => ({ id: group.sources[0].id, level: group.level, index: group.index, effect: group.sources.length > 1 ? "merge" as const : undefined }));
+  const changed = moving.some(tile => tile.index !== tiles.find(item => item.id === tile.id)?.index) || final.length !== tiles.length;
+  return { moving, final, gained, changed };
 }
-function canMoveMerge(grid: number[]) {
-  if (grid.includes(0)) return true;
-  return grid.some((value, index) => (index % 4 < 3 && value === grid[index + 1]) || (index < 12 && value === grid[index + 4]));
+function canMoveMerge(tiles: MergeTile[]) {
+  if (tiles.length < 16) return true; const levels = new Map(tiles.map(tile => [tile.index, tile.level]));
+  return tiles.some(tile => (tile.index % 4 < 3 && tile.level === levels.get(tile.index + 1)) || (tile.index < 12 && tile.level === levels.get(tile.index + 4)));
 }
 
 function CodeMergeGame() {
-  const [grid, setGrid] = useState(startMergeGrid); const [score, setScore] = useState(0); const touch = useRef<{ x: number; y: number } | null>(null);
-  const move = useCallback((direction: Direction) => setGrid(current => { const result = moveMergeGrid(current, direction); if (result.gained) setScore(value => value + result.gained); return result.grid; }), []);
+  const idRef = useRef(1); const timerRef = useRef<number | null>(null); const lockedRef = useRef(false); const nextId = () => idRef.current++;
+  const makeStart = () => addMergeTile(addMergeTile([], nextId), nextId);
+  const [tiles, setTiles] = useState<MergeTile[]>(makeStart); const [score, setScore] = useState(0); const [animating, setAnimating] = useState(false); const touch = useRef<{ x: number; y: number } | null>(null);
+  const move = useCallback((direction: Direction) => { if (lockedRef.current) return; const result = moveMergeTiles(tiles, direction); if (!result.changed) return; lockedRef.current = true; setAnimating(true); setTiles(result.moving); if (result.gained) setScore(value => value + result.gained); timerRef.current = window.setTimeout(() => { setTiles(addMergeTile(result.final, nextId)); setAnimating(false); lockedRef.current = false; }, 175); }, [tiles]);
   useEffect(() => { const key = (event: KeyboardEvent) => { const direction = ({ ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDown: "down" } as Record<string, Direction>)[event.key]; if (direction) { event.preventDefault(); move(direction); } }; window.addEventListener("keydown", key); return () => window.removeEventListener("keydown", key); }, [move]);
-  const reset = () => { setGrid(startMergeGrid()); setScore(0); };
-  const gameOver = !canMoveMerge(grid); const highest = Math.max(...grid);
+  useEffect(() => () => { if (timerRef.current) window.clearTimeout(timerRef.current); }, []);
+  const reset = () => { if (timerRef.current) window.clearTimeout(timerRef.current); lockedRef.current = false; setAnimating(false); idRef.current = 1; setTiles(makeStart()); setScore(0); };
+  const gameOver = !animating && !canMoveMerge(tiles); const highest = Math.max(1, ...tiles.map(tile => tile.level));
   return <div className="mergeGame"><div className="arcadeScoreRow"><div><small>점수</small><strong>{score}</strong></div><div><small>최고 단계</small><strong>{PYTHON_LEVELS[Math.max(0, highest - 1)]?.name ?? "print"}</strong></div><button type="button" className="ghostButton" onClick={reset}><RotateCcw size={16} /> 새 게임</button></div>
     <div className="mergeBoard" role="application" aria-label="코드 합성 2048 게임판" tabIndex={0} onTouchStart={event => { const point = event.touches[0]; touch.current = { x: point.clientX, y: point.clientY }; }} onTouchEnd={event => { if (!touch.current) return; const point = event.changedTouches[0], dx = point.clientX - touch.current.x, dy = point.clientY - touch.current.y; touch.current = null; if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return; move(Math.abs(dx) > Math.abs(dy) ? dx > 0 ? "right" : "left" : dy > 0 ? "down" : "up"); }}>
-      {grid.map((level, index) => <div key={index} className={`mergeTile level${level}`}>{level > 0 && <><span>{PYTHON_LEVELS[level - 1]?.icon}</span><strong>{PYTHON_LEVELS[level - 1]?.name}</strong><small>{PYTHON_LEVELS[level - 1]?.code}</small></>}</div>)}
+      <div className="mergeGrid">{Array.from({ length: 16 }, (_, index) => <div className="mergeCell" key={index} />)}{tiles.map(tile => { const row = Math.floor(tile.index / 4), column = tile.index % 4; return <div key={tile.id} style={{ left: `calc(${column * 25}% + ${column * 2}px)`, top: `calc(${row * 25}% + ${row * 2}px)` }} className={`mergeTile level${tile.level} ${tile.effect ?? ""}`}><span>{PYTHON_LEVELS[tile.level - 1]?.icon}</span><strong>{PYTHON_LEVELS[tile.level - 1]?.name}</strong></div>; })}</div>
       {gameOver && <div className="arcadeGameOver"><strong>Memory Full!</strong><span>더 합칠 코드가 없어요.</span><button type="button" onClick={reset}>다시 시작</button></div>}
     </div><DirectionPad onMove={move} /><p className="arcadeTip"><Code2 size={16} /> 같은 코드 조각끼리 합치면 더 큰 프로그램으로 진화해요.</p></div>;
 }
@@ -93,36 +105,40 @@ function DirectionPad({ onMove, drop = false }: { onMove: (direction: Direction)
 }
 
 type NestBall = { id: number; x: number; y: number; vx: number; vy: number; level: number; radius: number; born: number };
-const NEST_RADII = [17, 22, 28, 35, 43, 52, 62];
+const NEST_RADII = [13, 17, 21, 26, 32, 39, 47, 56, 65, 74, 84];
+const NEST_LEFT = 28, NEST_RIGHT = 392, NEST_FLOOR = 515, NEST_LINE = 92;
+function randomNestLevel() { const roll = Math.random(); return roll < .24 ? 0 : roll < .48 ? 1 : roll < .68 ? 2 : roll < .86 ? 3 : 4; }
 
 function PythonNestGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null); const ballsRef = useRef<NestBall[]>([]); const previewRef = useRef(210); const nextRef = useRef(0); const idRef = useRef(1); const runningRef = useRef(true); const cooldownRef = useRef(false);
   const [score, setScore] = useState(0); const [next, setNext] = useState(0); const [gameOver, setGameOver] = useState(false); const [resetKey, setResetKey] = useState(0);
-  const reset = () => { ballsRef.current = []; previewRef.current = 210; nextRef.current = 0; idRef.current = 1; runningRef.current = true; cooldownRef.current = false; setScore(0); setNext(0); setGameOver(false); setResetKey(value => value + 1); };
-  const drop = useCallback(() => { if (!runningRef.current || cooldownRef.current) return; const level = nextRef.current; ballsRef.current.push({ id: idRef.current++, x: previewRef.current, y: 27, vx: 0, vy: 0, level, radius: NEST_RADII[level], born: performance.now() }); const upcoming = Math.random() < .72 ? 0 : 1; nextRef.current = upcoming; setNext(upcoming); cooldownRef.current = true; window.setTimeout(() => { cooldownRef.current = false; }, 330); }, []);
-  const nudge = (direction: Direction) => { if (direction === "left") previewRef.current = Math.max(18, previewRef.current - 28); if (direction === "right") previewRef.current = Math.min(402, previewRef.current + 28); if (direction === "down") drop(); };
+  const reset = () => { ballsRef.current = []; previewRef.current = 210; nextRef.current = randomNestLevel(); idRef.current = 1; runningRef.current = true; cooldownRef.current = false; setScore(0); setNext(nextRef.current); setGameOver(false); setResetKey(value => value + 1); };
+  const clampPreview = (x: number, level = nextRef.current) => Math.max(NEST_LEFT + NEST_RADII[level], Math.min(NEST_RIGHT - NEST_RADII[level], x));
+  const drop = useCallback(() => { if (!runningRef.current || cooldownRef.current) return; const level = nextRef.current; const radius = NEST_RADII[level]; ballsRef.current.push({ id: idRef.current++, x: clampPreview(previewRef.current, level), y: 42, vx: 0, vy: 0, level, radius, born: performance.now() }); const upcoming = randomNestLevel(); nextRef.current = upcoming; previewRef.current = clampPreview(previewRef.current, upcoming); setNext(upcoming); cooldownRef.current = true; window.setTimeout(() => { cooldownRef.current = false; }, 420); }, []);
+  const nudge = (direction: Direction) => { if (direction === "left") previewRef.current = clampPreview(previewRef.current - 25); if (direction === "right") previewRef.current = clampPreview(previewRef.current + 25); if (direction === "down") drop(); };
   useEffect(() => {
     const canvas = canvasRef.current; if (!canvas) return; const context = canvas.getContext("2d"); if (!context) return; let frame = 0; let previous = performance.now(); runningRef.current = true;
     const draw = (time: number) => {
-      const dt = Math.min(.025, (time - previous) / 1000); previous = time; const balls = ballsRef.current;
-      for (let step = 0; step < 2; step++) {
-        for (const ball of balls) { ball.vy += 820 * dt / 2; ball.x += ball.vx * dt / 2; ball.y += ball.vy * dt / 2; ball.vx *= .996; if (ball.x - ball.radius < 5) { ball.x = 5 + ball.radius; ball.vx = Math.abs(ball.vx) * .35; } if (ball.x + ball.radius > 415) { ball.x = 415 - ball.radius; ball.vx = -Math.abs(ball.vx) * .35; } if (ball.y + ball.radius > 515) { ball.y = 515 - ball.radius; ball.vy = -Math.abs(ball.vy) * .22; if (Math.abs(ball.vy) < 18) ball.vy = 0; } }
+      const dt = Math.min(.022, (time - previous) / 1000); previous = time;
+      for (let step = 0; step < 3; step++) {
+        let balls = ballsRef.current;
+        for (const ball of balls) { ball.vy += 980 * dt / 3; ball.x += ball.vx * dt / 3; ball.y += ball.vy * dt / 3; ball.vx *= .992; if (ball.x - ball.radius < NEST_LEFT) { ball.x = NEST_LEFT + ball.radius; ball.vx = Math.abs(ball.vx) * .28; } if (ball.x + ball.radius > NEST_RIGHT) { ball.x = NEST_RIGHT - ball.radius; ball.vx = -Math.abs(ball.vx) * .28; } if (ball.y + ball.radius > NEST_FLOOR) { ball.y = NEST_FLOOR - ball.radius; ball.vy = -Math.abs(ball.vy) * .13; if (Math.abs(ball.vy) < 12) ball.vy = 0; } }
         const removed = new Set<number>(); const additions: NestBall[] = [];
         for (let a = 0; a < balls.length; a++) for (let b = a + 1; b < balls.length; b++) {
           const first = balls[a], second = balls[b]; if (removed.has(first.id) || removed.has(second.id)) continue; const dx = second.x - first.x, dy = second.y - first.y, distance = Math.max(.1, Math.hypot(dx, dy)), overlap = first.radius + second.radius - distance; if (overlap <= 0) continue;
-          if (first.level === second.level && first.level < NEST_LEVELS.length - 1 && time - first.born > 120 && time - second.born > 120) { const level = first.level + 1; removed.add(first.id); removed.add(second.id); additions.push({ id: idRef.current++, x: (first.x + second.x) / 2, y: (first.y + second.y) / 2, vx: (first.vx + second.vx) / 2, vy: -80, level, radius: NEST_RADII[level], born: time }); setScore(value => value + 2 ** (level + 1)); continue; }
-          const nx = dx / distance, ny = dy / distance, push = overlap * .48; first.x -= nx * push; first.y -= ny * push; second.x += nx * push; second.y += ny * push; const relative = (second.vx - first.vx) * nx + (second.vy - first.vy) * ny; if (relative < 0) { const impulse = -relative * .42; first.vx -= impulse * nx; first.vy -= impulse * ny; second.vx += impulse * nx; second.vy += impulse * ny; }
+          if (first.level === second.level && first.level < NEST_LEVELS.length - 1 && time - first.born > 150 && time - second.born > 150) { const level = first.level + 1; removed.add(first.id); removed.add(second.id); additions.push({ id: idRef.current++, x: (first.x + second.x) / 2, y: (first.y + second.y) / 2, vx: (first.vx + second.vx) / 2, vy: -58, level, radius: NEST_RADII[level], born: time }); setScore(value => value + 2 ** (level + 1)); continue; }
+          const nx = dx / distance, ny = dy / distance, push = overlap * .49; first.x -= nx * push; first.y -= ny * push; second.x += nx * push; second.y += ny * push; const relative = (second.vx - first.vx) * nx + (second.vy - first.vy) * ny; if (relative < 0) { const impulse = -relative * .31; first.vx -= impulse * nx; first.vy -= impulse * ny; second.vx += impulse * nx; second.vy += impulse * ny; }
         }
         if (removed.size) ballsRef.current = ballsRef.current.filter(ball => !removed.has(ball.id)).concat(additions);
       }
-      const settledOverTop = ballsRef.current.some(ball => time - ball.born > 1400 && ball.y - ball.radius < 67 && Math.abs(ball.vy) < 35); if (settledOverTop) { runningRef.current = false; setGameOver(true); }
-      context.clearRect(0, 0, 420, 520); context.fillStyle = "#f8fafc"; context.fillRect(0, 0, 420, 520); context.strokeStyle = "#fb7185"; context.setLineDash([8, 7]); context.beginPath(); context.moveTo(0, 66); context.lineTo(420, 66); context.stroke(); context.setLineDash([]);
-      if (runningRef.current && !cooldownRef.current) { const level = nextRef.current; context.globalAlpha = .58; drawNestBall(context, { x: previewRef.current, y: 27, radius: NEST_RADII[level], level } as NestBall); context.globalAlpha = 1; }
+      const settledOverTop = ballsRef.current.some(ball => time - ball.born > 850 && ball.y - ball.radius < NEST_LINE && Math.hypot(ball.vx, ball.vy) < 55); if (settledOverTop) { runningRef.current = false; setGameOver(true); }
+      context.clearRect(0, 0, 420, 520); context.fillStyle = "#f8fafc"; context.fillRect(0, 0, 420, 520); context.fillStyle = "#e2e8f0"; context.fillRect(0, 0, NEST_LEFT, 520); context.fillRect(NEST_RIGHT, 0, 420 - NEST_RIGHT, 520); context.strokeStyle = "#fb7185"; context.setLineDash([8, 7]); context.beginPath(); context.moveTo(NEST_LEFT, NEST_LINE); context.lineTo(NEST_RIGHT, NEST_LINE); context.stroke(); context.setLineDash([]);
+      if (runningRef.current && !cooldownRef.current) { const level = nextRef.current; context.globalAlpha = .58; drawNestBall(context, { x: previewRef.current, y: 42, radius: NEST_RADII[level], level } as NestBall); context.globalAlpha = 1; }
       ballsRef.current.forEach(ball => drawNestBall(context, ball)); if (runningRef.current) frame = requestAnimationFrame(draw);
     };
     frame = requestAnimationFrame(draw); return () => { cancelAnimationFrame(frame); runningRef.current = false; };
   }, [resetKey]);
-  const point = (event: React.PointerEvent<HTMLCanvasElement>) => { const rect = event.currentTarget.getBoundingClientRect(); previewRef.current = Math.max(18, Math.min(402, (event.clientX - rect.left) * 420 / rect.width)); };
+  const point = (event: React.PointerEvent<HTMLCanvasElement>) => { const rect = event.currentTarget.getBoundingClientRect(); previewRef.current = clampPreview((event.clientX - rect.left) * 420 / rect.width); };
   return <div className="nestGame"><div className="arcadeScoreRow"><div><small>점수</small><strong>{score}</strong></div><div><small>다음 파이썬</small><strong>{NEST_LEVELS[next].icon} {NEST_LEVELS[next].name}</strong></div><button type="button" className="ghostButton" onClick={reset}><RotateCcw size={16} /> 새 게임</button></div><div className="nestCanvasWrap"><canvas ref={canvasRef} width={420} height={520} aria-label="파이썬 둥지 게임판" onPointerMove={point} onPointerDown={event => { point(event); drop(); }} />{gameOver && <div className="arcadeGameOver"><strong>Indentation Overflow!</strong><span>파이썬 둥지가 가득 찼어요.</span><button type="button" onClick={reset}>다시 시작</button></div>}</div><DirectionPad onMove={nudge} drop /><p className="arcadeTip">같은 파이썬끼리 닿으면 한 단계 더 멋진 파이썬으로 진화해요.</p></div>;
 }
 
