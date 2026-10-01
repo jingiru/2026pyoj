@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  acceptCompletion,
   autocompletion,
   closeBrackets,
   closeBracketsKeymap,
@@ -2430,6 +2431,7 @@ function CodeEditor({
           { key: "Ctrl-Enter", mac: "Cmd-Enter", run: insertBlankLine },
           { key: "Ctrl-Shift-d", mac: "Cmd-Shift-d", run: copyLineDown },
           { key: "Ctrl-d", mac: "Cmd-d", run: selectNextWordOccurrence },
+          { key: "Tab", run: acceptCompletion },
           indentWithTab,
           ...closeBracketsKeymap,
           ...completionKeymap

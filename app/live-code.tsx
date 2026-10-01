@@ -9,6 +9,7 @@ import { keymap } from "@codemirror/view";
 import { EditorState, Prec } from "@codemirror/state";
 import CodeMirror from "@uiw/react-codemirror";
 import { python } from "@codemirror/lang-python";
+import { acceptCompletion } from "@codemirror/autocomplete";
 import type { Student } from "@/lib/types";
 
 type ActiveCode = { key: string; title: string; code: string };
@@ -158,7 +159,7 @@ export function LiveStudentModal({ student, onClose }: { student: Student; onClo
             <button type="button" className="ghostButton" aria-label="코드 글자 크기 키우기" disabled={fontSize >= 60} onClick={() => setFontSize(size => Math.min(60, size + 2))}>A+</button>
           </div>
         </div>
-        <CodeMirror key={live.shared.epoch} value={live.shared.doc.getText("code").toString()} extensions={[python(), undoGuard, live.extension!, guard]} basicSetup={{ history: false }} readOnly={!live.online} editable={live.online} height="100%" />
+        <CodeMirror key={live.shared.epoch} value={live.shared.doc.getText("code").toString()} extensions={[python(), Prec.highest(keymap.of([{ key: "Tab", run: acceptCompletion }])), undoGuard, live.extension!, guard]} basicSetup={{ history: false }} readOnly={!live.online} editable={live.online} height="100%" />
       </>}
     </section>
   </div>;

@@ -117,3 +117,16 @@ test('conditional ladder requires exact inclusive branches and outputs', () => {
     requirements
   ).passed, false);
 });
+
+test('evaluation 3-2-10 rejects hardcoded output and requires indexing and slicing', () => {
+  const requirements = [
+    { type: 'indexing', minCount: 3 },
+    { type: 'slicing', minCount: 2 },
+    { type: 'operators', values: ['+', '*'] }
+  ];
+  const solution = 'a = [1, 2, 3, 4, 5]\nb = "678910"\nc = "python programming"\nprint((b[2] + c[-1]) * a[3])\nprint(c[:2] + b[-3:])';
+
+  assert.equal(checkCodeRequirements(solution, requirements).passed, true);
+  assert.equal(checkCodeRequirements('print("8g8g8g8g")\nprint("py910")', requirements).passed, false);
+  assert.equal(checkCodeRequirements('print("8g" * 4)\nprint("py" + "910")', requirements).passed, false);
+});
