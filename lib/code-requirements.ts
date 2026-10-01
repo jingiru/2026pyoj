@@ -199,7 +199,57 @@ function checkRequirement(
       return collectOutputFeatures(facts).sortedReverse
         ? ""
         : "내림차순 정렬을 위해 sorted(..., reverse=True)를 사용해주세요.";
+
+    case "conditional_ladder":
+      return hasConditionalLadder(facts.source, requirement)
+        ? ""
+        : "문제에 제시된 변수와 기준값으로 if, elif, else를 작성하고, `>=` 또는 `<=` 조건과 각 출력 문구를 정확히 사용해주세요.";
   }
+}
+
+function hasConditionalLadder(
+  source: string,
+  requirement: Extract<CodeRequirement, { type: "conditional_ladder" }>
+) {
+  if (requirement.branches.length < 2) return false;
+
+  const headers: Array<{ index: number; end: number }> = [];
+
+  for (const [index, branch] of requirement.branches.entries()) {
+    const keyword = index === 0 ? "if" : "elif";
+    const pattern = new RegExp(
+      `^[ \\t]*${keyword}[ \\t]+${escapeRegExp(requirement.variable)}[ \\t]*${escapeRegExp(branch.operator)}[ \\t]*${branch.value}[ \\t]*:[ \\t]*(?:#.*)?$`,
+      "m"
+    );
+    const remaining = source.slice(headers.at(-1)?.end ?? 0);
+    const match = pattern.exec(remaining);
+    if (!match) return false;
+    const offset = headers.at(-1)?.end ?? 0;
+    headers.push({ index: offset + match.index, end: offset + match.index + match[0].length });
+  }
+
+  const afterLastBranch = source.slice(headers.at(-1)!.end);
+  const elseMatch = /^[ \\t]*else[ \\t]*:[ \\t]*(?:#.*)?$/m.exec(afterLastBranch);
+  if (!elseMatch) return false;
+  const elseHeader = {
+    index: headers.at(-1)!.end + elseMatch.index,
+    end: headers.at(-1)!.end + elseMatch.index + elseMatch[0].length
+  };
+
+  for (const [index, branch] of requirement.branches.entries()) {
+    const end = index + 1 < headers.length ? headers[index + 1].index : elseHeader.index;
+    if (!containsExactPrint(source.slice(headers[index].end, end), branch.output)) return false;
+  }
+
+  return containsExactPrint(source.slice(elseHeader.end), requirement.elseOutput);
+}
+
+function containsExactPrint(source: string, output: string) {
+  const pattern = new RegExp(
+    `^[ \\t]+print[ \\t]*\\([ \\t]*(["'])${escapeRegExp(output)}\\1[ \\t]*\\)[ \\t]*(?:#.*)?$`,
+    "m"
+  );
+  return pattern.test(source);
 }
 
 /**

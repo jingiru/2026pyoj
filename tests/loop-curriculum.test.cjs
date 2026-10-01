@@ -91,3 +91,29 @@ test('assigned_string requires the exact string in the named output variable', (
     requirements
   ).passed, false);
 });
+
+test('conditional ladder requires exact inclusive branches and outputs', () => {
+  const requirements = [{
+    type: 'conditional_ladder',
+    variable: 'key',
+    branches: [
+      { operator: '>=', value: 20, output: '20 이상' },
+      { operator: '>=', value: 12, output: '12 이상' }
+    ],
+    elseOutput: '그 외'
+  }];
+
+  assert.equal(checkCodeRequirements(
+    'key = 17\nif key >= 20:\n    print("20 이상")\nelif key >= 12:\n    print("12 이상")\nelse:\n    print("그 외")',
+    requirements
+  ).passed, true);
+  assert.equal(checkCodeRequirements(
+    'key = 17\nif key > 20:\n    print("20 이상")\nelif key > 12:\n    print("12 이상")\nelse:\n    print("그 외")',
+    requirements
+  ).passed, false);
+  assert.equal(checkCodeRequirements('print("12 이상")', requirements).passed, false);
+  assert.equal(checkCodeRequirements(
+    'key = 17\nif key >= 12:\n    print("12 이상")\nelif key >= 20:\n    print("20 이상")\nelse:\n    print("그 외")',
+    requirements
+  ).passed, false);
+});

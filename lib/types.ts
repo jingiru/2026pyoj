@@ -35,7 +35,17 @@ export type CodeRequirement =
   | { type: "indexing"; minCount: number }
   | { type: "slicing"; minCount: number }
   | { type: "functions"; names: Array<"sum" | "max" | "min" | "len" | "sorted"> }
-  | { type: "sorted_reverse" };
+  | { type: "sorted_reverse" }
+  | {
+      type: "conditional_ladder";
+      variable: string;
+      branches: Array<{
+        operator: ">=" | "<=";
+        value: number;
+        output: string;
+      }>;
+      elseOutput: string;
+    };
 
 export type ProblemBook = {
   id: string;
