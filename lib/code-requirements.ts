@@ -203,7 +203,7 @@ function checkRequirement(
     case "conditional_ladder":
       return hasConditionalLadder(facts.source, requirement)
         ? ""
-        : "문제에 제시된 변수와 기준값으로 if, elif, else를 작성하고, `>=` 또는 `<=` 조건과 각 출력 문구를 정확히 사용해주세요.";
+        : "문제에 if, elif, else조건과 부등호를 정확히 사용해주세요.";
   }
 }
 
