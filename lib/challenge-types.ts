@@ -83,6 +83,16 @@ export function earnedProblemScore(challenge: Pick<Challenge, "problem_snapshots
   return challenge.problem_snapshots.reduce((sum, problem) => sum + (accepted.has(problem.id) ? problemPoints(problem) : 0), 0);
 }
 
+export function completedAllChallengeProblems(challenge: Pick<Challenge, "problem_snapshots" | "allow_requirement_failure">, submissions: ChallengeSubmission[]) {
+  if (challenge.problem_snapshots.length === 0) return false;
+  const allowRequirementFailure = challenge.allow_requirement_failure === true;
+  const completed = new Set(submissions.filter(row =>
+    (row.status === "accepted" && (allowRequirementFailure || row.requirement_passed !== false)) ||
+    (allowRequirementFailure && row.status === "code_requirement_failed")
+  ).map(row => row.problem_id));
+  return challenge.problem_snapshots.every(problem => completed.has(problem.id));
+}
+
 export function challengePhase(challenge: Pick<Challenge, "started_at" | "ends_at">, now = Date.now()) {
   if (!challenge.started_at) return "waiting";
   return challenge.ends_at && now < Date.parse(challenge.ends_at) ? "running" : "ended";

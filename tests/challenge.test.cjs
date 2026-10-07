@@ -19,7 +19,7 @@ function load(relative, overrides = {}) {
   new Function("require", "module", "exports", compiled)(localRequire, mod, mod.exports);
   return mod.exports;
 }
-const { challengeBonusMax, challengePhase, challengeProblemMax, earnedProblemScore, elapsedLabel, firstSolvers, publicChallenge } = load("lib/challenge-types.ts");
+const { challengeBonusMax, challengePhase, challengeProblemMax, completedAllChallengeProblems, earnedProblemScore, elapsedLabel, firstSolvers, publicChallenge } = load("lib/challenge-types.ts");
 const { judgeChallenge } = load("lib/challenge-judge.ts");
 const { CHALLENGE_CODE_ALPHABET, generateChallengeEntryCode } = load("lib/challenge-server.ts");
 const { buildChallengeResultsWorkbook } = load("lib/challenge-export.ts");
@@ -32,6 +32,18 @@ test("challenge timing: pre-start, exact deadline, extended deadline and elapsed
   assert.equal(challengePhase(challenge, Date.parse(challenge.ends_at)), "ended");
   assert.equal(challengePhase({ ...challenge, ends_at: "2026-09-06T01:45:00Z" }, Date.parse(challenge.ends_at)), "running");
   assert.equal(elapsedLabel(challenge.started_at, "2026-09-06T01:12:34Z"), "12:34");
+});
+
+test("mini games unlock only after every problem is completed under the challenge requirement policy", () => {
+  const twoProblems = { problem_snapshots: [{ id: "p1" }, { id: "p2" }], allow_requirement_failure: false };
+  const submissions = [
+    { problem_id: "p1", status: "accepted", requirement_passed: true },
+    { problem_id: "p2", status: "code_requirement_failed", requirement_passed: false }
+  ];
+  assert.equal(completedAllChallengeProblems(twoProblems, submissions), false);
+  assert.equal(completedAllChallengeProblems({ ...twoProblems, allow_requirement_failure: true }, submissions), true);
+  assert.equal(completedAllChallengeProblems(twoProblems, [...submissions, { problem_id: "p2", status: "accepted", requirement_passed: true }]), true);
+  assert.equal(completedAllChallengeProblems({ problem_snapshots: [], allow_requirement_failure: true }, []), false);
 });
 
 test("challenge scores support problem weights, count rules and decimal bonus maxima", () => {

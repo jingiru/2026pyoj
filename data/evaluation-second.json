@@ -1,0 +1,2564 @@
+[
+  {
+    "id": "평가1-2-01 여섯 값 띄어 출력",
+    "bookId": "평가-01-02",
+    "order": 1,
+    "title": "여섯 값 띄어 출력",
+    "statement": "print 함수의 쉼표(,)를 활용하여 [[Python 2026 Class 1 Round 2]]를 한 줄에 출력하세요.",
+    "inputDescription": "입력은 없습니다.",
+    "outputDescription": "Python 2026 Class 1 Round 2를 출력합니다. 각 값 사이에 공백을 하나 넣습니다.",
+    "solution": "print(\"Python\", 2026, \"Class\", 1, \"Round\", 2)",
+    "cases": [
+      {
+        "input": "",
+        "output": "Python 2026 Class 1 Round 2"
+      }
+    ],
+    "requirements": [
+      {
+        "type": "print_arguments",
+        "minCount": 6
+      }
+    ],
+    "starterCode": "",
+    "hint": ""
+  },
+  {
+    "id": "평가1-2-02 문자 사이 빈 줄 출력",
+    "bookId": "평가-01-02",
+    "order": 2,
+    "title": "문자 사이 빈 줄 출력",
+    "statement": "P, Y, N를 순서대로 한 줄씩 출력하되, 문자 사이에 빈 줄을 두 줄씩 넣어 총 일곱 줄로 출력하세요.",
+    "inputDescription": "입력은 없습니다.",
+    "outputDescription": "문자 세 줄과 빈 줄 네 줄을 출력합니다.",
+    "solution": "print(\"P\\n\\n\\nY\\n\\n\\nN\")",
+    "cases": [
+      {
+        "input": "",
+        "output": "P\n\n\nY\n\n\nN"
+      }
+    ],
+    "requirements": [],
+    "starterCode": "",
+    "hint": "각 문자 사이에 빈 줄이 두 줄 있어야 합니다."
+  },
+  {
+    "id": "평가1-2-03 네 문자열 순서 바꾸기",
+    "bookId": "평가-01-02",
+    "order": 3,
+    "title": "네 문자열 순서 바꾸기",
+    "statement": "문자열 4개를 한 줄에 하나씩 입력받아 3번째, 4번째, 1번째, 2번째 입력 순서로 한 줄에 하나씩 출력하세요.",
+    "inputDescription": "문자 또는 문자열 4개가 한 줄씩 주어집니다.",
+    "outputDescription": "지정한 순서로 문자열을 한 줄에 하나씩 출력합니다.",
+    "solution": "a = input()\nb = input()\nc = input()\nd = input()\nprint(c)\nprint(d)\nprint(a)\nprint(b)",
+    "cases": [
+      {
+        "input": "봄\n여름\n가을\n겨울",
+        "output": "가을\n겨울\n봄\n여름"
+      },
+      {
+        "input": "A\nB\nC\nD",
+        "output": "C\nD\nA\nB"
+      },
+      {
+        "input": "1\n22\n333\n4444",
+        "output": "333\n4444\n1\n22"
+      },
+      {
+        "input": "hello world\ngood morning\nsee you\ngood bye",
+        "output": "see you\ngood bye\nhello world\ngood morning"
+      },
+      {
+        "input": "같음\n다름\n다름\n같음",
+        "output": "다름\n같음\n같음\n다름"
+      },
+      {
+        "input": "가\n나\n다\n라",
+        "output": "다\n라\n가\n나"
+      }
+    ],
+    "requirements": [],
+    "starterCode": "",
+    "hint": ""
+  },
+  {
+    "id": "평가1-2-04 더한 뒤 몫 출력",
+    "bookId": "평가-01-02",
+    "order": 4,
+    "title": "더한 뒤 몫 출력",
+    "statement": "정수 하나를 입력받아 12을 먼저 더한 후, 그 결과를 5로 나눈 몫을 출력하세요. +와 // 연산자를 사용하세요.",
+    "inputDescription": "정수 1개가 주어집니다.",
+    "outputDescription": "먼저 덧셈을 하고 나눗셈의 몫을 출력합니다.",
+    "solution": "n = int(input())\nprint((n + 12) // 5)",
+    "cases": [
+      {
+        "input": "10",
+        "output": "4"
+      },
+      {
+        "input": "0",
+        "output": "2"
+      },
+      {
+        "input": "-7",
+        "output": "1"
+      },
+      {
+        "input": "23",
+        "output": "7"
+      },
+      {
+        "input": "100",
+        "output": "22"
+      },
+      {
+        "input": "-12",
+        "output": "0"
+      },
+      {
+        "input": "-13",
+        "output": "-1"
+      }
+    ],
+    "requirements": [
+      {
+        "type": "operators",
+        "values": [
+          "+",
+          "//"
+        ]
+      }
+    ],
+    "starterCode": "",
+    "hint": ""
+  },
+  {
+    "id": "평가1-2-05 다음 층 보관함 번호",
+    "bookId": "평가-01-02",
+    "order": 5,
+    "title": "다음 층 보관함 번호",
+    "statement": "층, 구역, 칸를 차례로 입력받습니다.\n층을 하나 올린 뒤, 층 1자리와 구역 2자리, 칸 2자리를 이어 붙인 5자리 번호를 출력하세요.\n구역이나 칸가 1~9이면 앞에 0을 붙여 두 자리로 만드세요.\n\n[[if를 사용하지 않고 풀어야 합니다.]]",
+    "inputDescription": "층: 1~2, 구역: 1~9, 칸: 1~33인 정수 세 개가 한 줄씩 주어집니다.",
+    "outputDescription": "설명에 따라 만든 5자리 번호를 출력합니다.",
+    "solution": "first = int(input())\nsecond = int(input())\nthird = int(input())\nprint((first + 1) * 10000 + second * 100 + third)",
+    "cases": [
+      {
+        "input": "1\n4\n28",
+        "output": "20428"
+      },
+      {
+        "input": "1\n3\n9",
+        "output": "20309"
+      },
+      {
+        "input": "1\n1\n1",
+        "output": "20101"
+      },
+      {
+        "input": "1\n9\n10",
+        "output": "20910"
+      },
+      {
+        "input": "2\n4\n7",
+        "output": "30407"
+      },
+      {
+        "input": "2\n9\n33",
+        "output": "30933"
+      },
+      {
+        "input": "2\n1\n20",
+        "output": "30120"
+      }
+    ],
+    "requirements": [
+      {
+        "type": "forbidden_keywords",
+        "values": [
+          "if"
+        ]
+      }
+    ],
+    "starterCode": "first = int(input())\nsecond = int(input())\nthird = int(input())\n",
+    "hint": ""
+  },
+  {
+    "id": "평가1-2-06 세 입력 재배치 출력",
+    "bookId": "평가-01-02",
+    "order": 6,
+    "title": "세 입력 재배치 출력",
+    "statement": "과일, 맛, 가게를 차례로 한 줄에 하나씩 입력받습니다. 가게, 과일, 맛 순서로 바꾸고 각 값 사이에 \" / \"를 넣어 한 줄에 출력하세요.",
+    "inputDescription": "1번째 줄: 과일\n2번째 줄: 맛\n3번째 줄: 가게",
+    "outputDescription": "가게 / 과일 / 맛",
+    "solution": "fruit = input()\ntaste = input()\nshop = input()\nprint(shop + \" / \" + fruit + \" / \" + taste)",
+    "cases": [
+      {
+        "input": "사과\n달콤\n시장",
+        "output": "시장 / 사과 / 달콤"
+      },
+      {
+        "input": "cat\nwhite\npark",
+        "output": "park / cat / white"
+      },
+      {
+        "input": "첫째\n둘째\n셋째",
+        "output": "셋째 / 첫째 / 둘째"
+      },
+      {
+        "input": "hello world\ndeep blue\nold tree",
+        "output": "old tree / hello world / deep blue"
+      },
+      {
+        "input": "봄\n여름\n가을",
+        "output": "가을 / 봄 / 여름"
+      },
+      {
+        "input": "A\nB\nC",
+        "output": "C / A / B"
+      }
+    ],
+    "requirements": [],
+    "starterCode": "fruit = \ntaste = \nshop = \n",
+    "hint": ""
+  },
+  {
+    "id": "평가1-2-07 6의 배수 판정",
+    "bookId": "평가-01-02",
+    "order": 7,
+    "title": "6의 배수 판정",
+    "statement": "정수 n을 입력받아 6의 배수이면 YES, 아니면 NO를 출력하세요.",
+    "inputDescription": "정수 1개가 주어집니다.",
+    "outputDescription": "YES 또는 NO를 출력합니다.",
+    "solution": "n = int(input())\nif n % 6 == 0:\n    print(\"YES\")\nelse:\n    print(\"NO\")",
+    "cases": [
+      {
+        "input": "12",
+        "output": "YES"
+      },
+      {
+        "input": "13",
+        "output": "NO"
+      },
+      {
+        "input": "0",
+        "output": "YES"
+      },
+      {
+        "input": "-18",
+        "output": "YES"
+      },
+      {
+        "input": "-5",
+        "output": "NO"
+      },
+      {
+        "input": "60",
+        "output": "YES"
+      },
+      {
+        "input": "61",
+        "output": "NO"
+      }
+    ],
+    "requirements": [],
+    "starterCode": "n = \nif :\n    print()\nelse:\n    print()",
+    "hint": ""
+  },
+  {
+    "id": "평가1-2-08 두 기준으로 값 분류",
+    "bookId": "평가-01-02",
+    "order": 8,
+    "title": "두 기준으로 값 분류",
+    "statement": "변수 score에는 정수 15가 저장되어 있습니다.\nif, elif, else를 사용하여 다음 조건에 맞게 출력하세요.\n- score가 30 이상이면 [[30 이상]]\n- 그렇지 않고 15 이상이면 [[15 이상]]\n- 두 조건에 모두 해당하지 않으면 [[그 외]]\n큰 기준인 30부터 차례대로 확인하세요.",
+    "inputDescription": "입력은 없습니다.",
+    "outputDescription": "30 이상, 15 이상, 그 외 중 하나를 출력합니다.",
+    "solution": "score = 15\nif score >= 30:\n    print(\"30 이상\")\nelif score >= 15:\n    print(\"15 이상\")\nelse:\n    print(\"그 외\")",
+    "cases": [
+      {
+        "input": "",
+        "output": "15 이상"
+      }
+    ],
+    "requirements": [
+      {
+        "type": "conditional_ladder",
+        "variable": "score",
+        "branches": [
+          {
+            "value": 30,
+            "output": "30 이상",
+            "operator": ">="
+          },
+          {
+            "value": 15,
+            "output": "15 이상",
+            "operator": ">="
+          }
+        ],
+        "elseOutput": "그 외"
+      }
+    ],
+    "starterCode": "score = 15\nif :\n    print()",
+    "hint": ""
+  },
+  {
+    "id": "평가1-2-09 문자열 묶음 여러 줄 출력",
+    "bookId": "평가-01-02",
+    "order": 9,
+    "title": "문자열 묶음 여러 줄 출력",
+    "statement": "for 반복문과 * 연산자를 사용하여 \"hi!\"를 공백 없이 4번 이어 붙인 문자열을 6줄 출력하세요.",
+    "inputDescription": "입력은 없습니다.",
+    "outputDescription": "hi!hi!hi!hi!를 6줄 출력합니다.",
+    "solution": "for i in range(6):\n    print(\"hi!\" * 4)",
+    "cases": [
+      {
+        "input": "",
+        "output": "hi!hi!hi!hi!\nhi!hi!hi!hi!\nhi!hi!hi!hi!\nhi!hi!hi!hi!\nhi!hi!hi!hi!\nhi!hi!hi!hi!"
+      }
+    ],
+    "requirements": [
+      {
+        "type": "for_range"
+      },
+      {
+        "type": "operators",
+        "values": [
+          "*"
+        ]
+      }
+    ],
+    "starterCode": "for i in range():\n    print()",
+    "hint": ""
+  },
+  {
+    "id": "평가1-2-10 인덱싱과 슬라이싱 결합",
+    "bookId": "평가-01-02",
+    "order": 10,
+    "title": "인덱싱과 슬라이싱 결합",
+    "statement": "a = [2, 4, 6, 3, 8]\nb = \"246810\"\nc = \"coding practice\"\n\n인덱싱과 슬라이싱을 사용하여 다음 결과를 한 줄에 하나씩 출력하세요.\n1. b의 2번째 문자와 c의 마지막 문자를 결합한 뒤, a의 4번째 요소만큼 반복\n2. c의 처음 2개 문자를 슬라이싱하고, b의 마지막 세 문자를 슬라이싱한 후 결합",
+    "inputDescription": "입력은 없습니다.",
+    "outputDescription": "4e4e4e\nco810",
+    "solution": "a = [2, 4, 6, 3, 8]\nb = \"246810\"\nc = \"coding practice\"\nprint((b[1] + c[-1]) * a[3])\nprint(c[:2] + b[-3:])",
+    "cases": [
+      {
+        "input": "",
+        "output": "4e4e4e\nco810"
+      }
+    ],
+    "requirements": [
+      {
+        "type": "indexing",
+        "minCount": 3
+      },
+      {
+        "type": "slicing",
+        "minCount": 2
+      },
+      {
+        "type": "operators",
+        "values": [
+          "+",
+          "*"
+        ]
+      }
+    ],
+    "starterCode": "a = [2, 4, 6, 3, 8]\nb = \"246810\"\nc = \"coding practice\"\n",
+    "hint": "인덱싱하거나 슬라이싱한 후 +로 결합할 수 있습니다."
+  },
+  {
+    "id": "평가2-2-01 여섯 값 띄어 출력",
+    "bookId": "평가-02-02",
+    "order": 1,
+    "title": "여섯 값 띄어 출력",
+    "statement": "print 함수의 쉼표(,)를 활용하여 [[Ready 2 Set 4 Go 6]]를 한 줄에 출력하세요.",
+    "inputDescription": "입력은 없습니다.",
+    "outputDescription": "Ready 2 Set 4 Go 6를 출력합니다. 각 값 사이에 공백을 하나 넣습니다.",
+    "solution": "print(\"Ready\", 2, \"Set\", 4, \"Go\", 6)",
+    "cases": [
+      {
+        "input": "",
+        "output": "Ready 2 Set 4 Go 6"
+      }
+    ],
+    "requirements": [
+      {
+        "type": "print_arguments",
+        "minCount": 6
+      }
+    ],
+    "starterCode": "",
+    "hint": ""
+  },
+  {
+    "id": "평가2-2-02 문자 사이 빈 줄 출력",
+    "bookId": "평가-02-02",
+    "order": 2,
+    "title": "문자 사이 빈 줄 출력",
+    "statement": "R, S, G를 순서대로 한 줄씩 출력하되, 문자 사이에 빈 줄을 두 줄씩 넣어 총 일곱 줄로 출력하세요.",
+    "inputDescription": "입력은 없습니다.",
+    "outputDescription": "문자 세 줄과 빈 줄 네 줄을 출력합니다.",
+    "solution": "print(\"R\\n\\n\\nS\\n\\n\\nG\")",
+    "cases": [
+      {
+        "input": "",
+        "output": "R\n\n\nS\n\n\nG"
+      }
+    ],
+    "requirements": [],
+    "starterCode": "",
+    "hint": "각 문자 사이에 빈 줄이 두 줄 있어야 합니다."
+  },
+  {
+    "id": "평가2-2-03 네 문자열 순서 바꾸기",
+    "bookId": "평가-02-02",
+    "order": 3,
+    "title": "네 문자열 순서 바꾸기",
+    "statement": "문자열 4개를 한 줄에 하나씩 입력받아 4번째, 1번째, 2번째, 3번째 입력 순서로 한 줄에 하나씩 출력하세요.",
+    "inputDescription": "문자 또는 문자열 4개가 한 줄씩 주어집니다.",
+    "outputDescription": "지정한 순서로 문자열을 한 줄에 하나씩 출력합니다.",
+    "solution": "a = input()\nb = input()\nc = input()\nd = input()\nprint(d)\nprint(a)\nprint(b)\nprint(c)",
+    "cases": [
+      {
+        "input": "봄\n여름\n가을\n겨울",
+        "output": "겨울\n봄\n여름\n가을"
+      },
+      {
+        "input": "A\nB\nC\nD",
+        "output": "D\nA\nB\nC"
+      },
+      {
+        "input": "1\n22\n333\n4444",
+        "output": "4444\n1\n22\n333"
+      },
+      {
+        "input": "hello world\ngood morning\nsee you\ngood bye",
+        "output": "good bye\nhello world\ngood morning\nsee you"
+      },
+      {
+        "input": "같음\n다름\n다름\n같음",
+        "output": "같음\n같음\n다름\n다름"
+      },
+      {
+        "input": "가\n나\n다\n라",
+        "output": "라\n가\n나\n다"
+      }
+    ],
+    "requirements": [],
+    "starterCode": "",
+    "hint": ""
+  },
+  {
+    "id": "평가2-2-04 더한 뒤 몫 출력",
+    "bookId": "평가-02-02",
+    "order": 4,
+    "title": "더한 뒤 몫 출력",
+    "statement": "정수 하나를 입력받아 9을 먼저 더한 후, 그 결과를 4로 나눈 몫을 출력하세요. +와 // 연산자를 사용하세요.",
+    "inputDescription": "정수 1개가 주어집니다.",
+    "outputDescription": "먼저 덧셈을 하고 나눗셈의 몫을 출력합니다.",
+    "solution": "n = int(input())\nprint((n + 9) // 4)",
+    "cases": [
+      {
+        "input": "10",
+        "output": "4"
+      },
+      {
+        "input": "0",
+        "output": "2"
+      },
+      {
+        "input": "-5",
+        "output": "1"
+      },
+      {
+        "input": "19",
+        "output": "7"
+      },
+      {
+        "input": "100",
+        "output": "27"
+      },
+      {
+        "input": "-9",
+        "output": "0"
+      },
+      {
+        "input": "-10",
+        "output": "-1"
+      }
+    ],
+    "requirements": [
+      {
+        "type": "operators",
+        "values": [
+          "+",
+          "//"
+        ]
+      }
+    ],
+    "starterCode": "",
+    "hint": ""
+  },
+  {
+    "id": "평가2-2-05 다음 단계 참가 번호",
+    "bookId": "평가-02-02",
+    "order": 5,
+    "title": "다음 단계 참가 번호",
+    "statement": "단계, 팀, 번호를 차례로 입력받습니다.\n단계을 하나 올린 뒤, 단계 1자리와 팀 2자리, 번호 2자리를 이어 붙인 5자리 번호를 출력하세요.\n팀이나 번호가 1~9이면 앞에 0을 붙여 두 자리로 만드세요.\n\n[[if를 사용하지 않고 풀어야 합니다.]]",
+    "inputDescription": "단계: 1~2, 팀: 1~9, 번호: 1~33인 정수 세 개가 한 줄씩 주어집니다.",
+    "outputDescription": "설명에 따라 만든 5자리 번호를 출력합니다.",
+    "solution": "first = int(input())\nsecond = int(input())\nthird = int(input())\nprint((first + 1) * 10000 + second * 100 + third)",
+    "cases": [
+      {
+        "input": "1\n4\n28",
+        "output": "20428"
+      },
+      {
+        "input": "1\n3\n9",
+        "output": "20309"
+      },
+      {
+        "input": "1\n1\n1",
+        "output": "20101"
+      },
+      {
+        "input": "1\n9\n10",
+        "output": "20910"
+      },
+      {
+        "input": "2\n4\n7",
+        "output": "30407"
+      },
+      {
+        "input": "2\n9\n33",
+        "output": "30933"
+      },
+      {
+        "input": "2\n1\n20",
+        "output": "30120"
+      }
+    ],
+    "requirements": [
+      {
+        "type": "forbidden_keywords",
+        "values": [
+          "if"
+        ]
+      }
+    ],
+    "starterCode": "first = int(input())\nsecond = int(input())\nthird = int(input())\n",
+    "hint": ""
+  },
+  {
+    "id": "평가2-2-06 세 입력 재배치 출력",
+    "bookId": "평가-02-02",
+    "order": 6,
+    "title": "세 입력 재배치 출력",
+    "statement": "이름, 도시, 취미를 차례로 한 줄에 하나씩 입력받습니다. 도시, 취미, 이름 순서로 바꾸고 각 값 사이에 \" : \"를 넣어 한 줄에 출력하세요.",
+    "inputDescription": "1번째 줄: 이름\n2번째 줄: 도시\n3번째 줄: 취미",
+    "outputDescription": "도시 : 취미 : 이름",
+    "solution": "name = input()\ncity = input()\nhobby = input()\nprint(city + \" : \" + hobby + \" : \" + name)",
+    "cases": [
+      {
+        "input": "민수\n서울\n독서",
+        "output": "서울 : 독서 : 민수"
+      },
+      {
+        "input": "cat\nwhite\npark",
+        "output": "white : park : cat"
+      },
+      {
+        "input": "첫째\n둘째\n셋째",
+        "output": "둘째 : 셋째 : 첫째"
+      },
+      {
+        "input": "hello world\ndeep blue\nold tree",
+        "output": "deep blue : old tree : hello world"
+      },
+      {
+        "input": "봄\n여름\n가을",
+        "output": "여름 : 가을 : 봄"
+      },
+      {
+        "input": "A\nB\nC",
+        "output": "B : C : A"
+      }
+    ],
+    "requirements": [],
+    "starterCode": "name = \ncity = \nhobby = \n",
+    "hint": ""
+  },
+  {
+    "id": "평가2-2-07 8의 배수 판정",
+    "bookId": "평가-02-02",
+    "order": 7,
+    "title": "8의 배수 판정",
+    "statement": "정수 n을 입력받아 8의 배수이면 YES, 아니면 NO를 출력하세요.",
+    "inputDescription": "정수 1개가 주어집니다.",
+    "outputDescription": "YES 또는 NO를 출력합니다.",
+    "solution": "n = int(input())\nif n % 8 == 0:\n    print(\"YES\")\nelse:\n    print(\"NO\")",
+    "cases": [
+      {
+        "input": "16",
+        "output": "YES"
+      },
+      {
+        "input": "17",
+        "output": "NO"
+      },
+      {
+        "input": "0",
+        "output": "YES"
+      },
+      {
+        "input": "-24",
+        "output": "YES"
+      },
+      {
+        "input": "-7",
+        "output": "NO"
+      },
+      {
+        "input": "80",
+        "output": "YES"
+      },
+      {
+        "input": "81",
+        "output": "NO"
+      }
+    ],
+    "requirements": [],
+    "starterCode": "n = \nif :\n    print()\nelse:\n    print()",
+    "hint": ""
+  },
+  {
+    "id": "평가2-2-08 두 기준으로 값 분류",
+    "bookId": "평가-02-02",
+    "order": 8,
+    "title": "두 기준으로 값 분류",
+    "statement": "변수 level에는 정수 10가 저장되어 있습니다.\nif, elif, else를 사용하여 다음 조건에 맞게 출력하세요.\n- level가 25 이상이면 [[25 이상]]\n- 그렇지 않고 10 이상이면 [[10 이상]]\n- 두 조건에 모두 해당하지 않으면 [[그 외]]\n큰 기준인 25부터 차례대로 확인하세요.",
+    "inputDescription": "입력은 없습니다.",
+    "outputDescription": "25 이상, 10 이상, 그 외 중 하나를 출력합니다.",
+    "solution": "level = 10\nif level >= 25:\n    print(\"25 이상\")\nelif level >= 10:\n    print(\"10 이상\")\nelse:\n    print(\"그 외\")",
+    "cases": [
+      {
+        "input": "",
+        "output": "10 이상"
+      }
+    ],
+    "requirements": [
+      {
+        "type": "conditional_ladder",
+        "variable": "level",
+        "branches": [
+          {
+            "value": 25,
+            "output": "25 이상",
+            "operator": ">="
+          },
+          {
+            "value": 10,
+            "output": "10 이상",
+            "operator": ">="
+          }
+        ],
+        "elseOutput": "그 외"
+      }
+    ],
+    "starterCode": "level = 10\nif :\n    print()",
+    "hint": ""
+  },
+  {
+    "id": "평가2-2-09 문자열 묶음 여러 줄 출력",
+    "bookId": "평가-02-02",
+    "order": 9,
+    "title": "문자열 묶음 여러 줄 출력",
+    "statement": "for 반복문과 * 연산자를 사용하여 \"run\"를 공백 없이 3번 이어 붙인 문자열을 9줄 출력하세요.",
+    "inputDescription": "입력은 없습니다.",
+    "outputDescription": "runrunrun를 9줄 출력합니다.",
+    "solution": "for i in range(9):\n    print(\"run\" * 3)",
+    "cases": [
+      {
+        "input": "",
+        "output": "runrunrun\nrunrunrun\nrunrunrun\nrunrunrun\nrunrunrun\nrunrunrun\nrunrunrun\nrunrunrun\nrunrunrun"
+      }
+    ],
+    "requirements": [
+      {
+        "type": "for_range"
+      },
+      {
+        "type": "operators",
+        "values": [
+          "*"
+        ]
+      }
+    ],
+    "starterCode": "for i in range():\n    print()",
+    "hint": ""
+  },
+  {
+    "id": "평가2-2-10 인덱싱과 슬라이싱 결합",
+    "bookId": "평가-02-02",
+    "order": 10,
+    "title": "인덱싱과 슬라이싱 결합",
+    "statement": "a = [5, 3, 7, 2, 9]\nb = \"135790\"\nc = \"python school\"\n\n인덱싱과 슬라이싱을 사용하여 다음 결과를 한 줄에 하나씩 출력하세요.\n1. b의 3번째 문자와 c의 마지막 문자를 결합한 뒤, a의 2번째 요소만큼 반복\n2. c의 처음 3개 문자를 슬라이싱하고, b의 마지막 세 문자를 슬라이싱한 후 결합",
+    "inputDescription": "입력은 없습니다.",
+    "outputDescription": "5l5l5l\npyt790",
+    "solution": "a = [5, 3, 7, 2, 9]\nb = \"135790\"\nc = \"python school\"\nprint((b[2] + c[-1]) * a[1])\nprint(c[:3] + b[-3:])",
+    "cases": [
+      {
+        "input": "",
+        "output": "5l5l5l\npyt790"
+      }
+    ],
+    "requirements": [
+      {
+        "type": "indexing",
+        "minCount": 3
+      },
+      {
+        "type": "slicing",
+        "minCount": 2
+      },
+      {
+        "type": "operators",
+        "values": [
+          "+",
+          "*"
+        ]
+      }
+    ],
+    "starterCode": "a = [5, 3, 7, 2, 9]\nb = \"135790\"\nc = \"python school\"\n",
+    "hint": "인덱싱하거나 슬라이싱한 후 +로 결합할 수 있습니다."
+  },
+  {
+    "id": "평가4-2-01 여섯 값 띄어 출력",
+    "bookId": "평가-04-02",
+    "order": 1,
+    "title": "여섯 값 띄어 출력",
+    "statement": "print 함수의 쉼표(,)를 활용하여 [[Code 4 Step 8 Start 12]]를 한 줄에 출력하세요.",
+    "inputDescription": "입력은 없습니다.",
+    "outputDescription": "Code 4 Step 8 Start 12를 출력합니다. 각 값 사이에 공백을 하나 넣습니다.",
+    "solution": "print(\"Code\", 4, \"Step\", 8, \"Start\", 12)",
+    "cases": [
+      {
+        "input": "",
+        "output": "Code 4 Step 8 Start 12"
+      }
+    ],
+    "requirements": [
+      {
+        "type": "print_arguments",
+        "minCount": 6
+      }
+    ],
+    "starterCode": "",
+    "hint": ""
+  },
+  {
+    "id": "평가4-2-02 문자 사이 빈 줄 출력",
+    "bookId": "평가-04-02",
+    "order": 2,
+    "title": "문자 사이 빈 줄 출력",
+    "statement": "C, O, E를 순서대로 한 줄씩 출력하되, 문자 사이에 빈 줄을 두 줄씩 넣어 총 일곱 줄로 출력하세요.",
+    "inputDescription": "입력은 없습니다.",
+    "outputDescription": "문자 세 줄과 빈 줄 네 줄을 출력합니다.",
+    "solution": "print(\"C\\n\\n\\nO\\n\\n\\nE\")",
+    "cases": [
+      {
+        "input": "",
+        "output": "C\n\n\nO\n\n\nE"
+      }
+    ],
+    "requirements": [],
+    "starterCode": "",
+    "hint": "각 문자 사이에 빈 줄이 두 줄 있어야 합니다."
+  },
+  {
+    "id": "평가4-2-03 네 문자열 순서 바꾸기",
+    "bookId": "평가-04-02",
+    "order": 3,
+    "title": "네 문자열 순서 바꾸기",
+    "statement": "문자열 4개를 한 줄에 하나씩 입력받아 4번째, 1번째, 2번째, 3번째 입력 순서로 한 줄에 하나씩 출력하세요.",
+    "inputDescription": "문자 또는 문자열 4개가 한 줄씩 주어집니다.",
+    "outputDescription": "지정한 순서로 문자열을 한 줄에 하나씩 출력합니다.",
+    "solution": "a = input()\nb = input()\nc = input()\nd = input()\nprint(d)\nprint(a)\nprint(b)\nprint(c)",
+    "cases": [
+      {
+        "input": "봄\n여름\n가을\n겨울",
+        "output": "겨울\n봄\n여름\n가을"
+      },
+      {
+        "input": "A\nB\nC\nD",
+        "output": "D\nA\nB\nC"
+      },
+      {
+        "input": "1\n22\n333\n4444",
+        "output": "4444\n1\n22\n333"
+      },
+      {
+        "input": "hello world\ngood morning\nsee you\ngood bye",
+        "output": "good bye\nhello world\ngood morning\nsee you"
+      },
+      {
+        "input": "같음\n다름\n다름\n같음",
+        "output": "같음\n같음\n다름\n다름"
+      },
+      {
+        "input": "가\n나\n다\n라",
+        "output": "라\n가\n나\n다"
+      }
+    ],
+    "requirements": [],
+    "starterCode": "",
+    "hint": ""
+  },
+  {
+    "id": "평가4-2-04 더한 뒤 몫 출력",
+    "bookId": "평가-04-02",
+    "order": 4,
+    "title": "더한 뒤 몫 출력",
+    "statement": "정수 하나를 입력받아 14을 먼저 더한 후, 그 결과를 6로 나눈 몫을 출력하세요. +와 // 연산자를 사용하세요.",
+    "inputDescription": "정수 1개가 주어집니다.",
+    "outputDescription": "먼저 덧셈을 하고 나눗셈의 몫을 출력합니다.",
+    "solution": "n = int(input())\nprint((n + 14) // 6)",
+    "cases": [
+      {
+        "input": "10",
+        "output": "4"
+      },
+      {
+        "input": "0",
+        "output": "2"
+      },
+      {
+        "input": "-8",
+        "output": "1"
+      },
+      {
+        "input": "28",
+        "output": "7"
+      },
+      {
+        "input": "100",
+        "output": "19"
+      },
+      {
+        "input": "-14",
+        "output": "0"
+      },
+      {
+        "input": "-15",
+        "output": "-1"
+      }
+    ],
+    "requirements": [
+      {
+        "type": "operators",
+        "values": [
+          "+",
+          "//"
+        ]
+      }
+    ],
+    "starterCode": "",
+    "hint": ""
+  },
+  {
+    "id": "평가4-2-05 다음 층 객실 번호",
+    "bookId": "평가-04-02",
+    "order": 5,
+    "title": "다음 층 객실 번호",
+    "statement": "층, 구역, 객실를 차례로 입력받습니다.\n층을 하나 올린 뒤, 층 1자리와 구역 2자리, 객실 2자리를 이어 붙인 5자리 번호를 출력하세요.\n구역이나 객실가 1~9이면 앞에 0을 붙여 두 자리로 만드세요.\n\n[[if를 사용하지 않고 풀어야 합니다.]]",
+    "inputDescription": "층: 1~2, 구역: 1~9, 객실: 1~33인 정수 세 개가 한 줄씩 주어집니다.",
+    "outputDescription": "설명에 따라 만든 5자리 번호를 출력합니다.",
+    "solution": "first = int(input())\nsecond = int(input())\nthird = int(input())\nprint((first + 1) * 10000 + second * 100 + third)",
+    "cases": [
+      {
+        "input": "1\n4\n28",
+        "output": "20428"
+      },
+      {
+        "input": "1\n3\n9",
+        "output": "20309"
+      },
+      {
+        "input": "1\n1\n1",
+        "output": "20101"
+      },
+      {
+        "input": "1\n9\n10",
+        "output": "20910"
+      },
+      {
+        "input": "2\n4\n7",
+        "output": "30407"
+      },
+      {
+        "input": "2\n9\n33",
+        "output": "30933"
+      },
+      {
+        "input": "2\n1\n20",
+        "output": "30120"
+      }
+    ],
+    "requirements": [
+      {
+        "type": "forbidden_keywords",
+        "values": [
+          "if"
+        ]
+      }
+    ],
+    "starterCode": "first = int(input())\nsecond = int(input())\nthird = int(input())\n",
+    "hint": ""
+  },
+  {
+    "id": "평가4-2-06 세 입력 재배치 출력",
+    "bookId": "평가-04-02",
+    "order": 6,
+    "title": "세 입력 재배치 출력",
+    "statement": "계절, 날씨, 활동를 차례로 한 줄에 하나씩 입력받습니다. 활동, 날씨, 계절 순서로 바꾸고 각 값 사이에 \" - \"를 넣어 한 줄에 출력하세요.",
+    "inputDescription": "1번째 줄: 계절\n2번째 줄: 날씨\n3번째 줄: 활동",
+    "outputDescription": "활동 - 날씨 - 계절",
+    "solution": "season = input()\nweather = input()\nactivity = input()\nprint(activity + \" - \" + weather + \" - \" + season)",
+    "cases": [
+      {
+        "input": "여름\n맑음\n수영",
+        "output": "수영 - 맑음 - 여름"
+      },
+      {
+        "input": "cat\nwhite\npark",
+        "output": "park - white - cat"
+      },
+      {
+        "input": "첫째\n둘째\n셋째",
+        "output": "셋째 - 둘째 - 첫째"
+      },
+      {
+        "input": "hello world\ndeep blue\nold tree",
+        "output": "old tree - deep blue - hello world"
+      },
+      {
+        "input": "봄\n여름\n가을",
+        "output": "가을 - 여름 - 봄"
+      },
+      {
+        "input": "A\nB\nC",
+        "output": "C - B - A"
+      }
+    ],
+    "requirements": [],
+    "starterCode": "season = \nweather = \nactivity = \n",
+    "hint": ""
+  },
+  {
+    "id": "평가4-2-07 9의 배수 판정",
+    "bookId": "평가-04-02",
+    "order": 7,
+    "title": "9의 배수 판정",
+    "statement": "정수 n을 입력받아 9의 배수이면 YES, 아니면 NO를 출력하세요.",
+    "inputDescription": "정수 1개가 주어집니다.",
+    "outputDescription": "YES 또는 NO를 출력합니다.",
+    "solution": "n = int(input())\nif n % 9 == 0:\n    print(\"YES\")\nelse:\n    print(\"NO\")",
+    "cases": [
+      {
+        "input": "18",
+        "output": "YES"
+      },
+      {
+        "input": "19",
+        "output": "NO"
+      },
+      {
+        "input": "0",
+        "output": "YES"
+      },
+      {
+        "input": "-27",
+        "output": "YES"
+      },
+      {
+        "input": "-8",
+        "output": "NO"
+      },
+      {
+        "input": "90",
+        "output": "YES"
+      },
+      {
+        "input": "91",
+        "output": "NO"
+      }
+    ],
+    "requirements": [],
+    "starterCode": "n = \nif :\n    print()\nelse:\n    print()",
+    "hint": ""
+  },
+  {
+    "id": "평가4-2-08 두 기준으로 값 분류",
+    "bookId": "평가-04-02",
+    "order": 8,
+    "title": "두 기준으로 값 분류",
+    "statement": "변수 point에는 정수 18가 저장되어 있습니다.\nif, elif, else를 사용하여 다음 조건에 맞게 출력하세요.\n- point가 40 이상이면 [[40 이상]]\n- 그렇지 않고 18 이상이면 [[18 이상]]\n- 두 조건에 모두 해당하지 않으면 [[그 외]]\n큰 기준인 40부터 차례대로 확인하세요.",
+    "inputDescription": "입력은 없습니다.",
+    "outputDescription": "40 이상, 18 이상, 그 외 중 하나를 출력합니다.",
+    "solution": "point = 18\nif point >= 40:\n    print(\"40 이상\")\nelif point >= 18:\n    print(\"18 이상\")\nelse:\n    print(\"그 외\")",
+    "cases": [
+      {
+        "input": "",
+        "output": "18 이상"
+      }
+    ],
+    "requirements": [
+      {
+        "type": "conditional_ladder",
+        "variable": "point",
+        "branches": [
+          {
+            "value": 40,
+            "output": "40 이상",
+            "operator": ">="
+          },
+          {
+            "value": 18,
+            "output": "18 이상",
+            "operator": ">="
+          }
+        ],
+        "elseOutput": "그 외"
+      }
+    ],
+    "starterCode": "point = 18\nif :\n    print()",
+    "hint": ""
+  },
+  {
+    "id": "평가4-2-09 문자열 묶음 여러 줄 출력",
+    "bookId": "평가-04-02",
+    "order": 9,
+    "title": "문자열 묶음 여러 줄 출력",
+    "statement": "for 반복문과 * 연산자를 사용하여 \"ha!\"를 공백 없이 4번 이어 붙인 문자열을 7줄 출력하세요.",
+    "inputDescription": "입력은 없습니다.",
+    "outputDescription": "ha!ha!ha!ha!를 7줄 출력합니다.",
+    "solution": "for i in range(7):\n    print(\"ha!\" * 4)",
+    "cases": [
+      {
+        "input": "",
+        "output": "ha!ha!ha!ha!\nha!ha!ha!ha!\nha!ha!ha!ha!\nha!ha!ha!ha!\nha!ha!ha!ha!\nha!ha!ha!ha!\nha!ha!ha!ha!"
+      }
+    ],
+    "requirements": [
+      {
+        "type": "for_range"
+      },
+      {
+        "type": "operators",
+        "values": [
+          "*"
+        ]
+      }
+    ],
+    "starterCode": "for i in range():\n    print()",
+    "hint": ""
+  },
+  {
+    "id": "평가4-2-10 인덱싱과 슬라이싱 결합",
+    "bookId": "평가-04-02",
+    "order": 10,
+    "title": "인덱싱과 슬라이싱 결합",
+    "statement": "a = [3, 6, 2, 4, 8]\nb = \"357910\"\nc = \"computer class\"\n\n인덱싱과 슬라이싱을 사용하여 다음 결과를 한 줄에 하나씩 출력하세요.\n1. b의 2번째 문자와 c의 마지막 문자를 결합한 뒤, a의 4번째 요소만큼 반복\n2. c의 처음 2개 문자를 슬라이싱하고, b의 마지막 세 문자를 슬라이싱한 후 결합",
+    "inputDescription": "입력은 없습니다.",
+    "outputDescription": "5s5s5s5s\nco910",
+    "solution": "a = [3, 6, 2, 4, 8]\nb = \"357910\"\nc = \"computer class\"\nprint((b[1] + c[-1]) * a[3])\nprint(c[:2] + b[-3:])",
+    "cases": [
+      {
+        "input": "",
+        "output": "5s5s5s5s\nco910"
+      }
+    ],
+    "requirements": [
+      {
+        "type": "indexing",
+        "minCount": 3
+      },
+      {
+        "type": "slicing",
+        "minCount": 2
+      },
+      {
+        "type": "operators",
+        "values": [
+          "+",
+          "*"
+        ]
+      }
+    ],
+    "starterCode": "a = [3, 6, 2, 4, 8]\nb = \"357910\"\nc = \"computer class\"\n",
+    "hint": "인덱싱하거나 슬라이싱한 후 +로 결합할 수 있습니다."
+  },
+  {
+    "id": "평가5-2-01 여섯 값 띄어 출력",
+    "bookId": "평가-05-02",
+    "order": 1,
+    "title": "여섯 값 띄어 출력",
+    "statement": "print 함수의 쉼표(,)를 활용하여 [[Day 5 Month 10 Year 2026]]를 한 줄에 출력하세요.",
+    "inputDescription": "입력은 없습니다.",
+    "outputDescription": "Day 5 Month 10 Year 2026를 출력합니다. 각 값 사이에 공백을 하나 넣습니다.",
+    "solution": "print(\"Day\", 5, \"Month\", 10, \"Year\", 2026)",
+    "cases": [
+      {
+        "input": "",
+        "output": "Day 5 Month 10 Year 2026"
+      }
+    ],
+    "requirements": [
+      {
+        "type": "print_arguments",
+        "minCount": 6
+      }
+    ],
+    "starterCode": "",
+    "hint": ""
+  },
+  {
+    "id": "평가5-2-02 문자 사이 빈 줄 출력",
+    "bookId": "평가-05-02",
+    "order": 2,
+    "title": "문자 사이 빈 줄 출력",
+    "statement": "D, M, Y를 순서대로 한 줄씩 출력하되, 문자 사이에 빈 줄을 두 줄씩 넣어 총 일곱 줄로 출력하세요.",
+    "inputDescription": "입력은 없습니다.",
+    "outputDescription": "문자 세 줄과 빈 줄 네 줄을 출력합니다.",
+    "solution": "print(\"D\\n\\n\\nM\\n\\n\\nY\")",
+    "cases": [
+      {
+        "input": "",
+        "output": "D\n\n\nM\n\n\nY"
+      }
+    ],
+    "requirements": [],
+    "starterCode": "",
+    "hint": "각 문자 사이에 빈 줄이 두 줄 있어야 합니다."
+  },
+  {
+    "id": "평가5-2-03 네 문자열 순서 바꾸기",
+    "bookId": "평가-05-02",
+    "order": 3,
+    "title": "네 문자열 순서 바꾸기",
+    "statement": "문자열 4개를 한 줄에 하나씩 입력받아 3번째, 4번째, 1번째, 2번째 입력 순서로 한 줄에 하나씩 출력하세요.",
+    "inputDescription": "문자 또는 문자열 4개가 한 줄씩 주어집니다.",
+    "outputDescription": "지정한 순서로 문자열을 한 줄에 하나씩 출력합니다.",
+    "solution": "a = input()\nb = input()\nc = input()\nd = input()\nprint(c)\nprint(d)\nprint(a)\nprint(b)",
+    "cases": [
+      {
+        "input": "봄\n여름\n가을\n겨울",
+        "output": "가을\n겨울\n봄\n여름"
+      },
+      {
+        "input": "A\nB\nC\nD",
+        "output": "C\nD\nA\nB"
+      },
+      {
+        "input": "1\n22\n333\n4444",
+        "output": "333\n4444\n1\n22"
+      },
+      {
+        "input": "hello world\ngood morning\nsee you\ngood bye",
+        "output": "see you\ngood bye\nhello world\ngood morning"
+      },
+      {
+        "input": "같음\n다름\n다름\n같음",
+        "output": "다름\n같음\n같음\n다름"
+      },
+      {
+        "input": "가\n나\n다\n라",
+        "output": "다\n라\n가\n나"
+      }
+    ],
+    "requirements": [],
+    "starterCode": "",
+    "hint": ""
+  },
+  {
+    "id": "평가5-2-04 더한 뒤 몫 출력",
+    "bookId": "평가-05-02",
+    "order": 4,
+    "title": "더한 뒤 몫 출력",
+    "statement": "정수 하나를 입력받아 8을 먼저 더한 후, 그 결과를 3로 나눈 몫을 출력하세요. +와 // 연산자를 사용하세요.",
+    "inputDescription": "정수 1개가 주어집니다.",
+    "outputDescription": "먼저 덧셈을 하고 나눗셈의 몫을 출력합니다.",
+    "solution": "n = int(input())\nprint((n + 8) // 3)",
+    "cases": [
+      {
+        "input": "10",
+        "output": "6"
+      },
+      {
+        "input": "0",
+        "output": "2"
+      },
+      {
+        "input": "-5",
+        "output": "1"
+      },
+      {
+        "input": "13",
+        "output": "7"
+      },
+      {
+        "input": "100",
+        "output": "36"
+      },
+      {
+        "input": "-8",
+        "output": "0"
+      },
+      {
+        "input": "-9",
+        "output": "-1"
+      }
+    ],
+    "requirements": [
+      {
+        "type": "operators",
+        "values": [
+          "+",
+          "//"
+        ]
+      }
+    ],
+    "starterCode": "",
+    "hint": ""
+  },
+  {
+    "id": "평가5-2-05 다음 회차 좌석 번호",
+    "bookId": "평가-05-02",
+    "order": 5,
+    "title": "다음 회차 좌석 번호",
+    "statement": "회차, 줄, 좌석를 차례로 입력받습니다.\n회차을 하나 올린 뒤, 회차 1자리와 줄 2자리, 좌석 2자리를 이어 붙인 5자리 번호를 출력하세요.\n줄이나 좌석가 1~9이면 앞에 0을 붙여 두 자리로 만드세요.\n\n[[if를 사용하지 않고 풀어야 합니다.]]",
+    "inputDescription": "회차: 1~2, 줄: 1~9, 좌석: 1~33인 정수 세 개가 한 줄씩 주어집니다.",
+    "outputDescription": "설명에 따라 만든 5자리 번호를 출력합니다.",
+    "solution": "first = int(input())\nsecond = int(input())\nthird = int(input())\nprint((first + 1) * 10000 + second * 100 + third)",
+    "cases": [
+      {
+        "input": "1\n4\n28",
+        "output": "20428"
+      },
+      {
+        "input": "1\n3\n9",
+        "output": "20309"
+      },
+      {
+        "input": "1\n1\n1",
+        "output": "20101"
+      },
+      {
+        "input": "1\n9\n10",
+        "output": "20910"
+      },
+      {
+        "input": "2\n4\n7",
+        "output": "30407"
+      },
+      {
+        "input": "2\n9\n33",
+        "output": "30933"
+      },
+      {
+        "input": "2\n1\n20",
+        "output": "30120"
+      }
+    ],
+    "requirements": [
+      {
+        "type": "forbidden_keywords",
+        "values": [
+          "if"
+        ]
+      }
+    ],
+    "starterCode": "first = int(input())\nsecond = int(input())\nthird = int(input())\n",
+    "hint": ""
+  },
+  {
+    "id": "평가5-2-06 세 입력 재배치 출력",
+    "bookId": "평가-05-02",
+    "order": 6,
+    "title": "세 입력 재배치 출력",
+    "statement": "음식, 나라, 식당를 차례로 한 줄에 하나씩 입력받습니다. 나라, 음식, 식당 순서로 바꾸고 각 값 사이에 \" / \"를 넣어 한 줄에 출력하세요.",
+    "inputDescription": "1번째 줄: 음식\n2번째 줄: 나라\n3번째 줄: 식당",
+    "outputDescription": "나라 / 음식 / 식당",
+    "solution": "food = input()\ncountry = input()\nstore = input()\nprint(country + \" / \" + food + \" / \" + store)",
+    "cases": [
+      {
+        "input": "피자\n이탈리아\n맛나식당",
+        "output": "이탈리아 / 피자 / 맛나식당"
+      },
+      {
+        "input": "cat\nwhite\npark",
+        "output": "white / cat / park"
+      },
+      {
+        "input": "첫째\n둘째\n셋째",
+        "output": "둘째 / 첫째 / 셋째"
+      },
+      {
+        "input": "hello world\ndeep blue\nold tree",
+        "output": "deep blue / hello world / old tree"
+      },
+      {
+        "input": "봄\n여름\n가을",
+        "output": "여름 / 봄 / 가을"
+      },
+      {
+        "input": "A\nB\nC",
+        "output": "B / A / C"
+      }
+    ],
+    "requirements": [],
+    "starterCode": "food = \ncountry = \nstore = \n",
+    "hint": ""
+  },
+  {
+    "id": "평가5-2-07 7의 배수 판정",
+    "bookId": "평가-05-02",
+    "order": 7,
+    "title": "7의 배수 판정",
+    "statement": "정수 n을 입력받아 7의 배수이면 YES, 아니면 NO를 출력하세요.",
+    "inputDescription": "정수 1개가 주어집니다.",
+    "outputDescription": "YES 또는 NO를 출력합니다.",
+    "solution": "n = int(input())\nif n % 7 == 0:\n    print(\"YES\")\nelse:\n    print(\"NO\")",
+    "cases": [
+      {
+        "input": "14",
+        "output": "YES"
+      },
+      {
+        "input": "15",
+        "output": "NO"
+      },
+      {
+        "input": "0",
+        "output": "YES"
+      },
+      {
+        "input": "-21",
+        "output": "YES"
+      },
+      {
+        "input": "-6",
+        "output": "NO"
+      },
+      {
+        "input": "70",
+        "output": "YES"
+      },
+      {
+        "input": "71",
+        "output": "NO"
+      }
+    ],
+    "requirements": [],
+    "starterCode": "n = \nif :\n    print()\nelse:\n    print()",
+    "hint": ""
+  },
+  {
+    "id": "평가5-2-08 두 기준으로 값 분류",
+    "bookId": "평가-05-02",
+    "order": 8,
+    "title": "두 기준으로 값 분류",
+    "statement": "변수 count에는 정수 14가 저장되어 있습니다.\nif, elif, else를 사용하여 다음 조건에 맞게 출력하세요.\n- count가 35 이상이면 [[35 이상]]\n- 그렇지 않고 14 이상이면 [[14 이상]]\n- 두 조건에 모두 해당하지 않으면 [[그 외]]\n큰 기준인 35부터 차례대로 확인하세요.",
+    "inputDescription": "입력은 없습니다.",
+    "outputDescription": "35 이상, 14 이상, 그 외 중 하나를 출력합니다.",
+    "solution": "count = 14\nif count >= 35:\n    print(\"35 이상\")\nelif count >= 14:\n    print(\"14 이상\")\nelse:\n    print(\"그 외\")",
+    "cases": [
+      {
+        "input": "",
+        "output": "14 이상"
+      }
+    ],
+    "requirements": [
+      {
+        "type": "conditional_ladder",
+        "variable": "count",
+        "branches": [
+          {
+            "value": 35,
+            "output": "35 이상",
+            "operator": ">="
+          },
+          {
+            "value": 14,
+            "output": "14 이상",
+            "operator": ">="
+          }
+        ],
+        "elseOutput": "그 외"
+      }
+    ],
+    "starterCode": "count = 14\nif :\n    print()",
+    "hint": ""
+  },
+  {
+    "id": "평가5-2-09 문자열 묶음 여러 줄 출력",
+    "bookId": "평가-05-02",
+    "order": 9,
+    "title": "문자열 묶음 여러 줄 출력",
+    "statement": "for 반복문과 * 연산자를 사용하여 \"yes\"를 공백 없이 3번 이어 붙인 문자열을 7줄 출력하세요.",
+    "inputDescription": "입력은 없습니다.",
+    "outputDescription": "yesyesyes를 7줄 출력합니다.",
+    "solution": "for i in range(7):\n    print(\"yes\" * 3)",
+    "cases": [
+      {
+        "input": "",
+        "output": "yesyesyes\nyesyesyes\nyesyesyes\nyesyesyes\nyesyesyes\nyesyesyes\nyesyesyes"
+      }
+    ],
+    "requirements": [
+      {
+        "type": "for_range"
+      },
+      {
+        "type": "operators",
+        "values": [
+          "*"
+        ]
+      }
+    ],
+    "starterCode": "for i in range():\n    print()",
+    "hint": ""
+  },
+  {
+    "id": "평가5-2-10 인덱싱과 슬라이싱 결합",
+    "bookId": "평가-05-02",
+    "order": 10,
+    "title": "인덱싱과 슬라이싱 결합",
+    "statement": "a = [4, 2, 5, 3, 7]\nb = \"468120\"\nc = \"learning python\"\n\n인덱싱과 슬라이싱을 사용하여 다음 결과를 한 줄에 하나씩 출력하세요.\n1. b의 3번째 문자와 c의 마지막 문자를 결합한 뒤, a의 1번째 요소만큼 반복\n2. c의 처음 2개 문자를 슬라이싱하고, b의 마지막 세 문자를 슬라이싱한 후 결합",
+    "inputDescription": "입력은 없습니다.",
+    "outputDescription": "8n8n8n8n\nle120",
+    "solution": "a = [4, 2, 5, 3, 7]\nb = \"468120\"\nc = \"learning python\"\nprint((b[2] + c[-1]) * a[0])\nprint(c[:2] + b[-3:])",
+    "cases": [
+      {
+        "input": "",
+        "output": "8n8n8n8n\nle120"
+      }
+    ],
+    "requirements": [
+      {
+        "type": "indexing",
+        "minCount": 3
+      },
+      {
+        "type": "slicing",
+        "minCount": 2
+      },
+      {
+        "type": "operators",
+        "values": [
+          "+",
+          "*"
+        ]
+      }
+    ],
+    "starterCode": "a = [4, 2, 5, 3, 7]\nb = \"468120\"\nc = \"learning python\"\n",
+    "hint": "인덱싱하거나 슬라이싱한 후 +로 결합할 수 있습니다."
+  },
+  {
+    "id": "평가6-2-01 여섯 값 띄어 출력",
+    "bookId": "평가-06-02",
+    "order": 1,
+    "title": "여섯 값 띄어 출력",
+    "statement": "print 함수의 쉼표(,)를 활용하여 [[Team 6 Score 12 Goal 18]]를 한 줄에 출력하세요.",
+    "inputDescription": "입력은 없습니다.",
+    "outputDescription": "Team 6 Score 12 Goal 18를 출력합니다. 각 값 사이에 공백을 하나 넣습니다.",
+    "solution": "print(\"Team\", 6, \"Score\", 12, \"Goal\", 18)",
+    "cases": [
+      {
+        "input": "",
+        "output": "Team 6 Score 12 Goal 18"
+      }
+    ],
+    "requirements": [
+      {
+        "type": "print_arguments",
+        "minCount": 6
+      }
+    ],
+    "starterCode": "",
+    "hint": ""
+  },
+  {
+    "id": "평가6-2-02 문자 사이 빈 줄 출력",
+    "bookId": "평가-06-02",
+    "order": 2,
+    "title": "문자 사이 빈 줄 출력",
+    "statement": "T, S, G를 순서대로 한 줄씩 출력하되, 문자 사이에 빈 줄을 두 줄씩 넣어 총 일곱 줄로 출력하세요.",
+    "inputDescription": "입력은 없습니다.",
+    "outputDescription": "문자 세 줄과 빈 줄 네 줄을 출력합니다.",
+    "solution": "print(\"T\\n\\n\\nS\\n\\n\\nG\")",
+    "cases": [
+      {
+        "input": "",
+        "output": "T\n\n\nS\n\n\nG"
+      }
+    ],
+    "requirements": [],
+    "starterCode": "",
+    "hint": "각 문자 사이에 빈 줄이 두 줄 있어야 합니다."
+  },
+  {
+    "id": "평가6-2-03 네 문자열 순서 바꾸기",
+    "bookId": "평가-06-02",
+    "order": 3,
+    "title": "네 문자열 순서 바꾸기",
+    "statement": "문자열 4개를 한 줄에 하나씩 입력받아 4번째, 1번째, 2번째, 3번째 입력 순서로 한 줄에 하나씩 출력하세요.",
+    "inputDescription": "문자 또는 문자열 4개가 한 줄씩 주어집니다.",
+    "outputDescription": "지정한 순서로 문자열을 한 줄에 하나씩 출력합니다.",
+    "solution": "a = input()\nb = input()\nc = input()\nd = input()\nprint(d)\nprint(a)\nprint(b)\nprint(c)",
+    "cases": [
+      {
+        "input": "봄\n여름\n가을\n겨울",
+        "output": "겨울\n봄\n여름\n가을"
+      },
+      {
+        "input": "A\nB\nC\nD",
+        "output": "D\nA\nB\nC"
+      },
+      {
+        "input": "1\n22\n333\n4444",
+        "output": "4444\n1\n22\n333"
+      },
+      {
+        "input": "hello world\ngood morning\nsee you\ngood bye",
+        "output": "good bye\nhello world\ngood morning\nsee you"
+      },
+      {
+        "input": "같음\n다름\n다름\n같음",
+        "output": "같음\n같음\n다름\n다름"
+      },
+      {
+        "input": "가\n나\n다\n라",
+        "output": "라\n가\n나\n다"
+      }
+    ],
+    "requirements": [],
+    "starterCode": "",
+    "hint": ""
+  },
+  {
+    "id": "평가6-2-04 더한 뒤 몫 출력",
+    "bookId": "평가-06-02",
+    "order": 4,
+    "title": "더한 뒤 몫 출력",
+    "statement": "정수 하나를 입력받아 11을 먼저 더한 후, 그 결과를 5로 나눈 몫을 출력하세요. +와 // 연산자를 사용하세요.",
+    "inputDescription": "정수 1개가 주어집니다.",
+    "outputDescription": "먼저 덧셈을 하고 나눗셈의 몫을 출력합니다.",
+    "solution": "n = int(input())\nprint((n + 11) // 5)",
+    "cases": [
+      {
+        "input": "10",
+        "output": "4"
+      },
+      {
+        "input": "0",
+        "output": "2"
+      },
+      {
+        "input": "-6",
+        "output": "1"
+      },
+      {
+        "input": "24",
+        "output": "7"
+      },
+      {
+        "input": "100",
+        "output": "22"
+      },
+      {
+        "input": "-11",
+        "output": "0"
+      },
+      {
+        "input": "-12",
+        "output": "-1"
+      }
+    ],
+    "requirements": [
+      {
+        "type": "operators",
+        "values": [
+          "+",
+          "//"
+        ]
+      }
+    ],
+    "starterCode": "",
+    "hint": ""
+  },
+  {
+    "id": "평가6-2-05 다음 단계 상품 번호",
+    "bookId": "평가-06-02",
+    "order": 5,
+    "title": "다음 단계 상품 번호",
+    "statement": "단계, 종류, 번호를 차례로 입력받습니다.\n단계을 하나 올린 뒤, 단계 1자리와 종류 2자리, 번호 2자리를 이어 붙인 5자리 번호를 출력하세요.\n종류이나 번호가 1~9이면 앞에 0을 붙여 두 자리로 만드세요.\n\n[[if를 사용하지 않고 풀어야 합니다.]]",
+    "inputDescription": "단계: 1~2, 종류: 1~9, 번호: 1~33인 정수 세 개가 한 줄씩 주어집니다.",
+    "outputDescription": "설명에 따라 만든 5자리 번호를 출력합니다.",
+    "solution": "first = int(input())\nsecond = int(input())\nthird = int(input())\nprint((first + 1) * 10000 + second * 100 + third)",
+    "cases": [
+      {
+        "input": "1\n4\n28",
+        "output": "20428"
+      },
+      {
+        "input": "1\n3\n9",
+        "output": "20309"
+      },
+      {
+        "input": "1\n1\n1",
+        "output": "20101"
+      },
+      {
+        "input": "1\n9\n10",
+        "output": "20910"
+      },
+      {
+        "input": "2\n4\n7",
+        "output": "30407"
+      },
+      {
+        "input": "2\n9\n33",
+        "output": "30933"
+      },
+      {
+        "input": "2\n1\n20",
+        "output": "30120"
+      }
+    ],
+    "requirements": [
+      {
+        "type": "forbidden_keywords",
+        "values": [
+          "if"
+        ]
+      }
+    ],
+    "starterCode": "first = int(input())\nsecond = int(input())\nthird = int(input())\n",
+    "hint": ""
+  },
+  {
+    "id": "평가6-2-06 세 입력 재배치 출력",
+    "bookId": "평가-06-02",
+    "order": 6,
+    "title": "세 입력 재배치 출력",
+    "statement": "물건, 색깔, 장소를 차례로 한 줄에 하나씩 입력받습니다. 장소, 색깔, 물건 순서로 바꾸고 각 값 사이에 \" : \"를 넣어 한 줄에 출력하세요.",
+    "inputDescription": "1번째 줄: 물건\n2번째 줄: 색깔\n3번째 줄: 장소",
+    "outputDescription": "장소 : 색깔 : 물건",
+    "solution": "item = input()\ncolor = input()\nplace = input()\nprint(place + \" : \" + color + \" : \" + item)",
+    "cases": [
+      {
+        "input": "가방\n파랑\n교실",
+        "output": "교실 : 파랑 : 가방"
+      },
+      {
+        "input": "cat\nwhite\npark",
+        "output": "park : white : cat"
+      },
+      {
+        "input": "첫째\n둘째\n셋째",
+        "output": "셋째 : 둘째 : 첫째"
+      },
+      {
+        "input": "hello world\ndeep blue\nold tree",
+        "output": "old tree : deep blue : hello world"
+      },
+      {
+        "input": "봄\n여름\n가을",
+        "output": "가을 : 여름 : 봄"
+      },
+      {
+        "input": "A\nB\nC",
+        "output": "C : B : A"
+      }
+    ],
+    "requirements": [],
+    "starterCode": "item = \ncolor = \nplace = \n",
+    "hint": ""
+  },
+  {
+    "id": "평가6-2-07 3의 배수 판정",
+    "bookId": "평가-06-02",
+    "order": 7,
+    "title": "3의 배수 판정",
+    "statement": "정수 n을 입력받아 3의 배수이면 YES, 아니면 NO를 출력하세요.",
+    "inputDescription": "정수 1개가 주어집니다.",
+    "outputDescription": "YES 또는 NO를 출력합니다.",
+    "solution": "n = int(input())\nif n % 3 == 0:\n    print(\"YES\")\nelse:\n    print(\"NO\")",
+    "cases": [
+      {
+        "input": "6",
+        "output": "YES"
+      },
+      {
+        "input": "7",
+        "output": "NO"
+      },
+      {
+        "input": "0",
+        "output": "YES"
+      },
+      {
+        "input": "-9",
+        "output": "YES"
+      },
+      {
+        "input": "-2",
+        "output": "NO"
+      },
+      {
+        "input": "30",
+        "output": "YES"
+      },
+      {
+        "input": "31",
+        "output": "NO"
+      }
+    ],
+    "requirements": [],
+    "starterCode": "n = \nif :\n    print()\nelse:\n    print()",
+    "hint": ""
+  },
+  {
+    "id": "평가6-2-08 두 기준으로 값 분류",
+    "bookId": "평가-06-02",
+    "order": 8,
+    "title": "두 기준으로 값 분류",
+    "statement": "변수 value에는 정수 11가 저장되어 있습니다.\nif, elif, else를 사용하여 다음 조건에 맞게 출력하세요.\n- value가 28 이상이면 [[28 이상]]\n- 그렇지 않고 11 이상이면 [[11 이상]]\n- 두 조건에 모두 해당하지 않으면 [[그 외]]\n큰 기준인 28부터 차례대로 확인하세요.",
+    "inputDescription": "입력은 없습니다.",
+    "outputDescription": "28 이상, 11 이상, 그 외 중 하나를 출력합니다.",
+    "solution": "value = 11\nif value >= 28:\n    print(\"28 이상\")\nelif value >= 11:\n    print(\"11 이상\")\nelse:\n    print(\"그 외\")",
+    "cases": [
+      {
+        "input": "",
+        "output": "11 이상"
+      }
+    ],
+    "requirements": [
+      {
+        "type": "conditional_ladder",
+        "variable": "value",
+        "branches": [
+          {
+            "value": 28,
+            "output": "28 이상",
+            "operator": ">="
+          },
+          {
+            "value": 11,
+            "output": "11 이상",
+            "operator": ">="
+          }
+        ],
+        "elseOutput": "그 외"
+      }
+    ],
+    "starterCode": "value = 11\nif :\n    print()",
+    "hint": ""
+  },
+  {
+    "id": "평가6-2-09 문자열 묶음 여러 줄 출력",
+    "bookId": "평가-06-02",
+    "order": 9,
+    "title": "문자열 묶음 여러 줄 출력",
+    "statement": "for 반복문과 * 연산자를 사용하여 \"ok!\"를 공백 없이 4번 이어 붙인 문자열을 8줄 출력하세요.",
+    "inputDescription": "입력은 없습니다.",
+    "outputDescription": "ok!ok!ok!ok!를 8줄 출력합니다.",
+    "solution": "for i in range(8):\n    print(\"ok!\" * 4)",
+    "cases": [
+      {
+        "input": "",
+        "output": "ok!ok!ok!ok!\nok!ok!ok!ok!\nok!ok!ok!ok!\nok!ok!ok!ok!\nok!ok!ok!ok!\nok!ok!ok!ok!\nok!ok!ok!ok!\nok!ok!ok!ok!"
+      }
+    ],
+    "requirements": [
+      {
+        "type": "for_range"
+      },
+      {
+        "type": "operators",
+        "values": [
+          "*"
+        ]
+      }
+    ],
+    "starterCode": "for i in range():\n    print()",
+    "hint": ""
+  },
+  {
+    "id": "평가6-2-10 인덱싱과 슬라이싱 결합",
+    "bookId": "평가-06-02",
+    "order": 10,
+    "title": "인덱싱과 슬라이싱 결합",
+    "statement": "a = [6, 3, 2, 5, 9]\nb = \"579130\"\nc = \"school coding\"\n\n인덱싱과 슬라이싱을 사용하여 다음 결과를 한 줄에 하나씩 출력하세요.\n1. b의 2번째 문자와 c의 마지막 문자를 결합한 뒤, a의 2번째 요소만큼 반복\n2. c의 처음 3개 문자를 슬라이싱하고, b의 마지막 세 문자를 슬라이싱한 후 결합",
+    "inputDescription": "입력은 없습니다.",
+    "outputDescription": "7g7g7g\nsch130",
+    "solution": "a = [6, 3, 2, 5, 9]\nb = \"579130\"\nc = \"school coding\"\nprint((b[1] + c[-1]) * a[1])\nprint(c[:3] + b[-3:])",
+    "cases": [
+      {
+        "input": "",
+        "output": "7g7g7g\nsch130"
+      }
+    ],
+    "requirements": [
+      {
+        "type": "indexing",
+        "minCount": 3
+      },
+      {
+        "type": "slicing",
+        "minCount": 2
+      },
+      {
+        "type": "operators",
+        "values": [
+          "+",
+          "*"
+        ]
+      }
+    ],
+    "starterCode": "a = [6, 3, 2, 5, 9]\nb = \"579130\"\nc = \"school coding\"\n",
+    "hint": "인덱싱하거나 슬라이싱한 후 +로 결합할 수 있습니다."
+  },
+  {
+    "id": "평가7-2-01 여섯 값 띄어 출력",
+    "bookId": "평가-07-02",
+    "order": 1,
+    "title": "여섯 값 띄어 출력",
+    "statement": "print 함수의 쉼표(,)를 활용하여 [[Red 7 Green 14 Blue 21]]를 한 줄에 출력하세요.",
+    "inputDescription": "입력은 없습니다.",
+    "outputDescription": "Red 7 Green 14 Blue 21를 출력합니다. 각 값 사이에 공백을 하나 넣습니다.",
+    "solution": "print(\"Red\", 7, \"Green\", 14, \"Blue\", 21)",
+    "cases": [
+      {
+        "input": "",
+        "output": "Red 7 Green 14 Blue 21"
+      }
+    ],
+    "requirements": [
+      {
+        "type": "print_arguments",
+        "minCount": 6
+      }
+    ],
+    "starterCode": "",
+    "hint": ""
+  },
+  {
+    "id": "평가7-2-02 문자 사이 빈 줄 출력",
+    "bookId": "평가-07-02",
+    "order": 2,
+    "title": "문자 사이 빈 줄 출력",
+    "statement": "R, G, B를 순서대로 한 줄씩 출력하되, 문자 사이에 빈 줄을 두 줄씩 넣어 총 일곱 줄로 출력하세요.",
+    "inputDescription": "입력은 없습니다.",
+    "outputDescription": "문자 세 줄과 빈 줄 네 줄을 출력합니다.",
+    "solution": "print(\"R\\n\\n\\nG\\n\\n\\nB\")",
+    "cases": [
+      {
+        "input": "",
+        "output": "R\n\n\nG\n\n\nB"
+      }
+    ],
+    "requirements": [],
+    "starterCode": "",
+    "hint": "각 문자 사이에 빈 줄이 두 줄 있어야 합니다."
+  },
+  {
+    "id": "평가7-2-03 네 문자열 순서 바꾸기",
+    "bookId": "평가-07-02",
+    "order": 3,
+    "title": "네 문자열 순서 바꾸기",
+    "statement": "문자열 4개를 한 줄에 하나씩 입력받아 3번째, 4번째, 1번째, 2번째 입력 순서로 한 줄에 하나씩 출력하세요.",
+    "inputDescription": "문자 또는 문자열 4개가 한 줄씩 주어집니다.",
+    "outputDescription": "지정한 순서로 문자열을 한 줄에 하나씩 출력합니다.",
+    "solution": "a = input()\nb = input()\nc = input()\nd = input()\nprint(c)\nprint(d)\nprint(a)\nprint(b)",
+    "cases": [
+      {
+        "input": "봄\n여름\n가을\n겨울",
+        "output": "가을\n겨울\n봄\n여름"
+      },
+      {
+        "input": "A\nB\nC\nD",
+        "output": "C\nD\nA\nB"
+      },
+      {
+        "input": "1\n22\n333\n4444",
+        "output": "333\n4444\n1\n22"
+      },
+      {
+        "input": "hello world\ngood morning\nsee you\ngood bye",
+        "output": "see you\ngood bye\nhello world\ngood morning"
+      },
+      {
+        "input": "같음\n다름\n다름\n같음",
+        "output": "다름\n같음\n같음\n다름"
+      },
+      {
+        "input": "가\n나\n다\n라",
+        "output": "다\n라\n가\n나"
+      }
+    ],
+    "requirements": [],
+    "starterCode": "",
+    "hint": ""
+  },
+  {
+    "id": "평가7-2-04 더한 뒤 몫 출력",
+    "bookId": "평가-07-02",
+    "order": 4,
+    "title": "더한 뒤 몫 출력",
+    "statement": "정수 하나를 입력받아 13을 먼저 더한 후, 그 결과를 6로 나눈 몫을 출력하세요. +와 // 연산자를 사용하세요.",
+    "inputDescription": "정수 1개가 주어집니다.",
+    "outputDescription": "먼저 덧셈을 하고 나눗셈의 몫을 출력합니다.",
+    "solution": "n = int(input())\nprint((n + 13) // 6)",
+    "cases": [
+      {
+        "input": "10",
+        "output": "3"
+      },
+      {
+        "input": "0",
+        "output": "2"
+      },
+      {
+        "input": "-7",
+        "output": "1"
+      },
+      {
+        "input": "29",
+        "output": "7"
+      },
+      {
+        "input": "100",
+        "output": "18"
+      },
+      {
+        "input": "-13",
+        "output": "0"
+      },
+      {
+        "input": "-14",
+        "output": "-1"
+      }
+    ],
+    "requirements": [
+      {
+        "type": "operators",
+        "values": [
+          "+",
+          "//"
+        ]
+      }
+    ],
+    "starterCode": "",
+    "hint": ""
+  },
+  {
+    "id": "평가7-2-05 다음 층 사물함 번호",
+    "bookId": "평가-07-02",
+    "order": 5,
+    "title": "다음 층 사물함 번호",
+    "statement": "층, 반, 번호를 차례로 입력받습니다.\n층을 하나 올린 뒤, 층 1자리와 반 2자리, 번호 2자리를 이어 붙인 5자리 번호를 출력하세요.\n반이나 번호가 1~9이면 앞에 0을 붙여 두 자리로 만드세요.\n\n[[if를 사용하지 않고 풀어야 합니다.]]",
+    "inputDescription": "층: 1~2, 반: 1~9, 번호: 1~33인 정수 세 개가 한 줄씩 주어집니다.",
+    "outputDescription": "설명에 따라 만든 5자리 번호를 출력합니다.",
+    "solution": "first = int(input())\nsecond = int(input())\nthird = int(input())\nprint((first + 1) * 10000 + second * 100 + third)",
+    "cases": [
+      {
+        "input": "1\n4\n28",
+        "output": "20428"
+      },
+      {
+        "input": "1\n3\n9",
+        "output": "20309"
+      },
+      {
+        "input": "1\n1\n1",
+        "output": "20101"
+      },
+      {
+        "input": "1\n9\n10",
+        "output": "20910"
+      },
+      {
+        "input": "2\n4\n7",
+        "output": "30407"
+      },
+      {
+        "input": "2\n9\n33",
+        "output": "30933"
+      },
+      {
+        "input": "2\n1\n20",
+        "output": "30120"
+      }
+    ],
+    "requirements": [
+      {
+        "type": "forbidden_keywords",
+        "values": [
+          "if"
+        ]
+      }
+    ],
+    "starterCode": "first = int(input())\nsecond = int(input())\nthird = int(input())\n",
+    "hint": ""
+  },
+  {
+    "id": "평가7-2-06 세 입력 재배치 출력",
+    "bookId": "평가-07-02",
+    "order": 6,
+    "title": "세 입력 재배치 출력",
+    "statement": "동물, 먹이, 서식지를 차례로 한 줄에 하나씩 입력받습니다. 먹이, 서식지, 동물 순서로 바꾸고 각 값 사이에 \" - \"를 넣어 한 줄에 출력하세요.",
+    "inputDescription": "1번째 줄: 동물\n2번째 줄: 먹이\n3번째 줄: 서식지",
+    "outputDescription": "먹이 - 서식지 - 동물",
+    "solution": "animal = input()\nfood = input()\nhome = input()\nprint(food + \" - \" + home + \" - \" + animal)",
+    "cases": [
+      {
+        "input": "토끼\n당근\n숲",
+        "output": "당근 - 숲 - 토끼"
+      },
+      {
+        "input": "cat\nwhite\npark",
+        "output": "white - park - cat"
+      },
+      {
+        "input": "첫째\n둘째\n셋째",
+        "output": "둘째 - 셋째 - 첫째"
+      },
+      {
+        "input": "hello world\ndeep blue\nold tree",
+        "output": "deep blue - old tree - hello world"
+      },
+      {
+        "input": "봄\n여름\n가을",
+        "output": "여름 - 가을 - 봄"
+      },
+      {
+        "input": "A\nB\nC",
+        "output": "B - C - A"
+      }
+    ],
+    "requirements": [],
+    "starterCode": "animal = \nfood = \nhome = \n",
+    "hint": ""
+  },
+  {
+    "id": "평가7-2-07 10의 배수 판정",
+    "bookId": "평가-07-02",
+    "order": 7,
+    "title": "10의 배수 판정",
+    "statement": "정수 n을 입력받아 10의 배수이면 YES, 아니면 NO를 출력하세요.",
+    "inputDescription": "정수 1개가 주어집니다.",
+    "outputDescription": "YES 또는 NO를 출력합니다.",
+    "solution": "n = int(input())\nif n % 10 == 0:\n    print(\"YES\")\nelse:\n    print(\"NO\")",
+    "cases": [
+      {
+        "input": "20",
+        "output": "YES"
+      },
+      {
+        "input": "21",
+        "output": "NO"
+      },
+      {
+        "input": "0",
+        "output": "YES"
+      },
+      {
+        "input": "-30",
+        "output": "YES"
+      },
+      {
+        "input": "-9",
+        "output": "NO"
+      },
+      {
+        "input": "100",
+        "output": "YES"
+      },
+      {
+        "input": "101",
+        "output": "NO"
+      }
+    ],
+    "requirements": [],
+    "starterCode": "n = \nif :\n    print()\nelse:\n    print()",
+    "hint": ""
+  },
+  {
+    "id": "평가7-2-08 두 기준으로 값 분류",
+    "bookId": "평가-07-02",
+    "order": 8,
+    "title": "두 기준으로 값 분류",
+    "statement": "변수 number에는 정수 16가 저장되어 있습니다.\nif, elif, else를 사용하여 다음 조건에 맞게 출력하세요.\n- number가 32 이상이면 [[32 이상]]\n- 그렇지 않고 16 이상이면 [[16 이상]]\n- 두 조건에 모두 해당하지 않으면 [[그 외]]\n큰 기준인 32부터 차례대로 확인하세요.",
+    "inputDescription": "입력은 없습니다.",
+    "outputDescription": "32 이상, 16 이상, 그 외 중 하나를 출력합니다.",
+    "solution": "number = 16\nif number >= 32:\n    print(\"32 이상\")\nelif number >= 16:\n    print(\"16 이상\")\nelse:\n    print(\"그 외\")",
+    "cases": [
+      {
+        "input": "",
+        "output": "16 이상"
+      }
+    ],
+    "requirements": [
+      {
+        "type": "conditional_ladder",
+        "variable": "number",
+        "branches": [
+          {
+            "value": 32,
+            "output": "32 이상",
+            "operator": ">="
+          },
+          {
+            "value": 16,
+            "output": "16 이상",
+            "operator": ">="
+          }
+        ],
+        "elseOutput": "그 외"
+      }
+    ],
+    "starterCode": "number = 16\nif :\n    print()",
+    "hint": ""
+  },
+  {
+    "id": "평가7-2-09 문자열 묶음 여러 줄 출력",
+    "bookId": "평가-07-02",
+    "order": 9,
+    "title": "문자열 묶음 여러 줄 출력",
+    "statement": "for 반복문과 * 연산자를 사용하여 \"go?\"를 공백 없이 3번 이어 붙인 문자열을 6줄 출력하세요.",
+    "inputDescription": "입력은 없습니다.",
+    "outputDescription": "go?go?go?를 6줄 출력합니다.",
+    "solution": "for i in range(6):\n    print(\"go?\" * 3)",
+    "cases": [
+      {
+        "input": "",
+        "output": "go?go?go?\ngo?go?go?\ngo?go?go?\ngo?go?go?\ngo?go?go?\ngo?go?go?"
+      }
+    ],
+    "requirements": [
+      {
+        "type": "for_range"
+      },
+      {
+        "type": "operators",
+        "values": [
+          "*"
+        ]
+      }
+    ],
+    "starterCode": "for i in range():\n    print()",
+    "hint": ""
+  },
+  {
+    "id": "평가7-2-10 인덱싱과 슬라이싱 결합",
+    "bookId": "평가-07-02",
+    "order": 10,
+    "title": "인덱싱과 슬라이싱 결합",
+    "statement": "a = [2, 5, 3, 4, 7]\nb = \"681240\"\nc = \"digital learning\"\n\n인덱싱과 슬라이싱을 사용하여 다음 결과를 한 줄에 하나씩 출력하세요.\n1. b의 3번째 문자와 c의 마지막 문자를 결합한 뒤, a의 4번째 요소만큼 반복\n2. c의 처음 2개 문자를 슬라이싱하고, b의 마지막 세 문자를 슬라이싱한 후 결합",
+    "inputDescription": "입력은 없습니다.",
+    "outputDescription": "1g1g1g1g\ndi240",
+    "solution": "a = [2, 5, 3, 4, 7]\nb = \"681240\"\nc = \"digital learning\"\nprint((b[2] + c[-1]) * a[3])\nprint(c[:2] + b[-3:])",
+    "cases": [
+      {
+        "input": "",
+        "output": "1g1g1g1g\ndi240"
+      }
+    ],
+    "requirements": [
+      {
+        "type": "indexing",
+        "minCount": 3
+      },
+      {
+        "type": "slicing",
+        "minCount": 2
+      },
+      {
+        "type": "operators",
+        "values": [
+          "+",
+          "*"
+        ]
+      }
+    ],
+    "starterCode": "a = [2, 5, 3, 4, 7]\nb = \"681240\"\nc = \"digital learning\"\n",
+    "hint": "인덱싱하거나 슬라이싱한 후 +로 결합할 수 있습니다."
+  },
+  {
+    "id": "평가8-2-01 여섯 값 띄어 출력",
+    "bookId": "평가-08-02",
+    "order": 1,
+    "title": "여섯 값 띄어 출력",
+    "statement": "print 함수의 쉼표(,)를 활용하여 [[First 8 Second 16 Third 24]]를 한 줄에 출력하세요.",
+    "inputDescription": "입력은 없습니다.",
+    "outputDescription": "First 8 Second 16 Third 24를 출력합니다. 각 값 사이에 공백을 하나 넣습니다.",
+    "solution": "print(\"First\", 8, \"Second\", 16, \"Third\", 24)",
+    "cases": [
+      {
+        "input": "",
+        "output": "First 8 Second 16 Third 24"
+      }
+    ],
+    "requirements": [
+      {
+        "type": "print_arguments",
+        "minCount": 6
+      }
+    ],
+    "starterCode": "",
+    "hint": ""
+  },
+  {
+    "id": "평가8-2-02 문자 사이 빈 줄 출력",
+    "bookId": "평가-08-02",
+    "order": 2,
+    "title": "문자 사이 빈 줄 출력",
+    "statement": "F, S, T를 순서대로 한 줄씩 출력하되, 문자 사이에 빈 줄을 두 줄씩 넣어 총 일곱 줄로 출력하세요.",
+    "inputDescription": "입력은 없습니다.",
+    "outputDescription": "문자 세 줄과 빈 줄 네 줄을 출력합니다.",
+    "solution": "print(\"F\\n\\n\\nS\\n\\n\\nT\")",
+    "cases": [
+      {
+        "input": "",
+        "output": "F\n\n\nS\n\n\nT"
+      }
+    ],
+    "requirements": [],
+    "starterCode": "",
+    "hint": "각 문자 사이에 빈 줄이 두 줄 있어야 합니다."
+  },
+  {
+    "id": "평가8-2-03 네 문자열 순서 바꾸기",
+    "bookId": "평가-08-02",
+    "order": 3,
+    "title": "네 문자열 순서 바꾸기",
+    "statement": "문자열 4개를 한 줄에 하나씩 입력받아 4번째, 1번째, 2번째, 3번째 입력 순서로 한 줄에 하나씩 출력하세요.",
+    "inputDescription": "문자 또는 문자열 4개가 한 줄씩 주어집니다.",
+    "outputDescription": "지정한 순서로 문자열을 한 줄에 하나씩 출력합니다.",
+    "solution": "a = input()\nb = input()\nc = input()\nd = input()\nprint(d)\nprint(a)\nprint(b)\nprint(c)",
+    "cases": [
+      {
+        "input": "봄\n여름\n가을\n겨울",
+        "output": "겨울\n봄\n여름\n가을"
+      },
+      {
+        "input": "A\nB\nC\nD",
+        "output": "D\nA\nB\nC"
+      },
+      {
+        "input": "1\n22\n333\n4444",
+        "output": "4444\n1\n22\n333"
+      },
+      {
+        "input": "hello world\ngood morning\nsee you\ngood bye",
+        "output": "good bye\nhello world\ngood morning\nsee you"
+      },
+      {
+        "input": "같음\n다름\n다름\n같음",
+        "output": "같음\n같음\n다름\n다름"
+      },
+      {
+        "input": "가\n나\n다\n라",
+        "output": "라\n가\n나\n다"
+      }
+    ],
+    "requirements": [],
+    "starterCode": "",
+    "hint": ""
+  },
+  {
+    "id": "평가8-2-04 더한 뒤 몫 출력",
+    "bookId": "평가-08-02",
+    "order": 4,
+    "title": "더한 뒤 몫 출력",
+    "statement": "정수 하나를 입력받아 7을 먼저 더한 후, 그 결과를 4로 나눈 몫을 출력하세요. +와 // 연산자를 사용하세요.",
+    "inputDescription": "정수 1개가 주어집니다.",
+    "outputDescription": "먼저 덧셈을 하고 나눗셈의 몫을 출력합니다.",
+    "solution": "n = int(input())\nprint((n + 7) // 4)",
+    "cases": [
+      {
+        "input": "10",
+        "output": "4"
+      },
+      {
+        "input": "0",
+        "output": "1"
+      },
+      {
+        "input": "-3",
+        "output": "1"
+      },
+      {
+        "input": "21",
+        "output": "7"
+      },
+      {
+        "input": "100",
+        "output": "26"
+      },
+      {
+        "input": "-7",
+        "output": "0"
+      },
+      {
+        "input": "-8",
+        "output": "-1"
+      }
+    ],
+    "requirements": [
+      {
+        "type": "operators",
+        "values": [
+          "+",
+          "//"
+        ]
+      }
+    ],
+    "starterCode": "",
+    "hint": ""
+  },
+  {
+    "id": "평가8-2-05 다음 회차 접수 번호",
+    "bookId": "평가-08-02",
+    "order": 5,
+    "title": "다음 회차 접수 번호",
+    "statement": "회차, 창구, 번호를 차례로 입력받습니다.\n회차을 하나 올린 뒤, 회차 1자리와 창구 2자리, 번호 2자리를 이어 붙인 5자리 번호를 출력하세요.\n창구이나 번호가 1~9이면 앞에 0을 붙여 두 자리로 만드세요.\n\n[[if를 사용하지 않고 풀어야 합니다.]]",
+    "inputDescription": "회차: 1~2, 창구: 1~9, 번호: 1~33인 정수 세 개가 한 줄씩 주어집니다.",
+    "outputDescription": "설명에 따라 만든 5자리 번호를 출력합니다.",
+    "solution": "first = int(input())\nsecond = int(input())\nthird = int(input())\nprint((first + 1) * 10000 + second * 100 + third)",
+    "cases": [
+      {
+        "input": "1\n4\n28",
+        "output": "20428"
+      },
+      {
+        "input": "1\n3\n9",
+        "output": "20309"
+      },
+      {
+        "input": "1\n1\n1",
+        "output": "20101"
+      },
+      {
+        "input": "1\n9\n10",
+        "output": "20910"
+      },
+      {
+        "input": "2\n4\n7",
+        "output": "30407"
+      },
+      {
+        "input": "2\n9\n33",
+        "output": "30933"
+      },
+      {
+        "input": "2\n1\n20",
+        "output": "30120"
+      }
+    ],
+    "requirements": [
+      {
+        "type": "forbidden_keywords",
+        "values": [
+          "if"
+        ]
+      }
+    ],
+    "starterCode": "first = int(input())\nsecond = int(input())\nthird = int(input())\n",
+    "hint": ""
+  },
+  {
+    "id": "평가8-2-06 세 입력 재배치 출력",
+    "bookId": "평가-08-02",
+    "order": 6,
+    "title": "세 입력 재배치 출력",
+    "statement": "책, 작가, 도서관를 차례로 한 줄에 하나씩 입력받습니다. 도서관, 책, 작가 순서로 바꾸고 각 값 사이에 \" / \"를 넣어 한 줄에 출력하세요.",
+    "inputDescription": "1번째 줄: 책\n2번째 줄: 작가\n3번째 줄: 도서관",
+    "outputDescription": "도서관 / 책 / 작가",
+    "solution": "book = input()\nauthor = input()\nlibrary = input()\nprint(library + \" / \" + book + \" / \" + author)",
+    "cases": [
+      {
+        "input": "어린왕자\n생텍쥐페리\n중앙도서관",
+        "output": "중앙도서관 / 어린왕자 / 생텍쥐페리"
+      },
+      {
+        "input": "cat\nwhite\npark",
+        "output": "park / cat / white"
+      },
+      {
+        "input": "첫째\n둘째\n셋째",
+        "output": "셋째 / 첫째 / 둘째"
+      },
+      {
+        "input": "hello world\ndeep blue\nold tree",
+        "output": "old tree / hello world / deep blue"
+      },
+      {
+        "input": "봄\n여름\n가을",
+        "output": "가을 / 봄 / 여름"
+      },
+      {
+        "input": "A\nB\nC",
+        "output": "C / A / B"
+      }
+    ],
+    "requirements": [],
+    "starterCode": "book = \nauthor = \nlibrary = \n",
+    "hint": ""
+  },
+  {
+    "id": "평가8-2-07 11의 배수 판정",
+    "bookId": "평가-08-02",
+    "order": 7,
+    "title": "11의 배수 판정",
+    "statement": "정수 n을 입력받아 11의 배수이면 YES, 아니면 NO를 출력하세요.",
+    "inputDescription": "정수 1개가 주어집니다.",
+    "outputDescription": "YES 또는 NO를 출력합니다.",
+    "solution": "n = int(input())\nif n % 11 == 0:\n    print(\"YES\")\nelse:\n    print(\"NO\")",
+    "cases": [
+      {
+        "input": "22",
+        "output": "YES"
+      },
+      {
+        "input": "23",
+        "output": "NO"
+      },
+      {
+        "input": "0",
+        "output": "YES"
+      },
+      {
+        "input": "-33",
+        "output": "YES"
+      },
+      {
+        "input": "-10",
+        "output": "NO"
+      },
+      {
+        "input": "110",
+        "output": "YES"
+      },
+      {
+        "input": "111",
+        "output": "NO"
+      }
+    ],
+    "requirements": [],
+    "starterCode": "n = \nif :\n    print()\nelse:\n    print()",
+    "hint": ""
+  },
+  {
+    "id": "평가8-2-08 두 기준으로 값 분류",
+    "bookId": "평가-08-02",
+    "order": 8,
+    "title": "두 기준으로 값 분류",
+    "statement": "변수 total에는 정수 21가 저장되어 있습니다.\nif, elif, else를 사용하여 다음 조건에 맞게 출력하세요.\n- total가 45 이상이면 [[45 이상]]\n- 그렇지 않고 21 이상이면 [[21 이상]]\n- 두 조건에 모두 해당하지 않으면 [[그 외]]\n큰 기준인 45부터 차례대로 확인하세요.",
+    "inputDescription": "입력은 없습니다.",
+    "outputDescription": "45 이상, 21 이상, 그 외 중 하나를 출력합니다.",
+    "solution": "total = 21\nif total >= 45:\n    print(\"45 이상\")\nelif total >= 21:\n    print(\"21 이상\")\nelse:\n    print(\"그 외\")",
+    "cases": [
+      {
+        "input": "",
+        "output": "21 이상"
+      }
+    ],
+    "requirements": [
+      {
+        "type": "conditional_ladder",
+        "variable": "total",
+        "branches": [
+          {
+            "value": 45,
+            "output": "45 이상",
+            "operator": ">="
+          },
+          {
+            "value": 21,
+            "output": "21 이상",
+            "operator": ">="
+          }
+        ],
+        "elseOutput": "그 외"
+      }
+    ],
+    "starterCode": "total = 21\nif :\n    print()",
+    "hint": ""
+  },
+  {
+    "id": "평가8-2-09 문자열 묶음 여러 줄 출력",
+    "bookId": "평가-08-02",
+    "order": 9,
+    "title": "문자열 묶음 여러 줄 출력",
+    "statement": "for 반복문과 * 연산자를 사용하여 \"wow\"를 공백 없이 3번 이어 붙인 문자열을 8줄 출력하세요.",
+    "inputDescription": "입력은 없습니다.",
+    "outputDescription": "wowwowwow를 8줄 출력합니다.",
+    "solution": "for i in range(8):\n    print(\"wow\" * 3)",
+    "cases": [
+      {
+        "input": "",
+        "output": "wowwowwow\nwowwowwow\nwowwowwow\nwowwowwow\nwowwowwow\nwowwowwow\nwowwowwow\nwowwowwow"
+      }
+    ],
+    "requirements": [
+      {
+        "type": "for_range"
+      },
+      {
+        "type": "operators",
+        "values": [
+          "*"
+        ]
+      }
+    ],
+    "starterCode": "for i in range():\n    print()",
+    "hint": ""
+  },
+  {
+    "id": "평가8-2-10 인덱싱과 슬라이싱 결합",
+    "bookId": "평가-08-02",
+    "order": 10,
+    "title": "인덱싱과 슬라이싱 결합",
+    "statement": "a = [5, 2, 4, 3, 8]\nb = \"792460\"\nc = \"creative coding\"\n\n인덱싱과 슬라이싱을 사용하여 다음 결과를 한 줄에 하나씩 출력하세요.\n1. b의 2번째 문자와 c의 마지막 문자를 결합한 뒤, a의 3번째 요소만큼 반복\n2. c의 처음 3개 문자를 슬라이싱하고, b의 마지막 세 문자를 슬라이싱한 후 결합",
+    "inputDescription": "입력은 없습니다.",
+    "outputDescription": "9g9g9g9g\ncre460",
+    "solution": "a = [5, 2, 4, 3, 8]\nb = \"792460\"\nc = \"creative coding\"\nprint((b[1] + c[-1]) * a[2])\nprint(c[:3] + b[-3:])",
+    "cases": [
+      {
+        "input": "",
+        "output": "9g9g9g9g\ncre460"
+      }
+    ],
+    "requirements": [
+      {
+        "type": "indexing",
+        "minCount": 3
+      },
+      {
+        "type": "slicing",
+        "minCount": 2
+      },
+      {
+        "type": "operators",
+        "values": [
+          "+",
+          "*"
+        ]
+      }
+    ],
+    "starterCode": "a = [5, 2, 4, 3, 8]\nb = \"792460\"\nc = \"creative coding\"\n",
+    "hint": "인덱싱하거나 슬라이싱한 후 +로 결합할 수 있습니다."
+  }
+]
