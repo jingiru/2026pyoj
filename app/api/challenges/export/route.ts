@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { allRows, challengeDb, fail } from "@/lib/challenge-server";
 import { buildChallengeResultsWorkbook, type ChallengeExportOptions } from "@/lib/challenge-export";
-import type { Challenge, ChallengeParticipant, ChallengeSubmission } from "@/lib/challenge-types";
+import type { Challenge, ChallengeBonusScore, ChallengeParticipant, ChallengeSubmission } from "@/lib/challenge-types";
 import { isTeacherRequestAuthenticated } from "@/lib/teacher-auth";
 
 export const runtime = "nodejs";
@@ -18,21 +18,25 @@ export async function POST(request: NextRequest) {
       includeAttemptCounts: body.includeAttemptCounts === true
     };
     const db = challengeDb();
-    const [{ data: challenge, error }, participants, submissions] = await Promise.all([
+    const [{ data: challenge, error }, participants, submissions, bonusScores] = await Promise.all([
       db.from("challenges").select("*").eq("id", body.challengeId).single(),
       allRows<ChallengeParticipant>((from, to) => db.from("challenge_participants")
         .select("id,challenge_id,student_no,name,joined_at")
         .eq("challenge_id", body.challengeId).order("student_no").order("id").range(from, to)),
       allRows<ChallengeSubmission>((from, to) => db.from("challenge_submissions")
         .select("id,participant_id,challenge_id,problem_id,status,received_at,passed_count,total_count")
-        .eq("challenge_id", body.challengeId).order("received_at").order("id").range(from, to))
+        .eq("challenge_id", body.challengeId).order("received_at").order("id").range(from, to)),
+      allRows<ChallengeBonusScore>((from, to) => db.from("challenge_bonus_scores")
+        .select("challenge_id,participant_id,criterion_id,score")
+        .eq("challenge_id", body.challengeId).order("participant_id").order("criterion_id").range(from, to))
     ]);
     if (error || !challenge) throw error ?? new Error("챌린지를 찾을 수 없습니다.");
     const workbook = await buildChallengeResultsWorkbook(
       challenge as Challenge,
       participants,
       submissions,
-      options
+      options,
+      bonusScores
     );
     const bytes = await workbook.xlsx.writeBuffer();
     const safeTitle = (challenge as Challenge).title.replace(/[\\/:*?"<>|]/g, "_").slice(0, 80) || "챌린지";

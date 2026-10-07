@@ -86,9 +86,9 @@ test("challenge result workbook includes base results and selected details", asy
     { id: "s2", participant_id: "student-a", challenge_id: "c", problem_id: "p1", status: "accepted", received_at: "2026-09-06T17:35:00Z", passed_count: 2, total_count: 2 }
   ];
   const workbook = await buildChallengeResultsWorkbook(richChallenge, participants, submissions, { includeFirstSolver: true, includeSubmissionTimes: true, includeAttemptCounts: true });
-  assert.ok(Math.abs(workbook.getWorksheet("결과").getCell("H6").value - (5 / 1440)) < 1e-10);
+  assert.ok(Math.abs(workbook.getWorksheet("결과").getCell("L6").value - (5 / 1440)) < 1e-10);
   assert.equal(workbook.getWorksheet("결과").getCell("E2").value.toISOString(), "2026-09-07T02:30:00.000Z");
-  assert.equal(workbook.getWorksheet("결과").getCell("F6").value.toISOString(), "2026-09-07T02:32:00.000Z");
+  assert.equal(workbook.getWorksheet("결과").getCell("J6").value.toISOString(), "2026-09-07T02:32:00.000Z");
   const buffer = await workbook.xlsx.writeBuffer();
   const ExcelJS = require("exceljs");
   const loaded = await new ExcelJS.Workbook().xlsx.load(buffer);
@@ -96,22 +96,81 @@ test("challenge result workbook includes base results and selected details", asy
   assert.ok(sheet);
   assert.equal(sheet.getCell("A4").value, "학생 정보");
   assert.equal(sheet.getCell("C4").value, "결과");
-  assert.equal(sheet.getCell("D4").value, "1번");
-  assert.deepEqual(sheet.getRow(5).values.slice(1), ["학번", "이름", "총 정답", "정오답", "최초 해결", "첫 제출 시각", "최초 정답 시각", "소요시간", "시도 횟수"]);
+  assert.equal(sheet.getCell("H4").value, "1번");
+  assert.deepEqual(sheet.getRow(5).values.slice(1), ["학번", "이름", "총 정답", "총점", "만점", "문제 점수", "부가점수", "정오답", "최초 해결", "첫 제출 시각", "최초 정답 시각", "소요시간", "시도 횟수"]);
   assert.equal(sheet.getCell("A6").value, "1201");
-  assert.equal(sheet.getCell("D6").value, "정답");
-  assert.equal(sheet.getCell("E6").value, "최초 해결");
-  assert.ok(sheet.getCell("F6").value instanceof Date);
+  assert.equal(sheet.getCell("H6").value, "정답");
+  assert.equal(sheet.getCell("I6").value, "최초 해결");
+  assert.ok(sheet.getCell("J6").value instanceof Date);
   assert.equal(sheet.getCell("E2").value.toISOString(), "2026-09-07T02:30:00.000Z");
-  assert.equal(sheet.getCell("F6").value.toISOString(), "2026-09-07T02:32:00.000Z");
-  assert.equal(sheet.getCell("H6").numFmt, "[m]:ss");
-  assert.equal(sheet.getCell("I6").value, 2);
-  assert.equal(sheet.getCell("D7").value, "미제출");
-  assert.ok(sheet.getColumn(6).width >= 23);
-  assert.equal(sheet.getCell("I4").master.address, "D4");
+  assert.equal(sheet.getCell("J6").value.toISOString(), "2026-09-07T02:32:00.000Z");
+  assert.equal(sheet.getCell("L6").numFmt, "[m]:ss");
+  assert.equal(sheet.getCell("M6").value, 2);
+  assert.equal(sheet.getCell("H7").value, "미제출");
+  assert.ok(sheet.getColumn(10).width >= 23);
+  assert.equal(sheet.getCell("M4").master.address, "H4");
   assert.equal(sheet.getCell("F2").master.address, "E2");
   assert.equal(loaded.getWorksheet("문항 정보").getCell("B2").value, "더하기");
 });
+test("exported scores include decimal bonuses and all scoring modes", async () => {
+  const participants = [{ id: "a", student_no: "001", name: "학생" }, { id: "b", student_no: "002", name: "미제출" }];
+  const submissions = [
+    { id: "s1", participant_id: "a", problem_id: "p1", status: "accepted", received_at: challenge.started_at },
+    { id: "s2", participant_id: "a", problem_id: "p1", status: "accepted", received_at: challenge.started_at },
+    { id: "s3", participant_id: "a", problem_id: "p2", status: "wrong_answer", received_at: challenge.started_at }
+  ];
+  const bonusScores = [{ participant_id: "a", criterion_id: "code", score: 2.5 }, { participant_id: "b", criterion_id: "code", score: 0 }];
+  const base = { ...challenge, title: "점수", problem_snapshots: [{ ...problem, points: 1.5 }, { ...problem, id: "p2", points: 2.5 }], bonus_criteria: [{ id: "code", label: "코드 이해도", max_score: 2.5 }] };
+  const options = { includeFirstSolver: false, includeSubmissionTimes: false, includeAttemptCounts: false };
+  for (const [scoring, expected, unsolved, maximum] of [
+    [{ mode: "problem_points" }, 1.5, 0, 6.5],
+    [{ mode: "correct_count", base_score: 4, free_correct_count: 1, points_per_additional: 2 }, 4, 4, 8.5],
+    [{ mode: "grouped_correct_count", groups: [{ id: "g", problem_ids: ["p1", "p2"], base_score: 3, free_correct_count: 0, points_per_additional: 1.5 }] }, 4.5, 3, 8.5]
+  ]) {
+    const workbook = await buildChallengeResultsWorkbook({ ...base, scoring }, participants, submissions, options, bonusScores);
+    const ExcelJS = require("exceljs");
+    const loaded = await new ExcelJS.Workbook().xlsx.load(await workbook.xlsx.writeBuffer());
+    const sheet = loaded.getWorksheet("결과");
+    assert.deepEqual(sheet.getRow(6).values.slice(1), ["001", "학생", 1, expected + 2.5, maximum, expected, 2.5, "정답", "오답", 2.5]);
+    assert.deepEqual(sheet.getRow(7).values.slice(1), ["002", "미제출", 0, unsolved, maximum, unsolved, 0, "미제출", "미제출", 0]);
+    assert.equal(sheet.getCell("J5").value, "코드 이해도");
+    assert.equal(loaded.getWorksheet("문항 정보").getCell("D2").value, 1.5);
+  }
+  const noBonus = await buildChallengeResultsWorkbook(base, participants, [], options);
+  assert.equal(noBonus.getWorksheet("결과").getCell("J6").value, null);
+});
+
+test("export endpoint queries bonus scores for the selected challenge and passes them to the workbook", async () => {
+  const { NextRequest } = require("next/server");
+  const bonusScores = [{ challenge_id: "c", participant_id: "a", criterion_id: "code", score: 2.5 }];
+  const tables = [];
+  const route = load("app/api/challenges/export/route.ts", {
+    "@/lib/teacher-auth": { isTeacherRequestAuthenticated: () => true },
+    "@/lib/challenge-server": {
+      challengeDb: () => ({ from: table => {
+        tables.push(table);
+        const query = {
+          select: () => query,
+          eq: (key, value) => { assert.equal(key, table === "challenges" ? "id" : "challenge_id"); assert.equal(value, "c"); return query; },
+          order: () => query,
+          range: async () => ({ data: table === "challenge_bonus_scores" ? bonusScores : [] }),
+          single: async () => ({ data: { ...challenge, title: "평가" } })
+        };
+        return query;
+      } }),
+      allRows: async fetch => (await fetch(0, 999)).data,
+      fail: (error, status = 400) => Response.json({ message: error.message }, { status })
+    },
+    "@/lib/challenge-export": { buildChallengeResultsWorkbook: async (_challenge, _participants, _submissions, _options, scores) => {
+      assert.deepEqual(scores, bonusScores);
+      return { xlsx: { writeBuffer: async () => Buffer.from("workbook") } };
+    } }
+  });
+  const response = await route.POST(new NextRequest("http://localhost/api/challenges/export", { method: "POST", body: JSON.stringify({ challengeId: "c" }) }));
+  assert.equal(response.status, 200);
+  assert.ok(tables.includes("challenge_bonus_scores"));
+});
+
 test("student responses hide all pre-start problems, entry codes and hidden test cases", () => {
   const waiting = publicChallenge({ ...challenge, started_at: null });
   assert.equal(waiting.entry_code, undefined);

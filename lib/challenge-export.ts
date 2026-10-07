@@ -1,10 +1,11 @@
 import ExcelJS from "exceljs";
 import type {
   Challenge,
+  ChallengeBonusScore,
   ChallengeParticipant,
   ChallengeSubmission
 } from "./challenge-types";
-import { firstSolvers } from "./challenge-types";
+import { challengeBonusMax, challengeProblemMax, earnedProblemScore, firstSolvers, problemPoints } from "./challenge-types";
 
 export type ChallengeExportOptions = {
   includeFirstSolver: boolean;
@@ -22,7 +23,8 @@ export async function buildChallengeResultsWorkbook(
   challenge: Challenge,
   participants: ChallengeParticipant[],
   submissions: ChallengeSubmission[],
-  options: ChallengeExportOptions
+  options: ChallengeExportOptions,
+  bonusScores: ChallengeBonusScore[] = []
 ) {
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "Jingiru Python Beginner Lab";
@@ -34,7 +36,9 @@ export async function buildChallengeResultsWorkbook(
   });
   const problems = challenge.problem_snapshots;
   const firstByProblem = firstSolvers(submissions);
-  const headers = ["학번", "이름", "총 정답"];
+  const criteria = challenge.bonus_criteria ?? [];
+  const maxScore = challengeProblemMax(challenge) + challengeBonusMax(challenge);
+  const headers = ["학번", "이름", "총 정답", "총점", "만점", "문제 점수", "부가점수"];
   const problemGroups: Array<{ number: number; from: number; to: number }> = [];
 
   for (const [index] of problems.entries()) {
@@ -48,6 +52,8 @@ export async function buildChallengeResultsWorkbook(
     if (options.includeAttemptCounts) headers.push("시도 횟수");
     problemGroups.push({ number, from, to: headers.length });
   }
+  const bonusFrom = headers.length + 1;
+  headers.push(...criteria.map(criterion => criterion.label));
 
   const metadataLastColumn = Math.max(headers.length, 9);
   sheet.mergeCells(1, 1, 1, metadataLastColumn);
@@ -63,10 +69,15 @@ export async function buildChallengeResultsWorkbook(
 
   sheet.mergeCells(4, 1, 4, 2);
   sheet.getCell(4, 1).value = "학생 정보";
+  sheet.mergeCells(4, 3, 4, 7);
   sheet.getCell(4, 3).value = "결과";
   for (const group of problemGroups) {
     if (group.from < group.to) sheet.mergeCells(4, group.from, 4, group.to);
     sheet.getCell(4, group.from).value = `${group.number}번`;
+  }
+  if (criteria.length > 0) {
+    if (criteria.length > 1) sheet.mergeCells(4, bonusFrom, 4, headers.length);
+    sheet.getCell(4, bonusFrom).value = "부가점수";
   }
   sheet.getRow(5).values = headers;
 
@@ -75,10 +86,17 @@ export async function buildChallengeResultsWorkbook(
   );
   for (const participant of sortedParticipants) {
     const records = submissions.filter((submission) => submission.participant_id === participant.id);
+    const participantBonus = bonusScores.filter(score => score.participant_id === participant.id);
+    const bonus = participantBonus.reduce((sum, row) => sum + Number(row.score), 0);
+    const problemScore = earnedProblemScore(challenge, records);
     const row: Array<string | number | Date | null> = [
       participant.student_no,
       participant.name,
-      new Set(records.filter((submission) => submission.status === "accepted").map((submission) => submission.problem_id)).size
+      new Set(records.filter((submission) => submission.status === "accepted").map((submission) => submission.problem_id)).size,
+      problemScore + bonus,
+      maxScore,
+      problemScore,
+      bonus
     ];
     for (const problem of problems) {
       const attempts = records
@@ -100,6 +118,10 @@ export async function buildChallengeResultsWorkbook(
       }
       if (options.includeAttemptCounts) row.push(attempts.length);
     }
+    row.push(...criteria.map(criterion => {
+      const score = participantBonus.find(item => item.criterion_id === criterion.id)?.score;
+      return score == null ? null : Number(score);
+    }));
     sheet.addRow(row);
   }
 
@@ -144,12 +166,20 @@ export async function buildChallengeResultsWorkbook(
   sheet.getColumn(1).width = 12;
   sheet.getColumn(2).width = 14;
   sheet.getColumn(3).width = 10;
+  for (let columnIndex = 4; columnIndex <= 7; columnIndex += 1) {
+    sheet.getColumn(columnIndex).numFmt = "0.##########";
+  }
   for (let columnIndex = 4; columnIndex <= lastColumn; columnIndex += 1) {
     const column = sheet.getColumn(columnIndex);
     const header = String(sheet.getCell(5, columnIndex).value ?? "");
     column.width = header.includes("시각") ? 23 : header === "소요시간" ? 14 : header === "시도 횟수" ? 12 : 14;
     if (header.includes("시각")) column.numFmt = "yyyy-mm-dd hh:mm:ss";
     if (header === "소요시간") column.numFmt = "[m]:ss";
+  }
+  for (const [index, criterion] of criteria.entries()) {
+    const column = sheet.getColumn(bonusFrom + index);
+    column.width = Math.max(14, criterion.label.length * 2 + 2);
+    column.numFmt = "0.##########";
   }
   sheet.getColumn(5).width = Math.max(sheet.getColumn(5).width ?? 0, 13);
   sheet.getColumn(6).width = Math.max(sheet.getColumn(6).width ?? 0, 13);
@@ -160,14 +190,15 @@ export async function buildChallengeResultsWorkbook(
   sheet.getColumn(2).alignment = { vertical: "middle", horizontal: "left" };
 
   const information = workbook.addWorksheet("문항 정보", { views: [{ state: "frozen", ySplit: 1 }] });
-  information.addRow(["문항 번호", "문제 제목", "문제 ID"]);
-  problems.forEach((problem, index) => information.addRow([index + 1, problem.title, problem.id]));
+  information.addRow(["문항 번호", "문제 제목", "문제 ID", "배점"]);
+  problems.forEach((problem, index) => information.addRow([index + 1, problem.title, problem.id, problemPoints(problem)]));
   information.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
   information.getRow(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF4F67E8" } };
   information.getColumn(1).width = 12;
   information.getColumn(2).width = 38;
   information.getColumn(3).width = 28;
-  information.autoFilter = `A1:C${Math.max(information.rowCount, 1)}`;
+  information.getColumn(4).width = 12;
+  information.autoFilter = `A1:D${Math.max(information.rowCount, 1)}`;
 
   return workbook;
 }
