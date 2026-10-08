@@ -140,6 +140,30 @@ test("exported scores include decimal bonuses and all scoring modes", async () =
   assert.equal(noBonus.getWorksheet("결과").getCell("J6").value, null);
 });
 
+test("optional group columns use configured group rules and appear next to total score", async () => {
+  const grouped = { ...challenge, title: "그룹 평가", problem_snapshots: [problem, { ...problem, id: "p2" }, { ...problem, id: "p3" }], scoring: {
+    mode: "grouped_correct_count", groups: [
+      { id: "g1", label: "1점 문제", problem_ids: ["p1"], base_score: 4, free_correct_count: 1, points_per_additional: 1 },
+      { id: "g2", label: "3점 문제", problem_ids: ["p2", "p3"], base_score: 4, free_correct_count: 1, points_per_additional: 3 }
+    ]
+  }, bonus_criteria: [{ id: "code", label: "코드 이해도", max_score: 2.5 }] };
+  const participants = [{ id: "a", student_no: "001", name: "학생" }, { id: "b", student_no: "002", name: "미제출" }];
+  const submissions = ["p2", "p3", "p3"].map((problem_id, index) => ({ id: String(index), participant_id: "a", problem_id, status: "accepted", received_at: challenge.started_at }));
+  const options = { includeGroupScores: true, includeFirstSolver: true, includeSubmissionTimes: true, includeAttemptCounts: true };
+  const workbook = await buildChallengeResultsWorkbook(grouped, participants, submissions, options, [{ participant_id: "a", criterion_id: "code", score: 2.5 }]);
+  const ExcelJS = require("exceljs");
+  const sheet = (await new ExcelJS.Workbook().xlsx.load(await workbook.xlsx.writeBuffer())).getWorksheet("결과");
+  assert.deepEqual(sheet.getRow(5).values.slice(1, 8), ["학번", "이름", "총점", "1점 문제", "3점 문제", "코드 이해도", "총 정답"]);
+  assert.deepEqual(sheet.getRow(6).values.slice(1, 8), ["001", "학생", 13.5, 4, 7, 2.5, 2]);
+  assert.deepEqual(Array.from(sheet.getRow(7).values.slice(1, 8), value => value ?? null), ["002", "미제출", 8, 4, 4, null, 0]);
+  assert.equal(sheet.getCell("H4").value, "1번");
+  assert.equal(sheet.getCell("H6").value, "미제출");
+  const disabled = await buildChallengeResultsWorkbook(grouped, participants, submissions, { ...options, includeGroupScores: false });
+  assert.ok(!disabled.getWorksheet("결과").getRow(5).values.includes("1점 문제"));
+  const ungrouped = await buildChallengeResultsWorkbook({ ...grouped, scoring: { mode: "problem_points" } }, participants, submissions, options);
+  assert.ok(!ungrouped.getWorksheet("결과").getRow(5).values.includes("1점 문제"));
+});
+
 test("export endpoint queries bonus scores for the selected challenge and passes them to the workbook", async () => {
   const { NextRequest } = require("next/server");
   const bonusScores = [{ challenge_id: "c", participant_id: "a", criterion_id: "code", score: 2.5 }];
@@ -162,11 +186,12 @@ test("export endpoint queries bonus scores for the selected challenge and passes
       fail: (error, status = 400) => Response.json({ message: error.message }, { status })
     },
     "@/lib/challenge-export": { buildChallengeResultsWorkbook: async (_challenge, _participants, _submissions, _options, scores) => {
+      assert.equal(_options.includeGroupScores, true);
       assert.deepEqual(scores, bonusScores);
       return { xlsx: { writeBuffer: async () => Buffer.from("workbook") } };
     } }
   });
-  const response = await route.POST(new NextRequest("http://localhost/api/challenges/export", { method: "POST", body: JSON.stringify({ challengeId: "c" }) }));
+  const response = await route.POST(new NextRequest("http://localhost/api/challenges/export", { method: "POST", body: JSON.stringify({ challengeId: "c", includeGroupScores: true }) }));
   assert.equal(response.status, 200);
   assert.ok(tables.includes("challenge_bonus_scores"));
 });

@@ -11,6 +11,7 @@ export type ChallengeExportOptions = {
   includeFirstSolver: boolean;
   includeSubmissionTimes: boolean;
   includeAttemptCounts: boolean;
+  includeGroupScores?: boolean;
 };
 
 const KOREA_OFFSET_MS = 9 * 60 * 60 * 1000;
@@ -38,7 +39,13 @@ export async function buildChallengeResultsWorkbook(
   const firstByProblem = firstSolvers(submissions);
   const criteria = challenge.bonus_criteria ?? [];
   const maxScore = challengeProblemMax(challenge) + challengeBonusMax(challenge);
-  const headers = ["학번", "이름", "총 정답", "총점", "만점", "문제 점수", "부가점수"];
+  const scoringGroups = options.includeGroupScores && challenge.scoring?.mode === "grouped_correct_count"
+    ? challenge.scoring.groups : [];
+  const groupedLayout = options.includeGroupScores === true && challenge.scoring?.mode === "grouped_correct_count";
+  const headers = groupedLayout
+    ? ["학번", "이름", "총점", ...scoringGroups.map(group => group.label), ...criteria.map(criterion => criterion.label), "총 정답"]
+    : ["학번", "이름", "총 정답", "총점", "만점", "문제 점수", "부가점수"];
+  const resultEnd = headers.length;
   const problemGroups: Array<{ number: number; from: number; to: number }> = [];
 
   for (const [index] of problems.entries()) {
@@ -52,8 +59,8 @@ export async function buildChallengeResultsWorkbook(
     if (options.includeAttemptCounts) headers.push("시도 횟수");
     problemGroups.push({ number, from, to: headers.length });
   }
-  const bonusFrom = headers.length + 1;
-  headers.push(...criteria.map(criterion => criterion.label));
+  const bonusFrom = groupedLayout ? 4 + scoringGroups.length : headers.length + 1;
+  if (!groupedLayout) headers.push(...criteria.map(criterion => criterion.label));
 
   const metadataLastColumn = Math.max(headers.length, 9);
   sheet.mergeCells(1, 1, 1, metadataLastColumn);
@@ -69,13 +76,13 @@ export async function buildChallengeResultsWorkbook(
 
   sheet.mergeCells(4, 1, 4, 2);
   sheet.getCell(4, 1).value = "학생 정보";
-  sheet.mergeCells(4, 3, 4, 7);
+  sheet.mergeCells(4, 3, 4, resultEnd);
   sheet.getCell(4, 3).value = "결과";
   for (const group of problemGroups) {
     if (group.from < group.to) sheet.mergeCells(4, group.from, 4, group.to);
     sheet.getCell(4, group.from).value = `${group.number}번`;
   }
-  if (criteria.length > 0) {
+  if (!groupedLayout && criteria.length > 0) {
     if (criteria.length > 1) sheet.mergeCells(4, bonusFrom, 4, headers.length);
     sheet.getCell(4, bonusFrom).value = "부가점수";
   }
@@ -89,10 +96,25 @@ export async function buildChallengeResultsWorkbook(
     const participantBonus = bonusScores.filter(score => score.participant_id === participant.id);
     const bonus = participantBonus.reduce((sum, row) => sum + Number(row.score), 0);
     const problemScore = earnedProblemScore(challenge, records);
-    const row: Array<string | number | Date | null> = [
+    const solved = new Set(records.filter(submission => submission.status === "accepted").map(submission => submission.problem_id)).size;
+    const criterionScores = criteria.map(criterion => {
+      const score = participantBonus.find(item => item.criterion_id === criterion.id)?.score;
+      return score == null ? null : Number(score);
+    });
+    const row: Array<string | number | Date | null> = groupedLayout ? [
       participant.student_no,
       participant.name,
-      new Set(records.filter((submission) => submission.status === "accepted").map((submission) => submission.problem_id)).size,
+      problemScore + bonus,
+      ...scoringGroups.map(group => earnedProblemScore({
+        problem_snapshots: problems,
+        scoring: { mode: "grouped_correct_count", groups: [group] }
+      }, records)),
+      ...criterionScores,
+      solved
+    ] : [
+      participant.student_no,
+      participant.name,
+      solved,
       problemScore + bonus,
       maxScore,
       problemScore,
@@ -118,10 +140,7 @@ export async function buildChallengeResultsWorkbook(
       }
       if (options.includeAttemptCounts) row.push(attempts.length);
     }
-    row.push(...criteria.map(criterion => {
-      const score = participantBonus.find(item => item.criterion_id === criterion.id)?.score;
-      return score == null ? null : Number(score);
-    }));
+    if (!groupedLayout) row.push(...criterionScores);
     sheet.addRow(row);
   }
 
@@ -166,7 +185,7 @@ export async function buildChallengeResultsWorkbook(
   sheet.getColumn(1).width = 12;
   sheet.getColumn(2).width = 14;
   sheet.getColumn(3).width = 10;
-  for (let columnIndex = 4; columnIndex <= 7; columnIndex += 1) {
+  for (let columnIndex = groupedLayout ? 3 : 4; columnIndex <= resultEnd; columnIndex += 1) {
     sheet.getColumn(columnIndex).numFmt = "0.##########";
   }
   for (let columnIndex = 4; columnIndex <= lastColumn; columnIndex += 1) {
@@ -180,6 +199,11 @@ export async function buildChallengeResultsWorkbook(
     const column = sheet.getColumn(bonusFrom + index);
     column.width = Math.max(14, criterion.label.length * 2 + 2);
     column.numFmt = "0.##########";
+  }
+  if (groupedLayout) {
+    scoringGroups.forEach((group, index) => {
+      sheet.getColumn(4 + index).width = Math.max(14, group.label.length * 2 + 2);
+    });
   }
   sheet.getColumn(5).width = Math.max(sheet.getColumn(5).width ?? 0, 13);
   sheet.getColumn(6).width = Math.max(sheet.getColumn(6).width ?? 0, 13);

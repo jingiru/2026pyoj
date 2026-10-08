@@ -15,7 +15,8 @@ export async function POST(request: NextRequest) {
     const options: ChallengeExportOptions = {
       includeFirstSolver: body.includeFirstSolver === true,
       includeSubmissionTimes: body.includeSubmissionTimes === true,
-      includeAttemptCounts: body.includeAttemptCounts === true
+      includeAttemptCounts: body.includeAttemptCounts === true,
+      includeGroupScores: body.includeGroupScores === true
     };
     const db = challengeDb();
     const [{ data: challenge, error }, participants, submissions, bonusScores] = await Promise.all([
