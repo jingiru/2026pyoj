@@ -83,6 +83,19 @@ export function earnedProblemScore(challenge: Pick<Challenge, "problem_snapshots
   return challenge.problem_snapshots.reduce((sum, problem) => sum + (accepted.has(problem.id) ? problemPoints(problem) : 0), 0);
 }
 
+export function challengeScoreBreakdown(challenge: Pick<Challenge, "problem_snapshots" | "scoring" | "bonus_criteria">, submissions: ChallengeSubmission[], bonusScores: ChallengeBonusScore[]) {
+  const rows: { id: string; label: string; earned: number; max: number }[] = challenge.scoring?.mode === "grouped_correct_count"
+    ? challenge.scoring.groups.map(group => {
+      const groupedChallenge = { ...challenge, scoring: { mode: "grouped_correct_count" as const, groups: [group] } };
+      return { id: `group:${group.id}`, label: group.label, earned: earnedProblemScore(groupedChallenge, submissions), max: challengeProblemMax(groupedChallenge) };
+    })
+    : [{ id: "problems", label: "문제 점수", earned: earnedProblemScore(challenge, submissions), max: challengeProblemMax(challenge) }];
+  return [...rows, ...(challenge.bonus_criteria ?? []).map(criterion => ({
+    id: `bonus:${criterion.id}`, label: criterion.label, max: criterion.max_score,
+    earned: bonusScores.filter(row => row.criterion_id === criterion.id).reduce((sum, row) => sum + Number(row.score), 0)
+  }))];
+}
+
 export function completedAllChallengeProblems(challenge: Pick<Challenge, "problem_snapshots" | "allow_requirement_failure">, submissions: ChallengeSubmission[]) {
   if (challenge.problem_snapshots.length === 0) return false;
   const allowRequirementFailure = challenge.allow_requirement_failure === true;

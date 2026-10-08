@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ComponentType, type FormEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { ArrowDown, ArrowUp, Check, Clock3, Copy, Download, Expand, Minimize2, Play, Plus, Send, Square, Trash2, Trophy, X } from "lucide-react";
 import type { Problem, ProblemBook, Student } from "@/lib/types";
@@ -8,6 +8,7 @@ import { challengeBonusMax, challengePhase, challengeProblemMax, completedAllCha
 import { runPythonWithSkulpt } from "@/lib/skulpt-runner";
 import { rankChallengeResults, sortChallengeResults, type ChallengeResultSortDirection, type ChallengeResultSortKey } from "@/lib/challenge-result-sorting";
 import ChallengeArcade from "./challenge-arcade";
+import { challengeScoreBreakdown } from "@/lib/challenge-types";
 
 type EditorProps = { value: string; onChange: (value: string) => void; onRun: () => void; onSubmit?: () => void; colorMode: "light" | "dark"; fontSize: number; onFontSizeChange?: (amount: number) => void; onFontSizeReset?: () => void };
 type PaneProps = { selectedProblem: Problem; previousProblem?: Problem; nextProblem?: Problem; autoAdvanceOnAccepted: boolean; onPrevious: () => void; onNext: () => void; onAutoAdvanceChange: (enabled: boolean) => void };
@@ -27,6 +28,16 @@ function message(error: unknown) { return error instanceof Error ? error.message
 const statusLabel = (status?: string) => ({ accepted: "정답", wrong_answer: "오답", runtime_error: "실행 오류", code_requirement_failed: "조건 미준수", pending: "채점 중" }[status ?? ""] ?? "미제출");
 function challengeStatusLabel(row: ChallengeSubmission | undefined, showRequirement: boolean) { const base = statusLabel(row?.status); return showRequirement && row?.requirement_passed === false ? `${base}(조건 미준수)` : base; }
 const scoreLabel = (score: number) => Number.isInteger(score) ? String(score) : String(Number(score.toFixed(3)));
+
+function ChallengeStudentScore({ challenge, submissions, bonusScores, earned, total }: { challenge: Challenge; submissions: ChallengeSubmission[]; bonusScores: ChallengeBonusScore[]; earned: number; total: number }) {
+  const tooltipId = useId();
+  const [open, setOpen] = useState(false);
+  const rows = challengeScoreBreakdown(challenge, submissions, bonusScores);
+  return <div className="challengeScoreDetails" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)} onFocus={() => setOpen(true)} onBlur={() => setOpen(false)} onKeyDown={event => { if (event.key === "Escape") setOpen(false); }}>
+    <button type="button" className="challengeScore" aria-label={`현재 점수 ${scoreLabel(earned)}점, 총 ${scoreLabel(total)}점. 점수 구성 보기`} aria-describedby={open ? tooltipId : undefined} onClick={() => setOpen(true)}>{scoreLabel(earned)}점 / {scoreLabel(total)}점</button>
+    {open && <div className="challengeScoreTooltip" id={tooltipId} role="tooltip"><strong>점수 구성</strong><span className="challengeScoreTooltipHint">획득 점수 / 만점</span><dl>{rows.map(row => <div key={row.id}><dt>{row.label}</dt><dd><b>{scoreLabel(row.earned)}</b> / {scoreLabel(row.max)}점</dd></div>)}</dl><div className="challengeScoreTooltipTotal"><span>총점</span><b>{scoreLabel(earned)} / {scoreLabel(total)}점</b></div></div>}
+  </div>;
+}
 
 function remainingLabel(challenge: Challenge, now: number) {
   const phase = challengePhase(challenge, now);
@@ -178,7 +189,7 @@ function ChallengeStudent({ CodeEditor, ProblemPane, colorMode, onReenter }: { C
   const validBonusIds = new Set((challenge.bonus_criteria ?? []).map(item => item.id)); const earned = earnedProblemScore(challenge, submissions) + session.bonusScores.filter(row => validBonusIds.has(row.criterion_id)).reduce((sum, row) => sum + Number(row.score), 0); const total = challengeProblemMax(challenge) + challengeBonusMax(challenge);
   const completedAllProblems = completedAllChallengeProblems(challenge, submissions);
   return <section className="challengeView">
-    {headerSlot && createPortal(<div className="challengeStudentBar"><strong className="challengeStudentTitle">{challenge.title}</strong><div className="challengeScore" aria-label={`현재 점수 ${scoreLabel(earned)}점, 총 ${scoreLabel(total)}점`}>{scoreLabel(earned)}점 / {scoreLabel(total)}점</div><ChallengeTimer challenge={challenge} now={now} onTripleClick={() => completedAllProblems ? setArcadeOpen(true) : setArcadeLockedOpen(true)} /></div>, headerSlot)}
+    {headerSlot && createPortal(<div className="challengeStudentBar"><strong className="challengeStudentTitle">{challenge.title}</strong><ChallengeStudentScore challenge={challenge} submissions={submissions} bonusScores={session.bonusScores} earned={earned} total={total} /><ChallengeTimer challenge={challenge} now={now} onTripleClick={() => completedAllProblems ? setArcadeOpen(true) : setArcadeLockedOpen(true)} /></div>, headerSlot)}
     {error && <p className="modalError" role="alert">{error} 제출은 연결이 복구되면 가능합니다.</p>}
     {phase === "waiting" ? <div className="challengeWaiting"><Trophy size={48} /><h2>입장했습니다. 선생님의 시작을 기다려주세요.</h2><p>제한시간 {challenge.duration_minutes}분 · 시작하면 문제가 자동으로 공개됩니다.</p></div> : <>{phase === "ended" && <div className="notice">제한시간이 끝났습니다. 제출은 마감되었으며, 추가 시간이 부여되면 자동으로 다시 열립니다.</div>}<div className="challengeSolveGrid">
       <aside className="problemList"><div className="sectionTitle">문항</div>{problems.map((item, index) => { const records = submissions.filter(row => row.problem_id === item.id); const accepted = records.filter(row => row.status === "accepted").at(-1); const latest = accepted ?? records.at(-1); const status = accepted ? "accepted" : latest?.status; const warning = challenge.allow_requirement_failure && challenge.show_code_requirement_status && accepted?.requirement_passed === false; return <button className={`problemItem ${item.id === problem?.id ? "active" : ""} ${status === "accepted" ? "solved" : ""} ${warning ? "requirementWarning" : ""}`} key={item.id} onClick={() => setSelected(index)}>{warning && <i title="코드 조건 미준수" aria-label="코드 조건 미준수">!</i>}<span>{index + 1}</span><strong>{statusLabel(status)}</strong><small>{scoreLabel(problemPoints(item))}점</small></button>; })}</aside>

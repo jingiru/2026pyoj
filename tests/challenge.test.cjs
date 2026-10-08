@@ -19,12 +19,35 @@ function load(relative, overrides = {}) {
   new Function("require", "module", "exports", compiled)(localRequire, mod, mod.exports);
   return mod.exports;
 }
-const { challengeBonusMax, challengePhase, challengeProblemMax, completedAllChallengeProblems, earnedProblemScore, elapsedLabel, firstSolvers, publicChallenge } = load("lib/challenge-types.ts");
+const { challengeScoreBreakdown, challengeBonusMax, challengePhase, challengeProblemMax, completedAllChallengeProblems, earnedProblemScore, elapsedLabel, firstSolvers, publicChallenge } = load("lib/challenge-types.ts");
 const { judgeChallenge } = load("lib/challenge-judge.ts");
 const { CHALLENGE_CODE_ALPHABET, generateChallengeEntryCode } = load("lib/challenge-server.ts");
 const { buildChallengeResultsWorkbook } = load("lib/challenge-export.ts");
 const problem = { id: "p1", title: "더하기", hint: "힌트", testCases: [{ input: "2\n3", output: "5", isSample: true }, { input: "-1\n4", output: "3", isSample: false }], examples: [{ input: "2\n3", output: "5", isSample: true }] };
 const challenge = { id: "c", entry_code: "1234ABCD", started_at: "2026-09-06T01:00:00Z", ends_at: "2026-09-06T01:40:00Z", problem_snapshots: [problem] };
+
+test("score tooltip includes each configured group and bonus and agrees with totals", () => {
+  const grouped = { problem_snapshots: Array.from({ length: 10 }, (_, i) => ({ id: `p${i}` })), scoring: { mode: "grouped_correct_count", groups: [
+    { id: "g1", label: "1점 짜리", problem_ids: ["p0", "p1", "p2", "p3", "p4"], base_score: 4, free_correct_count: 1, points_per_additional: 1 },
+    { id: "g2", label: "2점 짜리", problem_ids: ["p5", "p6", "p7", "p8", "p9"], base_score: 4, free_correct_count: 1, points_per_additional: 2 }
+  ] }, bonus_criteria: [{ id: "b1", label: "코드 이해도", max_score: 10 }, { id: "b2", label: "미평가 항목", max_score: 2.5 }] };
+  const records = ["p0", "p1", "p5", "p6", "p7", "p7", "unknown"].map(problem_id => ({ problem_id, status: "accepted" }));
+  const rows = challengeScoreBreakdown(grouped, records, [{ criterion_id: "b1", score: 7 }, { criterion_id: "removed", score: 100 }]);
+  assert.deepEqual(rows.map(({ label, earned, max }) => ({ label, earned, max })), [
+    { label: "1점 짜리", earned: 5, max: 8 }, { label: "2점 짜리", earned: 8, max: 12 },
+    { label: "코드 이해도", earned: 7, max: 10 }, { label: "미평가 항목", earned: 0, max: 2.5 }
+  ]);
+  assert.equal(rows.reduce((sum, row) => sum + row.earned, 0), earnedProblemScore(grouped, records) + 7);
+  assert.equal(rows.reduce((sum, row) => sum + row.max, 0), challengeProblemMax(grouped) + challengeBonusMax(grouped));
+});
+
+test("score tooltip supports ordinary points and correct-count scoring", () => {
+  const plain = { problem_snapshots: [{ id: "p1", points: 2.5 }, { id: "p2", points: 1 }] };
+  const records = [{ problem_id: "p1", status: "accepted" }, { problem_id: "p2", status: "wrong_answer" }];
+  assert.deepEqual(challengeScoreBreakdown(plain, records, []), [{ id: "problems", label: "문제 점수", earned: 2.5, max: 3.5 }]);
+  const counted = { ...plain, scoring: { mode: "correct_count", base_score: 4, free_correct_count: 1, points_per_additional: 2 } };
+  assert.deepEqual(challengeScoreBreakdown(counted, records, []), [{ id: "problems", label: "문제 점수", earned: 4, max: 6 }]);
+});
 
 test("challenge timing: pre-start, exact deadline, extended deadline and elapsed time", () => {
   assert.equal(challengePhase({ ...challenge, started_at: null }), "waiting");
