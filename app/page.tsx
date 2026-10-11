@@ -62,6 +62,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type ReactNode,
   type PointerEvent as ReactPointerEvent
 } from "react";
 import {
@@ -98,7 +99,7 @@ import ChallengeExperience from "./challenge";
 import { LiveStudentModal, useLiveCode } from "./live-code";
 import type { Extension } from "@codemirror/state";
 
-type Screen = "home" | "practice" | "solve" | "teacher" | "challenge" | "challenge-teacher";
+type Screen = "home" | "practice" | "solve" | "teacher" | "challenge-entry" | "challenge" | "challenge-teacher";
 type ColorMode = "light" | "dark";
 type TeacherDashboardScope = { bookId: string; classId: string };
 type TeacherDashboardCacheEntry = {
@@ -463,6 +464,12 @@ export default function Home() {
   useEffect(() => {
     void refreshCurriculum();
   }, []);
+
+  useEffect(() => {
+    if (screen === "solve" && teacherAuthReady && editorStorageReady && !student && !isTeacherAuthenticated) {
+      setLoginOpen(true);
+    }
+  }, [screen, teacherAuthReady, editorStorageReady, student, isTeacherAuthenticated]);
 
   useEffect(() => {
     if (screen !== "teacher" || !isTeacherAuthenticated) return;
@@ -1389,16 +1396,16 @@ export default function Home() {
 
       {notice && <div className="notice">{notice}</div>}
 
-      {screen === "home" && <HomeChoice onPractice={() => navigateTo("practice")} onSolve={enterSolveMode} onChallenge={() => setChallengeEntryOpen(true)} />}
+      {(screen === "home" || screen === "challenge-entry") && <HomeChoice onPractice={() => navigateTo("practice")} onSolve={enterSolveMode} onChallenge={() => setChallengeEntryOpen(true)} />}
 
-      {(challengeEntryOpen || screen === "challenge" || screen === "challenge-teacher") && (
+      {(challengeEntryOpen || screen === "challenge-entry" || screen === "challenge" || screen === "challenge-teacher") && (
         <ChallengeExperience
-          mode={challengeEntryOpen ? "entry" : screen === "challenge-teacher" ? "teacher" : "student"}
+          mode={challengeEntryOpen || screen === "challenge-entry" ? "entry" : screen === "challenge-teacher" ? "teacher" : "student"}
           student={student}
           colorMode={colorMode}
           CodeEditor={CodeEditor}
           ProblemPane={ProblemPane}
-          onClose={() => { setChallengeEntryOpen(false); if (screen === "challenge" || screen === "challenge-teacher") navigateTo("home"); }}
+          onClose={() => { setChallengeEntryOpen(false); if (screen === "challenge-entry" || screen === "challenge" || screen === "challenge-teacher") navigateTo("home"); }}
           onMode={(mode) => {
             setChallengeEntryOpen(mode === "entry");
             if (mode !== "entry") navigateTo(mode === "teacher" ? "challenge-teacher" : "challenge");
@@ -2120,6 +2127,29 @@ export default function Home() {
   );
 }
 
+function ScreenLink({ screen, onNavigate, className, active, children }: {
+  screen: Screen;
+  onNavigate: () => void;
+  className?: string;
+  active?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <a
+      href={screen === "home" ? "/" : `/?screen=${screen}`}
+      className={className}
+      aria-current={active ? "page" : undefined}
+      onClick={event => {
+        if (event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+        event.preventDefault();
+        onNavigate();
+      }}
+    >
+      {children}
+    </a>
+  );
+}
+
 function Header({
   screen,
   student,
@@ -2149,7 +2179,7 @@ function Header({
 }) {
   return (
     <header className={`topbar ${screen === "practice" && practiceHeaderCollapsed ? "practiceHeaderCollapsed" : ""}`}>
-      <button className="brand brandButton" onClick={onHome}>
+      <ScreenLink screen="home" className="brand brandButton" onNavigate={onHome}>
         <div className="brandMark">
           <Code2 size={24} />
         </div>
@@ -2157,7 +2187,7 @@ function Header({
           <strong>Jingiru Python Beginner Lab</strong>
           <span>{student ? `${student.student_no} ${student.name}` : "초보자를 위한 파이썬 첫걸음 by 진기루T"}</span>
         </div>
-      </button>
+      </ScreenLink>
       <div id="challenge-header-slot" className="challengeHeaderSlot" />
       <div className="modeSwitch" aria-label="화면 선택">
         {student && (
@@ -2166,22 +2196,22 @@ function Header({
             로그아웃
           </button>
         )}
-        <button className={screen === "practice" ? "active" : ""} onClick={onPractice}>
+        <ScreenLink screen="practice" className={screen === "practice" ? "active" : ""} active={screen === "practice"} onNavigate={onPractice}>
           <Code2 size={18} />
           연습
-        </button>
-        <button className={screen === "solve" ? "active" : ""} onClick={onSolve}>
+        </ScreenLink>
+        <ScreenLink screen="solve" className={screen === "solve" ? "active" : ""} active={screen === "solve"} onNavigate={onSolve}>
           <GraduationCap size={18} />
           문제
-        </button>
-        <button className={screen === "challenge" || screen === "challenge-teacher" ? "active" : ""} onClick={onChallenge}>
+        </ScreenLink>
+        <ScreenLink screen="challenge-entry" className={screen === "challenge-entry" || screen === "challenge" || screen === "challenge-teacher" ? "active" : ""} active={screen === "challenge-entry" || screen === "challenge" || screen === "challenge-teacher"} onNavigate={onChallenge}>
           <Trophy size={18} />
           챌린지
-        </button>
-        <button className={screen === "teacher" ? "active" : ""} onClick={onTeacher}>
+        </ScreenLink>
+        <ScreenLink screen="teacher" className={screen === "teacher" ? "active" : ""} active={screen === "teacher"} onNavigate={onTeacher}>
           <LayoutDashboard size={18} />
           교사
-        </button>
+        </ScreenLink>
         <button onClick={onToggleColorMode}>
           {colorMode === "dark" ? "화이트" : "다크"}
         </button>
@@ -2225,21 +2255,21 @@ function HomeChoice({ onPractice, onSolve, onChallenge }: { onPractice: () => vo
         <h1>오늘은 어떻게 시작할까요?</h1>
       </div>
       <div className="choiceGrid">
-        <button className="choiceButton" onClick={onPractice}>
+        <ScreenLink screen="practice" className="choiceButton" onNavigate={onPractice}>
           <Code2 size={34} />
           <strong>코딩 연습</strong>
           <span>로그인 없이 코딩 연습</span>
-        </button>
-        <button className="choiceButton solve" onClick={onSolve}>
+        </ScreenLink>
+        <ScreenLink screen="solve" className="choiceButton solve" onNavigate={onSolve}>
           <GraduationCap size={34} />
           <strong>문제 풀기</strong>
           <span>학번과 이름으로 로그인하고 문제 풀기</span>
-        </button>
-        <button className="choiceButton challenge" onClick={onChallenge}>
+        </ScreenLink>
+        <ScreenLink screen="challenge-entry" className="choiceButton challenge" onNavigate={onChallenge}>
           <Trophy size={34} />
           <strong>챌린지</strong>
           <span>수행평가 및 프로그래밍 대회</span>
-        </button>
+        </ScreenLink>
       </div>
       <div className="choiceContact">
         <span>문의사항이 있으신가요?</span>
@@ -4745,7 +4775,7 @@ function groupProblems(problems: Problem[], book?: ProblemBook) {
 
 function getScreenFromUrl(): Screen {
   const screen = new URL(window.location.href).searchParams.get("screen");
-  return screen === "practice" || screen === "solve" || screen === "teacher" || screen === "challenge" || screen === "challenge-teacher" ? screen : "home";
+  return screen === "practice" || screen === "solve" || screen === "teacher" || screen === "challenge-entry" || screen === "challenge" || screen === "challenge-teacher" ? screen : "home";
 }
 
 function getSavedProblemCode(problemId: string) {
