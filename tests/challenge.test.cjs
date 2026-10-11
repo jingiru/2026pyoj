@@ -26,6 +26,20 @@ const { buildChallengeResultsWorkbook } = load("lib/challenge-export.ts");
 const problem = { id: "p1", title: "더하기", hint: "힌트", testCases: [{ input: "2\n3", output: "5", isSample: true }, { input: "-1\n4", output: "3", isSample: false }], examples: [{ input: "2\n3", output: "5", isSample: true }] };
 const challenge = { id: "c", entry_code: "1234ABCD", started_at: "2026-09-06T01:00:00Z", ends_at: "2026-09-06T01:40:00Z", problem_snapshots: [problem] };
 
+test("temporary assessment respects score floors, grouped rules and final code independently of accepted history", () => {
+  const { assessmentResult } = load("lib/temporary-challenge-results.ts");
+  const assessment = { ...challenge, title: "평가", problem_snapshots: Array.from({ length: 10 }, (_, i) => ({ ...problem, id: `p${i}`, points: i < 5 ? 1 : 2 })), bonus_criteria: [{ id: "b", label: "코드 이해도" }] };
+  const empty = assessmentResult(assessment, [], [], 1);
+  assert.equal(empty.onePoint, 4); assert.equal(empty.twoPoint, 4); assert.equal(empty.total, null);
+  const submissions = assessment.problem_snapshots.map((p, i) => ({ id: `${i}`, problem_id: p.id, status: "accepted", received_at: "2026-01-01", code: "accepted code" }));
+  submissions.push({ id: "last", problem_id: "p0", status: "wrong_answer", received_at: "2026-01-02", code: "final code" });
+  const result = assessmentResult(assessment, submissions, [{ criterion_id: "b", score: 10 }], 2);
+  assert.equal(result.total, 30); assert.equal(result.problems[0].solved, true); assert.equal(result.problems[0].code, "final code");
+  assert.equal(result.problems[0].status, "wrong_answer");
+  assert.equal(result.problems[0].examples.length, 1);
+  assert.equal(assessmentResult(assessment, [], [{ criterion_id: "b", score: 0 }], 1).total, 12);
+});
+
 test("score tooltip includes each configured group and bonus and agrees with totals", () => {
   const grouped = { problem_snapshots: Array.from({ length: 10 }, (_, i) => ({ id: `p${i}` })), scoring: { mode: "grouped_correct_count", groups: [
     { id: "g1", label: "1점 짜리", problem_ids: ["p0", "p1", "p2", "p3", "p4"], base_score: 4, free_correct_count: 1, points_per_additional: 1 },

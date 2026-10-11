@@ -8,6 +8,7 @@ import { challengeBonusMax, challengePhase, challengeProblemMax, completedAllCha
 import { runPythonWithSkulpt } from "@/lib/skulpt-runner";
 import { rankChallengeResults, sortChallengeResults, type ChallengeResultSortDirection, type ChallengeResultSortKey } from "@/lib/challenge-result-sorting";
 import ChallengeArcade from "./challenge-arcade";
+import type { AssessmentResult } from "@/lib/temporary-challenge-results";
 import { challengeScoreBreakdown } from "@/lib/challenge-types";
 
 type EditorProps = { value: string; onChange: (value: string) => void; onRun: () => void; onSubmit?: () => void; colorMode: "light" | "dark"; fontSize: number; onFontSizeChange?: (amount: number) => void; onFontSizeReset?: () => void };
@@ -123,6 +124,7 @@ function useTeacherTimerAudio(challenge: Challenge | undefined, now: number) {
 
 export default function ChallengeExperience({ mode, student, colorMode, onMode, onClose, CodeEditor, ProblemPane }: { mode: Mode; student: Student | null; colorMode: "light" | "dark"; onMode: (mode: Mode) => void; onClose: () => void; CodeEditor: ComponentType<EditorProps>; ProblemPane: ComponentType<PaneProps> }) {
   const [teacherEntry, setTeacherEntry] = useState(false);
+  const [resultsOpen, setResultsOpen] = useState(false);
   const [entryCode, setEntryCode] = useState("");
   const [studentNo, setStudentNo] = useState(student?.is_guest ? "" : student?.student_no ?? "");
   const [name, setName] = useState(student?.is_guest ? "" : student?.name ?? "");
@@ -142,7 +144,8 @@ export default function ChallengeExperience({ mode, student, colorMode, onMode, 
   }
   if (mode === "teacher") return <ChallengeManager onReauthenticate={() => { setTeacherEntry(true); onMode("entry"); }} />;
   if (mode === "student") return <ChallengeStudent CodeEditor={CodeEditor} ProblemPane={ProblemPane} colorMode={colorMode} onReenter={() => onMode("entry")} />;
-  return <ChallengeModal title="챌린지" onClose={onClose}>
+  if (resultsOpen) return <TemporaryChallengeResults studentNo={studentNo} name={name} onClose={() => setResultsOpen(false)} />;
+  return <ChallengeModal title="챌린지" titleAction={<button type="button" className="ghostButton temporaryScoreButton" onClick={() => setResultsOpen(true)}>점수 확인</button>} onClose={onClose}>
     <p className="helperText">수행평가 및 프로그래밍 대회</p>
     <div className="challengeTabs"><button type="button" className={!teacherEntry ? "active" : ""} onClick={() => { setTeacherEntry(false); setError(""); }}>학생 입장</button><button type="button" className={teacherEntry ? "active" : ""} onClick={() => { setTeacherEntry(true); setError(""); }}>교사 관리</button></div>
     <form onSubmit={enter}>{teacherEntry ? <label>교사 비밀번호<input type="password" autoComplete="current-password" value={password} onChange={event => setPassword(event.target.value)} required /></label> : <>
@@ -153,7 +156,7 @@ export default function ChallengeExperience({ mode, student, colorMode, onMode, 
   </ChallengeModal>;
 }
 
-function ChallengeModal({ title, children, onClose, wide = false, className = "" }: { title: string; children: ReactNode; onClose: () => void; wide?: boolean; className?: string }) {
+function ChallengeModal({ title, titleAction, children, onClose, wide = false, className = "" }: { title: string; titleAction?: ReactNode; children: ReactNode; onClose: () => void; wide?: boolean; className?: string }) {
   const ref = useRef<HTMLDivElement>(null); const closeRef = useRef(onClose); closeRef.current = onClose;
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null; ref.current?.querySelector<HTMLElement>("input,button")?.focus();
@@ -167,7 +170,26 @@ function ChallengeModal({ title, children, onClose, wide = false, className = ""
     };
     document.addEventListener("keydown", listener); return () => { document.removeEventListener("keydown", listener); previous?.focus(); };
   }, []);
-  return <div className="modalBackdrop"><div className={`loginModal challengeModal ${wide ? "wide" : ""} ${className}`} ref={ref} role="dialog" aria-modal="true" aria-label={title}><button className="iconButton closeButton" onClick={onClose} aria-label="닫기"><X size={18} /></button><h2>{title}</h2>{children}</div></div>;
+  return <div className="modalBackdrop"><div className={`loginModal challengeModal ${wide ? "wide" : ""} ${className}`} ref={ref} role="dialog" aria-modal="true" aria-label={title}><button className="iconButton closeButton" onClick={onClose} aria-label="닫기"><X size={18} /></button><h2>{title}{titleAction}</h2>{children}</div></div>;
+}
+
+function TemporaryChallengeResults({ studentNo: initialNo, name: initialName, onClose }: { studentNo: string; name: string; onClose: () => void }) {
+  const [studentNo, setStudentNo] = useState(initialNo), [name, setName] = useState(initialName);
+  const [results, setResults] = useState<AssessmentResult[] | null>(null);
+  const [busy, setBusy] = useState(false), [error, setError] = useState("");
+  async function lookup(event: FormEvent) {
+    event.preventDefault(); setBusy(true); setError(""); setResults(null);
+    try { const data = await api<{ results: AssessmentResult[] }>("/api/challenges/results", { studentNo, name }); setResults(data.results); }
+    catch (caught) { setError(message(caught)); } finally { setBusy(false); }
+  }
+  const roundTotals = [1, 2].map(round => results?.filter(row => row.round === round && row.total !== null).reduce<number | null>((best, row) => best === null ? row.total : Math.max(best, row.total!), null) ?? null);
+  const bestRound = roundTotals[0] !== null && roundTotals[1] !== null && roundTotals[0] !== roundTotals[1] ? (roundTotals[0] > roundTotals[1] ? 1 : 2) : null;
+  return <ChallengeModal title="수행평가 점수 확인" wide={results !== null && results.length > 0} onClose={onClose} className="temporaryResultsModal">
+    <p className="helperText">학번과 이름으로 종료된 1차·2차 수행평가 결과를 확인합니다.</p>
+    <form onSubmit={lookup}><label>학번<input value={studentNo} onChange={event => { setStudentNo(event.target.value.replace(/\D/g, "")); setResults(null); }} inputMode="numeric" pattern="[0-9]{4}" maxLength={4} required /></label><label>이름<input value={name} onChange={event => { setName(event.target.value); setResults(null); }} maxLength={30} required /></label><button className="primaryButton wideButton" disabled={busy}>{busy ? "조회 중…" : "점수 조회"}</button></form>
+    {error && <p role="alert" className="modalError">{error}</p>}
+    {results && <div className="temporaryResults" aria-live="polite">{[1, 2].map(round => <section key={round}><h3>{round}차 수행평가</h3>{!results.some(row => row.round === round) && <p className="helperText">조회 가능한 참여 기록이 없습니다. 학번과 이름을 확인해주세요.</p>}{results.filter(row => row.round === round).map((result, index) => <article className={`temporaryRound ${bestRound === round ? "best" : ""}`} key={`${round}:${index}`}><header><span>{result.title}</span><strong>{result.total === null ? "코드 이해도 채점 대기" : `${result.total} / 30점`}{bestRound === round && <small>높은 점수</small>}</strong></header><dl>{[["1점짜리", result.onePoint, 8], ["2점짜리", result.twoPoint, 12], ["코드 이해도", result.understanding, 10]].map(([label, score, max]) => <div key={label}><dt>{label} <small>최소 4점</small></dt><dd>{score === null ? "채점 대기" : `${score} / ${max}점`}</dd></div>)}</dl><p className="helperText">정오답은 정답 제출 이력을 기준으로 표시하며, 코드는 마지막 제출본입니다.</p>{result.problems.map(problem => <details key={problem.number}><summary>{problem.number}번 · {problem.title}<b>{problem.solved ? "정답" : problem.status === null ? "미제출" : problem.status === "pending" ? "채점 중" : "오답"}</b></summary><div className="temporaryProblem"><h4>문제</h4><p>{problem.statement}</p>{problem.inputDescription && <><h4>입력</h4><p>{problem.inputDescription}</p></>}{problem.outputDescription && <><h4>출력</h4><p>{problem.outputDescription}</p></>}{problem.examples?.map((example, i) => <div key={i}><h4>예제 {i + 1}</h4><pre>입력: {example.input}{"\n"}출력: {example.output}</pre></div>)}<h4>최종 제출 코드 · {statusLabel(problem.status ?? undefined)}</h4><pre>{problem.code ?? "제출한 코드가 없습니다."}</pre></div></details>)}</article>)}</section>)}</div>}
+  </ChallengeModal>;
 }
 
 function ChallengeStudent({ CodeEditor, ProblemPane, colorMode, onReenter }: { CodeEditor: ComponentType<EditorProps>; ProblemPane: ComponentType<PaneProps>; colorMode: "light" | "dark"; onReenter: () => void }) {

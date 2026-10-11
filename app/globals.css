@@ -473,6 +473,22 @@ button {
 .challengeTerminal .terminalInputRow { font-size: inherit; }
 .challengeInputHelp { color: var(--muted); display: block; font-size: 12px; font-weight: 500; margin-top: 6px; }
 .challengeModal { max-height: 90dvh; overflow-y: auto; }
+.temporaryScoreButton { margin-left: 16px; font-size: 14px; vertical-align: middle; }
+.temporaryResults { margin-top: 24px; }
+.temporaryRound { border: 1px solid var(--border, #d9ddea); border-radius: 12px; padding: 16px; margin: 12px 0 24px; }
+.temporaryRound.best { border: 2px solid #4d60e8; background: rgba(77, 96, 232, .06); }
+.temporaryRound header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.temporaryRound header strong { font-size: 22px; }
+.temporaryRound.best header strong { color: #4d60e8; }
+.temporaryRound header small { display: block; font-size: 12px; }
+.temporaryRound dl > div { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; }
+.temporaryRound dt small { font-size: 11px; opacity: .65; }
+.temporaryRound dd { margin: 0; }
+.temporaryRound details { border-top: 1px solid var(--border, #d9ddea); padding: 12px 0; }
+.temporaryRound summary { cursor: pointer; }
+.temporaryRound summary b { float: right; margin-left: 12px; }
+.temporaryProblem p { white-space: pre-wrap; overflow-wrap: anywhere; }
+.temporaryProblem pre { overflow: auto; max-height: 400px; padding: 12px; background: rgba(128, 128, 128, .1); border-radius: 8px; }
 .challengeModal.wide { max-width: 980px; }
 .challengeModal.challengeCreateModal { width: min(1240px, calc(100vw - 36px)); max-width: 1240px; }
 .challengeModal h2 { padding-right: 30px; margin-top: 0; font-size: 23px; }
