@@ -131,6 +131,6 @@ ID 제약조건을 제거한 뒤 문제집 ID를 `01 출력 함수 기초`와 �
 Vercel 서버리스 함수에서 학생의 임의 파이썬 코드를 직접 실행하지 않습니다. 실제 운영 채점기는 Judge0, Piston, Docker 기반 샌드박스, 별도 채점 서버 중 하나로 분리하는 것이 안전합니다. 현재 구현은 초급 예시 문제를 체험할 수 있는 교체형 판정 모듈을 사용합니다.
 # 임시 수행평가 점수 조회
 
-챌린지 입장 모달 제목 옆의 `점수 확인`에서 학번·이름으로 종료된 수행평가 결과를 조회합니다. 조회 대상 입장코드는 `lib/temporary-challenge-results.ts`의 `ASSESSMENT_CODES`에 고정되어 있으며 테스트 챌린지는 제외합니다. 문제 점수는 저장된 그룹별 채점 규칙을 사용하고, 그룹 규칙이 없는 경우 0~1개 정답은 4점, 이후 정답마다 배점만큼 가산합니다(1점 그룹 최대 8점, 2점 그룹 최대 12점). 코드 이해도는 저장된 부가점수를 4~10점으로 표시하고 미입력 시 채점 대기로 표시합니다.
+챌린지 입장 모달 제목 옆의 `점수 확인`을 누르면 `/challenge-results` 전용 페이지로 이동합니다. 학번·이름으로 종료된 수행평가 결과를 조회하며, 1차는 왼쪽, 2차는 오른쪽에 표시합니다(좁은 화면에서는 위아래). 각 차수의 문제는 5열 카드로 표시하며 카드를 누르면 문제 내용과 최종 제출 코드를 확인할 수 있습니다. 조회 대상 입장코드는 `lib/temporary-challenge-results.ts`의 `ASSESSMENT_CODES`에 고정되어 있으며 테스트 챌린지는 제외합니다. 문제 점수는 저장된 그룹별 채점 규칙을 사용하고, 그룹 규칙이 없는 경우 0~1개 정답은 4점, 이후 정답마다 배점만큼 가산합니다(1점 그룹 최대 8점, 2점 그룹 최대 12점). 코드 이해도는 저장된 부가점수를 4~10점으로 표시하고 미입력 시 채점 대기로 표시합니다.
 
-제거 시 `app/challenge.tsx`의 `TemporaryChallengeResults`, `resultsOpen`, 제목의 점수 확인 버튼과 관련 import, `app/globals.css`의 `temporary*` 스타일, `app/api/challenges/results/route.ts`, `lib/temporary-challenge-results.ts`, 관련 테스트 및 이 안내를 삭제합니다. DB 변경은 없습니다.
+제거 시 `app/challenge.tsx`의 제목 점수 확인 링크, `app/challenge-results/page.tsx`, `app/globals.css`의 `temporary*` 스타일, `app/api/challenges/results/route.ts`, `lib/temporary-challenge-results.ts`, 관련 테스트 및 이 안내를 삭제합니다. DB 변경은 없습니다.
