@@ -40,6 +40,14 @@ test("temporary assessment respects score floors, grouped rules and final code i
   assert.equal(assessmentResult(assessment, [], [{ criterion_id: "b", score: 0 }], 1).total, 12);
 });
 
+test("temporary assessment includes the verified class 1 entry codes in each round", () => {
+  const { ASSESSMENT_CODES } = load("lib/temporary-challenge-results.ts");
+  assert.ok(ASSESSMENT_CODES[1].includes("EK74N7HD"));
+  assert.ok(ASSESSMENT_CODES[2].includes("724EP4EZ"));
+  assert.ok(!ASSESSMENT_CODES[1].includes("EK747NHD"));
+  assert.ok(!ASSESSMENT_CODES[2].includes("Z24FP4EZ"));
+});
+
 test("score tooltip includes each configured group and bonus and agrees with totals", () => {
   const grouped = { problem_snapshots: Array.from({ length: 10 }, (_, i) => ({ id: `p${i}` })), scoring: { mode: "grouped_correct_count", groups: [
     { id: "g1", label: "1점 짜리", problem_ids: ["p0", "p1", "p2", "p3", "p4"], base_score: 4, free_correct_count: 1, points_per_additional: 1 },
