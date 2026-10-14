@@ -3,7 +3,7 @@ import { earnedProblemScore, problemPoints, type Challenge, type ChallengeBonusS
 // Temporary assessment lookup. Remove this module, its API and UI together.
 export const ASSESSMENT_CODES = {
   1: ["DGRN56TE", "JHPVN97K", "X5W3MTUL", "MRDPM5W6", "HY4YVACQ", "95FS7R7E", "EK74N7HD", "ZDFUGAWZ"],
-  2: ["LQSCC7C3", "724EP4EZ", "4EXMM29Y", "97XW7AZC", "VUZ3EL3W", "WMSLCHPR", "7DKXMHMD"]
+  2: ["LQSCC7C3", "724EP4EZ", "4EXMM29Y", "97XW7AZC", "VUZ3EL3W", "WMSLCHPR", "7DKXMHMD", "UGX46X3V"]
 } as const;
 
 export function assessmentResult(challenge: Challenge, submissions: ChallengeSubmission[], bonusScores: ChallengeBonusScore[], round: number) {
