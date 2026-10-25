@@ -22,6 +22,37 @@ function unpack(value: string) {
 }
 
 export function useLiveCode(student: Student | null, active: ActiveCode | null, teacher = false) {
+  const [monitoring, setMonitoring] = useState(false);
+  useEffect(() => {
+    setMonitoring(false);
+    if (!student || student.is_guest || (!teacher && !active?.key)) return;
+    const sessionId = crypto.randomUUID();
+    let disposed = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const body = { role: teacher ? "teacher" : "student", studentId: student.id, studentNo: student.student_no, name: student.name, sessionId };
+    const stop = () => {
+      if (teacher) void fetch("/api/live-code/monitor", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...body, stop: true }), keepalive: true }).catch(() => {});
+    };
+    const onPageHide = () => { disposed = true; clearTimeout(timer); setMonitoring(false); stop(); };
+    window.addEventListener("pagehide", onPageHide);
+    const poll = async () => {
+      try {
+        const response = await fetch("/api/live-code/monitor", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), cache: "no-store", signal: AbortSignal.timeout(8000) });
+        const data = await response.json();
+        if (!disposed) setMonitoring(response.ok && data.active === true);
+      } catch { if (!disposed) setMonitoring(false); }
+      finally { if (!disposed) timer = setTimeout(poll, teacher ? 10000 : 5000); else stop(); }
+    };
+    const onPageShow = (event: PageTransitionEvent) => { if (event.persisted) { disposed = false; void poll(); } };
+    window.addEventListener("pageshow", onPageShow);
+    void poll();
+    return () => {
+      disposed = true; clearTimeout(timer);
+      window.removeEventListener("pagehide", onPageHide);
+      window.removeEventListener("pageshow", onPageShow);
+      stop();
+    };
+  }, [student?.id, student?.student_no, student?.name, student?.is_guest, Boolean(active?.key), teacher]);
   const [shared, setShared] = useState<SharedCode | null>(null);
   const [status, setStatus] = useState("");
   const [online, setOnline] = useState(false);
@@ -29,7 +60,7 @@ export function useLiveCode(student: Student | null, active: ActiveCode | null, 
   const key = active?.key;
   useEffect(() => {
     setShared(null); setOnline(false); setStatus("");
-    if (!student || student.is_guest || (!teacher && !key)) return;
+    if (!student || student.is_guest || (!teacher && !key) || !monitoring) return;
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const apiKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
     if (!url || !apiKey) { setStatus("실시간 지도는 서버에 연결된 환경에서 사용할 수 있습니다."); return; }
@@ -114,7 +145,7 @@ export function useLiveCode(student: Student | null, active: ActiveCode | null, 
       current?.awareness.destroy(); current?.doc.destroy();
       void client.removeAllChannels();
     };
-  }, [student?.id, student?.student_no, student?.name, student?.is_guest, key, teacher]);
+  }, [student?.id, student?.student_no, student?.name, student?.is_guest, key, teacher, monitoring]);
   const extension = useMemo(() => shared ? [yCollab(shared.doc.getText("code"), shared.awareness), keymap.of(yUndoManagerKeymap)] : null, [shared]);
   return { shared, extension, status, online };
 }

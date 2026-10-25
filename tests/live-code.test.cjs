@@ -48,8 +48,8 @@ test('live provider merges simultaneous edits, repairs lost edits and rejects ob
   const oldUrl = process.env.NEXT_PUBLIC_SUPABASE_URL, oldKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co'; process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test';
   const sessions = [];
-  function mount(teacher, active) {
-    const states = [], effects = [], timers = []; let index = 0;
+  function mount(teacher, active, monitoring = true) {
+    const states = [], effects = [], timers = []; let index = 0; let firstState = true;
     const session = { states, timers, drop: false, handler: null };
     sessions.push(session);
     const channel = {
@@ -58,15 +58,17 @@ test('live provider merges simultaneous edits, repairs lost edits and rejects ob
       send: async ({ payload }) => { if (!session.drop) for (const other of sessions) if (other !== session && other.handler) other.handler({ payload }); }
     };
     const module = load('app/live-code.tsx', {
-      react: { useState: initial => { const n = index++; states[n] = initial; return [initial, value => { states[n] = value; }]; }, useEffect: fn => effects.push(fn), useRef: value => ({ current: value }), useMemo: fn => fn() },
+      react: { useState: initial => { if (firstState) { firstState = false; return [monitoring, () => {}]; } const n = index++; states[n] = initial; return [initial, value => { states[n] = value; }]; }, useEffect: fn => effects.push(fn), useRef: value => ({ current: value }), useMemo: fn => fn() },
       '@supabase/supabase-js': { createClient: () => ({ realtime: { setAuth: async () => {} }, channel: () => channel, removeAllChannels: async () => { session.handler = null; } }) }
     }, { fetch: async () => ({ ok: true, json: async () => ({ token: 'test', topic: 'live-code:test' }) }), setInterval: fn => { timers.push(fn); return timers.length; }, clearInterval: () => {} });
     module.useLiveCode(student, active, teacher);
-    session.cleanup = effects[0](); return session;
+    session.cleanup = effects[1](); return session;
   }
   const tick = () => new Promise(resolve => setImmediate(resolve));
   let s, t, t2;
   try {
+    const idle = mount(false, { key: 'idle', title: 'idle', code: 'print(0)' }, false); await tick();
+    assert.equal(idle.handler, null); assert.equal(idle.timers.length, 0); idle.cleanup?.();
     s = mount(false, { key: 'p1', title: '문제 1', code: 'print(1)' }); await tick();
     t = mount(true, null); await tick();
     assert.equal(t.states[0].doc.getText('code').toString(), 'print(1)');
@@ -99,4 +101,41 @@ test('live provider merges simultaneous edits, repairs lost edits and rejects ob
     if (oldUrl === undefined) delete process.env.NEXT_PUBLIC_SUPABASE_URL; else process.env.NEXT_PUBLIC_SUPABASE_URL = oldUrl;
     if (oldKey === undefined) delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY; else process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = oldKey;
   }
+});
+
+
+test('monitor leases require teacher authentication and only wake the selected student', async () => {
+  const leases = new Map();
+  let fail = false;
+  const route = load('app/api/live-code/monitor/route.ts', {
+    '@/lib/supabase-admin': { createSupabaseAdmin: () => ({ from: table => {
+      if (table === 'students') { const q = { select: () => q, eq: () => q, maybeSingle: async () => ({ data: student }) }; return q; }
+      let id, session, after;
+      const q = {
+        select: () => q, eq: (key, value) => { if (key === 'student_id') id = value; else session = value; return q; },
+        gt: (_key, value) => { after = value; return q; },
+        limit: async () => ({ data: [...leases.values()].filter(row => row.student_id === id && row.expires_at > after), error: fail ? new Error('offline') : null }),
+        upsert: async row => { leases.set(row.session_id, row); return { error: null }; },
+        delete: () => q,
+        then: resolve => { if (leases.get(session)?.student_id === id) leases.delete(session); resolve({ error: null }); }
+      }; return q;
+    } }) },
+    '@/lib/teacher-auth': { isTeacherRequestAuthenticated: request => request.headers.get('x-test-teacher') === 'yes' }
+  });
+  const call = async (body, teacher = false) => route.POST(new NextRequest('http://localhost/api/live-code/monitor', { method: 'POST', headers: teacher ? { 'x-test-teacher': 'yes' } : {}, body: JSON.stringify(body) }));
+  const pupil = { studentId: student.id, studentNo: student.student_no, name: student.name };
+  const watch = { role: 'teacher', studentId: student.id, sessionId: '00000000-0000-4000-8000-000000000002' };
+  assert.equal((await call(watch)).status, 401);
+  assert.equal((await (await call(pupil)).json()).active, false);
+  assert.equal((await call({ ...pupil, name: 'wrong' })).status, 403);
+  await call(watch, true);
+  assert.equal((await (await call(pupil)).json()).active, true);
+  const second = { ...watch, sessionId: '00000000-0000-4000-8000-000000000003' };
+  await call(second, true);
+  await call({ ...watch, stop: true }, true);
+  assert.equal((await (await call(pupil)).json()).active, true);
+  leases.get(second.sessionId).expires_at = new Date(0).toISOString();
+  assert.equal((await (await call(pupil)).json()).active, false);
+  fail = true;
+  assert.equal((await call(pupil)).status, 503);
 });
