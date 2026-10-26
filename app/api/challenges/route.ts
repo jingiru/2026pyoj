@@ -112,7 +112,14 @@ export async function POST(request: NextRequest) {
         item.score_options.every(score => typeof score === "number" && Number.isFinite(score) && score >= 0 && score <= item.max_score) && new Set(item.score_options).size === item.score_options.length);
       if (!validBonus) return fail(new Error("부가점수 항목과 점수표를 확인해주세요."));
       const { problems } = await loadCurriculum(db, false);
-      const snapshots = body.problemIds.map((id: string) => { const problem = problems.find(item => item.id === id); return problem ? { ...problem, points: Number(points.get(id)) } : undefined; });
+      let sourceSnapshots: typeof problems = [];
+      if (body.action === "create" && body.cloneSourceId != null) {
+        if (typeof body.cloneSourceId !== "string") return fail(new Error("복제할 챌린지를 확인해주세요."));
+        const { data: source, error: sourceError } = await db.from("challenges").select("problem_snapshots").eq("id", body.cloneSourceId).single();
+        if (sourceError) throw sourceError;
+        sourceSnapshots = source.problem_snapshots;
+      }
+      const snapshots = body.problemIds.map((id: string) => { const problem = sourceSnapshots.find(item => item.id === id) ?? problems.find(item => item.id === id); return problem ? { ...problem, points: Number(points.get(id)) } : undefined; });
       if (snapshots.some((problem: typeof problems[number] | undefined) => !problem || !problem.testCases.length)) return fail(new Error("선택한 문제에 채점 테스트가 없습니다."));
       const configuration = { title: body.title.trim(), duration_minutes: body.minutes,
         show_leaderboard: body.showLeaderboard === true, problem_snapshots: snapshots, scoring, bonus_criteria: bonusCriteria,
