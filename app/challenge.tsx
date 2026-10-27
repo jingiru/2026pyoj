@@ -174,8 +174,9 @@ function ChallengeModal({ title, titleAction, children, onClose, wide = false, c
 function ChallengeStudent({ CodeEditor, ProblemPane, colorMode, onReenter }: { CodeEditor: ComponentType<EditorProps>; ProblemPane: ComponentType<PaneProps>; colorMode: "light" | "dark"; onReenter: () => void }) {
   const [session, setSession] = useState<Session | null>(null); const [error, setError] = useState(""); const [selected, setSelected] = useState(0); const [now, setNow] = useState(Date.now());
   const [headerSlot, setHeaderSlot] = useState<HTMLElement | null>(null);
+  const [identitySlot, setIdentitySlot] = useState<HTMLElement | null>(null);
   const clock = useRef({ server: Date.now(), local: 0 }); const [lastSync, setLastSync] = useState(0); const [autoNext, setAutoNext] = useState(false); const [arcadeOpen, setArcadeOpen] = useState(false); const [arcadeLockedOpen, setArcadeLockedOpen] = useState(false);
-  useEffect(() => { setHeaderSlot(document.getElementById("challenge-header-slot")); }, []);
+  useEffect(() => { setHeaderSlot(document.getElementById("challenge-header-slot")); setIdentitySlot(document.getElementById("challenge-student-identity")); }, []);
   const refresh = useCallback(async () => {
     const id = new URL(window.location.href).searchParams.get("challenge") || read("pyoj:challenge-id"); if (!id) { setError("입장코드를 입력해주세요."); return; }
     try { const data = await api<Session>(`/api/challenges/session?id=${encodeURIComponent(id)}`); setSession(data); clock.current = { server: Date.parse(data.serverNow), local: performance.now() }; setNow(Date.parse(data.serverNow)); setLastSync(performance.now()); setError(""); }
@@ -190,6 +191,7 @@ function ChallengeStudent({ CodeEditor, ProblemPane, colorMode, onReenter }: { C
   const validBonusIds = new Set((challenge.bonus_criteria ?? []).map(item => item.id)); const earned = earnedProblemScore(challenge, submissions) + session.bonusScores.filter(row => validBonusIds.has(row.criterion_id)).reduce((sum, row) => sum + Number(row.score), 0); const total = challengeProblemMax(challenge) + challengeBonusMax(challenge);
   const completedAllProblems = completedAllChallengeProblems(challenge, submissions);
   return <section className="challengeView">
+    {identitySlot && createPortal(` | ${participant.student_no} ${participant.name}`, identitySlot)}
     {headerSlot && createPortal(<div className="challengeStudentBar"><strong className="challengeStudentTitle">{challenge.title}</strong><ChallengeStudentScore challenge={challenge} submissions={submissions} bonusScores={session.bonusScores} earned={earned} total={total} /><ChallengeTimer challenge={challenge} now={now} onTripleClick={() => completedAllProblems ? setArcadeOpen(true) : setArcadeLockedOpen(true)} /></div>, headerSlot)}
     {error && <p className="modalError" role="alert">{error} 제출은 연결이 복구되면 가능합니다.</p>}
     {phase === "waiting" ? <div className="challengeWaiting"><Trophy size={48} /><h2>입장했습니다. 선생님의 시작을 기다려주세요.</h2><p>제한시간 {challenge.duration_minutes}분 · 시작하면 문제가 자동으로 공개됩니다.</p></div> : <>{phase === "ended" && <div className="notice">제한시간이 끝났습니다. 제출은 마감되었으며, 추가 시간이 부여되면 자동으로 다시 열립니다.</div>}<div className="challengeSolveGrid">

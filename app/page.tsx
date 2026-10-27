@@ -2185,7 +2185,7 @@ function Header({
         </div>
         <div>
           <strong>Jingiru Python Beginner Lab</strong>
-          <span>{student ? `${student.student_no} ${student.name}` : "초보자를 위한 파이썬 첫걸음 by 진기루T"}</span>
+          <span>{screen !== "challenge" && student ? `${student.student_no} ${student.name}` : "초보자를 위한 파이썬 첫걸음 by 진기루T"}<i id="challenge-student-identity" style={{ fontStyle: "normal" }} /></span>
         </div>
       </ScreenLink>
       <div id="challenge-header-slot" className="challengeHeaderSlot" />
