@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { allRows, challengeDb, fail, identity, newIdentity, participantFor, setIdentity, tokenHash } from "@/lib/challenge-server";
+import { allRows, challengeDb, fail, newIdentity, participantFor, setIdentity, tokenHash } from "@/lib/challenge-server";
 import { publicChallenge, type Challenge, type ChallengeBonusScore, type ChallengeSubmission } from "@/lib/challenge-types";
 
 export const dynamic = "force-dynamic";
@@ -9,18 +9,35 @@ export async function POST(request: NextRequest) {
     if (typeof body.entryCode !== "string" || !/^[A-Z0-9]{8}$/i.test(body.entryCode.trim()) ||
       typeof body.studentNo !== "string" || !/^\d{4}$/.test(body.studentNo) ||
       typeof body.name !== "string" || !body.name.trim() || body.name.trim().length > 30) return fail(new Error("입장코드, 학번 4자리, 이름을 확인해주세요."));
-    const token = identity(request) ?? newIdentity();
+    // Each explicit entry creates a fresh session, independent of old browser cookies.
+    const token = newIdentity();
     const db = challengeDb();
     const { data: challenge, error } = await db.from("challenges").select("id").eq("entry_code", body.entryCode.trim().toUpperCase()).maybeSingle();
     if (error) throw error;
     if (!challenge) return fail(new Error("입장코드가 올바르지 않습니다."), 404);
-    const { data: existing, error: existingError } = await db.from("challenge_participants").select("id,student_no,token_hash")
-      .eq("challenge_id", challenge.id).or(`student_no.eq.${body.studentNo},token_hash.eq.${tokenHash(token)}`);
+    const name = body.name.trim();
+    const findParticipant = () => db.from("challenge_participants").select("id,name")
+      .eq("challenge_id", challenge.id).eq("student_no", body.studentNo).maybeSingle();
+    let { data: existing, error: existingError } = await findParticipant();
     if (existingError) throw existingError;
-    if (existing?.some((row) => row.token_hash !== tokenHash(token) || row.student_no !== body.studentNo)) return fail(new Error("이미 참여 중인 학번 또는 브라우저입니다. 처음 입장한 브라우저와 학번을 사용해주세요."), 409);
-    if (!existing?.length) {
-      const { error: joinError } = await db.from("challenge_participants").insert({ challenge_id: challenge.id, student_no: body.studentNo, name: body.name.trim(), token_hash: tokenHash(token) });
-      if (joinError) return fail(new Error(joinError.code === "23505" ? "이미 입장한 학번입니다. 처음 입장한 브라우저를 사용해주세요." : joinError.message), 409);
+    if (!existing) {
+      const { error: joinError } = await db.from("challenge_participants").insert({ challenge_id: challenge.id, student_no: body.studentNo, name, token_hash: tokenHash(token) });
+      if (joinError?.code === "23505") {
+        // Another entry may have registered this student while this request was in flight.
+        const result = await findParticipant();
+        if (result.error) throw result.error;
+        existing = result.data;
+        if (!existing) throw joinError;
+      } else if (joinError) throw joinError;
+    }
+    if (existing) {
+      if (existing.name.trim() !== name) return fail(new Error("이미 등록된 학번입니다. 처음 입장할 때 입력한 이름을 확인해주세요."), 409);
+      // Preserve the participant ID and all submissions/scores; replace only the session token.
+      const { data: rebound, error: rejoinError } = await db.from("challenge_participants")
+        .update({ token_hash: tokenHash(token) }).eq("challenge_id", challenge.id).eq("id", existing.id)
+        .eq("name", existing.name).select("id").maybeSingle();
+      if (rejoinError) throw rejoinError;
+      if (!rebound) return fail(new Error("참여 정보가 변경되었습니다. 다시 입장해주세요."), 409);
     }
     const response = NextResponse.json({ ok: true, challengeId: challenge.id });
     setIdentity(response, token);
