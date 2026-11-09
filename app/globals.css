@@ -420,6 +420,24 @@ button {
 .challengeStudentBar .challengeScore, .challengeStudentBar .challengeTimer { align-items: center; display: flex; flex: 0 0 auto; height: 50px; justify-content: center; min-height: 50px; padding: 0 14px; font-size: 18px; }
 .challengeStudentBar .challengeTimer { min-width: 136px; }
 .challengeStudentBar .challengeTimer svg { width: 19px; height: 19px; }
+.challengeBrightnessButton { flex-shrink: 0; }
+.challengeBrightnessOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  background: #000;
+  pointer-events: none;
+}
+.challengeBrightnessSlider {
+  display: grid;
+  gap: 6px;
+  max-width: 360px;
+}
+.challengeBrightnessSlider input[type="range"] {
+  width: 100%;
+  padding: 0;
+  accent-color: var(--primary);
+}
 .challengeBar h1 { font-size: 27px; margin: 10px 0 0; }
 .challengeTimer { display: flex; align-items: center; justify-content: center; gap: 10px; background: var(--panel); border: 1px solid var(--line); padding: 15px 22px; border-radius: 10px; font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; min-width: 150px; }
 .challengeTimer svg { width: 22px; height: 22px; }

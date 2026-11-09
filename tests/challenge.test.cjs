@@ -290,6 +290,7 @@ test("challenge endpoints reject unauthenticated access before database or gradi
   const { GET, POST } = load("app/api/challenges/route.ts", {
     "@/lib/teacher-auth": { isTeacherRequestAuthenticated: () => false },
     "@/lib/curriculum-server": {},
+    "@/lib/challenge-types": load("lib/challenge-types.ts"),
     "@/lib/challenge-server": { challengeDb: deniedDb, fail: (e, status) => Response.json({ message: e.message }, { status }) }
   });
   assert.equal((await GET(new NextRequest("http://localhost/api/challenges"))).status, 401);
@@ -306,6 +307,56 @@ test("challenge endpoints reject unauthenticated access before database or gradi
     "@/lib/challenge-export": { buildChallengeResultsWorkbook: deniedDb }
   });
   assert.equal((await exportRoute.POST(new NextRequest("http://localhost/api/challenges/export", { method: "POST" }))).status, 401);
+});
+
+test("teacher can change only the brightness limit of a running challenge and student sessions see the change", async () => {
+  const { NextRequest } = require("next/server");
+  const now = Date.now();
+  const row = {
+    ...challenge,
+    started_at: new Date(now - 60_000).toISOString(),
+    ends_at: new Date(now + 60_000).toISOString(),
+    student_brightness_limit: 100
+  };
+  const patches = [];
+  const db = {
+    from(table) {
+      const query = {
+        update(values) { assert.equal(table, "challenges"); patches.push(values); Object.assign(row, values); return query; },
+        eq() { return query; },
+        select() { return query; },
+        async single() { return { data: row }; }
+      };
+      return query;
+    }
+  };
+  const overrides = {
+    "@/lib/teacher-auth": { isTeacherRequestAuthenticated: request => request.headers.has("teacher") },
+    "@/lib/curriculum-server": {},
+    "@/lib/challenge-types": load("lib/challenge-types.ts"),
+    "@/lib/challenge-server": {
+      challengeDb: () => db,
+      participantFor: async () => ({ id: "student", challenge_id: row.id }),
+      allRows: async () => [],
+      fail: (error, status = 400) => Response.json({ message: error.message }, { status })
+    }
+  };
+  const teacher = load("app/api/challenges/route.ts", overrides);
+  const student = load("app/api/challenges/session/route.ts", overrides);
+  const update = (brightnessLimit, authenticated = true) => teacher.POST(new NextRequest("http://localhost/api/challenges", {
+    method: "POST", headers: authenticated ? { teacher: "yes" } : {},
+    body: JSON.stringify({ action: "set_brightness_limit", id: row.id, brightnessLimit })
+  }));
+  const getSession = async () => (await student.GET(new NextRequest(`http://localhost/api/challenges/session?id=${row.id}`))).json();
+
+  assert.equal((await update(60, false)).status, 401);
+  for (const value of [19, 101, 60.5, "60", null]) assert.equal((await update(value)).status, 400);
+  assert.deepEqual(patches, []);
+  assert.equal((await update(55)).status, 200);
+  assert.equal((await getSession()).challenge.student_brightness_limit, 55);
+  assert.equal((await update(80)).status, 200);
+  assert.equal((await getSession()).challenge.student_brightness_limit, 80);
+  assert.deepEqual(patches, [{ student_brightness_limit: 55 }, { student_brightness_limit: 80 }]);
 });
 
 test("submission route uses server verdict and preserves database reception time", async () => {

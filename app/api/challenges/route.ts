@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { isTeacherRequestAuthenticated } from "@/lib/teacher-auth";
 import { loadCurriculum } from "@/lib/curriculum-server";
 import { allRows, challengeDb, fail, generateChallengeEntryCode } from "@/lib/challenge-server";
+import { DEFAULT_CHALLENGE_BRIGHTNESS, isChallengeBrightness } from "@/lib/challenge-types";
 import type { BonusCriterion, Challenge, ChallengeBonusScore, ChallengeParticipant, ChallengeScoringGroup, ChallengeSubmission } from "@/lib/challenge-types";
 
 export const dynamic = "force-dynamic";
@@ -40,6 +41,16 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const db = challengeDb();
+    if (body.action === "set_brightness_limit") {
+      if (typeof body.id !== "string" || !isChallengeBrightness(body.brightnessLimit)) {
+        return fail(new Error("챌린지와 화면 밝기 상한을 확인해주세요."));
+      }
+      const { data, error } = await db.from("challenges")
+        .update({ student_brightness_limit: body.brightnessLimit }).eq("id", body.id)
+        .select("student_brightness_limit").single();
+      if (error) throw error;
+      return NextResponse.json({ ok: true, brightnessLimit: data.student_brightness_limit });
+    }
     if (body.action === "set_bonus_score") {
       if (typeof body.id !== "string" || typeof body.participantId !== "string" || typeof body.criterionId !== "string" ||
         typeof body.score !== "number" || !Number.isFinite(body.score)) return fail(new Error("부가점수 요청을 확인해주세요."));
@@ -76,6 +87,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true });
     }
     if (body.action === "create" || body.action === "update") {
+      if (body.action === "create" && body.brightnessLimit !== undefined && !isChallengeBrightness(body.brightnessLimit)) {
+        return fail(new Error("학생 화면 밝기 상한을 확인해주세요."));
+      }
       if (typeof body.title !== "string" || !body.title.trim() || body.title.length > 100 ||
         !Number.isInteger(body.minutes) || body.minutes < 1 || body.minutes > 480 ||
         !Array.isArray(body.problemIds) || !body.problemIds.length || body.problemIds.length > 50 ||
@@ -131,7 +145,11 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ ok: true, challenge: data });
       }
       for (let attempt = 0; attempt < 3; attempt++) {
-        const { data, error } = await db.from("challenges").insert({ ...configuration, entry_code: generateChallengeEntryCode() }).select("*").single();
+        const { data, error } = await db.from("challenges").insert({
+          ...configuration,
+          student_brightness_limit: body.brightnessLimit ?? DEFAULT_CHALLENGE_BRIGHTNESS,
+          entry_code: generateChallengeEntryCode()
+        }).select("*").single();
         if (!error) return NextResponse.json({ ok: true, challenge: data });
         if (error.code !== "23505") throw error;
       }

@@ -9,12 +9,21 @@ export type ChallengeScoring =
 export type BonusCriterion = { id: string; label: string; max_score: number; score_options: number[] };
 export type ChallengeBonusScore = { challenge_id: string; participant_id: string; criterion_id: string; score: number };
 
+export const MIN_CHALLENGE_BRIGHTNESS = 20;
+export const DEFAULT_CHALLENGE_BRIGHTNESS = 100;
+
+export function isChallengeBrightness(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) &&
+    value >= MIN_CHALLENGE_BRIGHTNESS && value <= DEFAULT_CHALLENGE_BRIGHTNESS;
+}
+
 export type Challenge = {
   id: string;
   title: string;
   entry_code?: string;
   duration_minutes: number;
   show_leaderboard: boolean;
+  student_brightness_limit?: number;
   started_at: string | null;
   ends_at: string | null;
   created_at: string;
