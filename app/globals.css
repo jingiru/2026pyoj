@@ -618,11 +618,26 @@ label.challengeCheckbox { display: flex; flex-direction: row; align-items: cente
 .challengeBulkCheckbox span { min-width: 0; }
 .challengeBulkCheckbox b { display: block; white-space: nowrap; }
 .challengeProblemPicker > strong { padding: 2px 6px 6px; }
-.challengeProblemPicker .challengeProblemOption { position: relative; min-height: 31px; padding: 5px 7px; white-space: nowrap; }
+.challengeProblemPicker .challengeProblemOption { min-height: 31px; padding: 5px 7px; white-space: nowrap; }
 .challengeProblemOption > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .challengeProblemMeta { color: var(--muted); font-size: 12px; }
-.challengeProblemOption::after { content: attr(data-preview); position: absolute; left: 28px; top: calc(100% - 2px); z-index: 20; display: none; width: min(520px, calc(100% - 36px)); max-height: 120px; overflow: hidden; border: 1px solid color-mix(in srgb, var(--primary) 38%, var(--line)); border-radius: 8px; background: var(--panel); color: var(--ink); padding: 10px 12px; box-shadow: 0 8px 24px rgb(15 23 42 / 18%); font-size: 13px; font-weight: 400; line-height: 1.45; white-space: pre-line; }
-.challengeProblemOption:hover::after { display: block; }
+.challengeProblemPreview {
+  position: fixed;
+  z-index: 20;
+  visibility: hidden;
+  pointer-events: none;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--primary) 38%, var(--line));
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--ink);
+  padding: 10px 12px;
+  box-shadow: 0 8px 24px rgb(15 23 42 / 18%);
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
 .challengeChosen { padding-left: 26px; margin: 0 0 12px; max-height: 210px; overflow-y: auto; }
 .challengeChosen li { padding: 6px 0; }
 .challengeChosen li > span { display: inline-block; width: calc(100% - 128px); vertical-align: middle; }
