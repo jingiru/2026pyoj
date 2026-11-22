@@ -4,6 +4,7 @@ const { createRequire } = require('node:module');
 const path = require('node:path');
 const { test } = require('node:test');
 const ts = require('typescript');
+require('./python-worker-harness.cjs');
 const { rows } = require('../scripts/loop-curriculum.cjs');
 function load(relative) {
   const filename = path.resolve(__dirname, '..', relative);
@@ -13,14 +14,14 @@ function load(relative) {
   return mod.exports;
 }
 const { checkCodeRequirements } = load('lib/code-requirements.ts');
-const { runPythonWithSkulpt } = load('lib/skulpt-runner.ts');
+const { runPython } = load('lib/python-runner.ts');
 test('all ten reference solutions satisfy requirements and produce expected outputs', async () => {
   for (const row of rows) {
     assert.equal(checkCodeRequirements(row.solution, row.requirements).passed, true, row.id);
     for (const example of row.cases) {
       let actual = '', errors = [];
       const inputs = example.input.split('\n');
-      await runPythonWithSkulpt(row.solution, { output: value => actual += value, error: value => errors.push(value), input: async () => inputs.shift() ?? '' });
+      await runPython(row.solution, { output: value => actual += value, error: value => errors.push(value), input: async () => inputs.shift() ?? '' });
       assert.deepEqual(errors, [], row.id);
       assert.equal(actual.trim(), example.output, row.id);
     }

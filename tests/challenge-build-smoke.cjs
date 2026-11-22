@@ -48,6 +48,10 @@ async function main() {
     assert.equal(result.submission.status, "accepted", JSON.stringify(result));
     assert.equal(result.submission.passed_count, 2);
     assert.equal(result.submission.received_at, receiptTime);
+    response = await submit("print(eval(input()) + eval(input()))"); result = await response.json();
+    assert.equal(result.submission.status, "accepted", JSON.stringify(result));
+    response = await submit("import numpy as np\nprint(int(np.sum([int(input()), int(input())])))"); result = await response.json();
+    assert.equal(result.submission.status, "accepted", JSON.stringify(result));
     response = await submit("print(5)"); result = await response.json();
     assert.equal(result.submission.status, "wrong_answer", JSON.stringify(result));
     assert.equal(saved.status, "wrong_answer");

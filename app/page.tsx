@@ -77,7 +77,7 @@ import {
   isStudentGradeClassId
 } from "@/lib/student-class";
 import { getAccuracy, rankStudents } from "@/lib/dashboard-ranking";
-import { runPythonWithSkulpt } from "@/lib/skulpt-runner";
+import { runPython } from "@/lib/python-runner";
 import { checkCodeRequirements, hasPotentialInfiniteLoop } from "@/lib/code-requirements";
 import {
   findOrCreateGuest,
@@ -260,6 +260,7 @@ export default function Home() {
   const [inputHistory, setInputHistory] = useState<string[]>([]);
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
   const [isPracticeRunning, setIsPracticeRunning] = useState(false);
+  const practiceRunAbortControllerRef = useRef<AbortController | null>(null);
   const inputResolverRef = useRef<((value: string) => void) | null>(null);
   const queuedConsoleInputsRef = useRef<string[]>([]);
   const consoleInputRef = useRef<HTMLTextAreaElement | null>(null);
@@ -332,11 +333,13 @@ export default function Home() {
 
   useEffect(() => {
     if (screen !== "solve") cancelSolveRun();
+    if (screen !== "practice") practiceRunAbortControllerRef.current?.abort();
   }, [screen]);
 
   useEffect(
     () => () => {
       solveRunAbortControllerRef.current?.abort();
+      practiceRunAbortControllerRef.current?.abort();
     },
     []
   );
@@ -912,7 +915,9 @@ export default function Home() {
   }
 
   async function runPractice() {
-    if (isPracticeRunning) return;
+    if (practiceRunAbortControllerRef.current) return;
+    const abort = new AbortController();
+    practiceRunAbortControllerRef.current = abort;
     setIsPracticeRunning(true);
     setPendingPrompt(null);
     setConsoleInput("");
@@ -921,7 +926,7 @@ export default function Home() {
     setConsoleLines([]);
 
     try {
-      await runPythonWithSkulpt(practiceCode, {
+      await runPython(practiceCode, {
         output: (text) => {
           setConsoleLines((lines) => appendConsoleText(lines, text));
         },
@@ -929,8 +934,9 @@ export default function Home() {
           setConsoleLines((lines) => [...lines, text]);
         },
         input: requestConsoleInput
-      });
+      }, { signal: abort.signal });
     } finally {
+      practiceRunAbortControllerRef.current = null;
       inputResolverRef.current = null;
       setPendingPrompt(null);
       setIsPracticeRunning(false);
@@ -1058,7 +1064,7 @@ export default function Home() {
     setSolveConsoleLines([]);
 
     try {
-      await runPythonWithSkulpt(codeSnapshot, {
+      await runPython(codeSnapshot, {
         output: (text) => {
           if (solveRunIdRef.current !== runId) return;
           runOutputs.push(text);
@@ -1452,9 +1458,9 @@ export default function Home() {
                     <Trash2 size={17} />
                     코드 초기화
                   </button>
-                  <button className="primaryButton" onClick={runPractice}>
-                    <Play size={17} />
-                    실행
+                  <button className="primaryButton" onClick={() => isPracticeRunning ? practiceRunAbortControllerRef.current?.abort() : void runPractice()}>
+                    {isPracticeRunning ? <Square size={17} /> : <Play size={17} />}
+                    {isPracticeRunning ? "실행중지" : "실행"}
                     <kbd>Shift + Enter</kbd>
                   </button>
                 </div>
@@ -2692,7 +2698,7 @@ async function judgeProblemSubmission(problem: Problem, code: string): Promise<J
     const output: string[] = [];
     const errors: string[] = [];
 
-    await runPythonWithSkulpt(code, {
+    await runPython(code, {
       output: (text) => output.push(text),
       error: (text) => errors.push(text),
       input: async () => inputQueue.shift() ?? ""

@@ -1,52 +1,61 @@
-import { Worker } from "node:worker_threads";
+import { fork } from "node:child_process";
 import { join } from "node:path";
 import { checkCodeRequirements } from "./code-requirements";
 import type { Problem, SubmissionStatus } from "./types";
 
 type Result = { status: SubmissionStatus; passed_count: number; total_count: number; feedback: string; requirement_passed?: boolean | null; requirement_feedback?: string };
 
-// Each submission gets a separate interpreter. Student Python cannot access Node's
-// require, filesystem or network. Parent termination also bounds uncooperative code.
+// Each submission gets a separate interpreter and a parent-enforced time limit.
 export async function judgeChallenge(problem: Problem, code: string, checkRequirements = true): Promise<Result> {
   if (!problem.testCases.length) throw new Error("채점 테스트가 없는 문제입니다.");
-  // Webpack's require.resolve returns module IDs; a worker needs native file paths.
-  const skulptDirectory = join(process.cwd(), "node_modules", "skulpt");
   const result = await new Promise<Result>((resolve, reject) => {
-    const worker = new Worker(`
-      const { parentPort, workerData } = require('node:worker_threads');
-      var Sk = require(workerData.skulptPath);
-      require(workerData.stdlibPath);
-      (async () => {
-        let passed = 0, runtimeError = false;
-        for (const test of workerData.tests) {
-          let output = '', inputs = test.input.replace(/\\r\\n/g, '\\n').split('\\n');
-          Sk.configure({
-            output: text => { output += text; if (output.length > 65536) throw Error('출력 제한 초과'); },
-            read: name => { if (!Sk.builtinFiles.files[name]) throw Error('지원하지 않는 모듈'); return Sk.builtinFiles.files[name]; },
-            inputfun: () => Promise.resolve(inputs.shift() ?? ''), inputfunTakesPrompt: true,
-            __future__: Sk.python3, execLimit: 1500, yieldLimit: 50,
-            killableWhile: true, killableFor: true
-          });
-          Sk.execStart = undefined;
-          try {
-            await Sk.misceval.asyncToPromise(() => Sk.importMainWithBody('<stdin>', false, workerData.code, true));
-            if (output.replace(/\\r\\n/g, '\\n').trim() === test.output.replace(/\\r\\n/g, '\\n').trim()) passed++;
-          } catch { runtimeError = true; }
-        }
-        parentPort.postMessage({ status: runtimeError ? 'runtime_error' : passed === workerData.tests.length ? 'accepted' : 'wrong_answer', passed_count: passed, total_count: workerData.tests.length, feedback: runtimeError ? '실행 오류 또는 실행 시간 제한을 확인해주세요.' : passed === workerData.tests.length ? '모든 테스트를 통과했습니다.' : '통과하지 못한 테스트가 있습니다.' });
-      })().catch(error => { throw error; });
-    `, {
-      eval: true,
-      workerData: { code, tests: problem.testCases, skulptPath: join(skulptDirectory, "main.js"), stdlibPath: join(skulptDirectory, "dist", "skulpt-stdlib.js") },
-      resourceLimits: { maxOldGenerationSizeMb: 96, maxYoungGenerationSizeMb: 16, stackSizeMb: 4 }
+    const root = process.cwd();
+    // Run untrusted Python in a disposable Node process with no application env
+    // and filesystem permission only for the runtime assets (never .env/source).
+    const worker = fork(join(root, "public", "python-worker.mjs"), [], {
+      execArgv: ["--permission", `--allow-fs-read=${join(root, "node_modules")}`, `--allow-fs-read=${join(root, "public", "pyodide")}`, `--allow-fs-read=${join(root, "public", "python-worker.mjs")}`, `--allow-fs-read=${join(root, "package.json")}`, "--max-old-space-size=96"],
+      env: { NODE_ENV: "production", ...(process.platform === "win32" ? { SystemRoot: process.env.SystemRoot } : {}), TZ: "UTC" },
+      stdio: ["ignore", "ignore", "pipe", "ipc"]
     });
-    const timer = setTimeout(() => {
-      void worker.terminate();
-      resolve({ status: "runtime_error", passed_count: 0, total_count: problem.testCases.length, feedback: "실행 시간 또는 메모리 제한을 초과했습니다." });
-    }, 12000);
-    worker.once("message", (value: Result) => { clearTimeout(timer); void worker.terminate(); resolve(value); });
-    worker.once("error", (error) => { clearTimeout(timer); reject(error); });
-    worker.once("exit", () => { clearTimeout(timer); reject(new Error("채점 실행이 중단되었습니다.")); });
+    let settled = false, passed = 0, runtimeError = false, output = "", diagnostic = "";
+    let caseTimer: ReturnType<typeof setTimeout> | undefined;
+    const finish = (result?: Result, error?: Error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      clearTimeout(caseTimer);
+      worker.kill();
+      if (error) reject(error); else resolve(result!);
+    };
+    const failure = () => finish({ status: "runtime_error", passed_count: passed, total_count: problem.testCases.length, feedback: "실행 오류 또는 실행 시간/메모리 제한을 확인해주세요." });
+    // Preserve the existing whole-submission limit, including initialization.
+    const timer = setTimeout(failure, 12000);
+    worker.stderr?.on("data", data => { diagnostic = (diagnostic + String(data)).slice(-4096); });
+    worker.on("message", (message: any) => {
+      if (settled) return;
+      switch (message.type) {
+        case "case-start":
+          output = "";
+          caseTimer = setTimeout(failure, 1500);
+          break;
+        case "output":
+          output += message.text;
+          if (output.length > 65536) failure();
+          break;
+        case "case-end":
+          clearTimeout(caseTimer);
+          if (message.error) runtimeError = true;
+          else if (output.replace(/\r\n/g, "\n").trim() === problem.testCases[message.index].output.replace(/\r\n/g, "\n").trim()) passed++;
+          break;
+        case "done":
+          finish({ status: runtimeError ? "runtime_error" : passed === problem.testCases.length ? "accepted" : "wrong_answer", passed_count: passed, total_count: problem.testCases.length, feedback: runtimeError ? "실행 오류 또는 실행 시간 제한을 확인해주세요." : passed === problem.testCases.length ? "모든 테스트를 통과했습니다." : "통과하지 못한 테스트가 있습니다." });
+          break;
+        case "fatal": finish(undefined, new Error(message.text)); break;
+      }
+    });
+    worker.once("error", error => finish(undefined, error));
+    worker.once("exit", () => finish(undefined, new Error(`채점 실행이 중단되었습니다. ${diagnostic}`)));
+    worker.send({ code, tests: problem.testCases });
   });
   if (!checkRequirements) return { ...result, requirement_passed: null, requirement_feedback: "" };
   const requirements = checkCodeRequirements(code, problem.codeRequirements);

@@ -1,16 +1,16 @@
-type SkulptCallbacks = {
+type PythonCallbacks = {
   output: (text: string) => void;
   error: (text: string) => void;
   input: (prompt: string) => Promise<string>;
 };
 
-type SkulptRunOptions = {
+type PythonRunOptions = {
   signal?: AbortSignal;
   timeLimitMs?: number;
 };
 
 const DEFAULT_TIME_LIMIT_MS = 30000;
-const EXECUTION_SLICE_MS = 50;
+const INITIALIZATION_LIMIT_MS = 60000;
 
 export function formatPythonError(error: unknown): string {
   const original = String(error);
@@ -81,100 +81,89 @@ export function formatPythonError(error: unknown): string {
   return location + explanation;
 }
 
-type SkulptSuspension = {
-  data: { promise: Promise<unknown>; result?: unknown; error?: unknown };
-  resume: () => unknown;
-};
-
-export async function runPythonWithSkulpt(
+/** Each run owns its worker and input buffer, including while an input is pending. */
+export async function runPython(
   code: string,
-  callbacks: SkulptCallbacks,
-  options: SkulptRunOptions = {}
-) {
-  const module = await import("skulpt");
-  await import("skulpt/dist/skulpt-stdlib.js");
-  const Sk = (module as any).default ?? module;
-  const timeLimitMs = options.timeLimitMs ?? DEFAULT_TIME_LIMIT_MS;
-  const cancellationError = new Error("PYOJ_SKULPT_RUN_CANCELLED");
-  let interruptRun: (reason: unknown) => void = () => undefined;
-  let interruptionReason: unknown;
-  const runInterruption = new Promise<never>((_, reject) => {
-    interruptRun = (reason) => {
-      if (interruptionReason !== undefined) return;
-      interruptionReason = reason;
-      reject(reason);
-    };
-  });
-  // Some programs finish without ever suspending on a promise.
-  void runInterruption.catch(() => undefined);
-  const abortRun = () => interruptRun(cancellationError);
-
+  callbacks: PythonCallbacks,
+  options: PythonRunOptions = {}
+): Promise<void> {
   if (options.signal?.aborted) return;
-  options.signal?.addEventListener("abort", abortRun, { once: true });
-  const timeoutId = globalThis.setTimeout(() => {
-    interruptRun(new Sk.builtin.TimeLimitError(Sk.timeoutMsg()));
-  }, timeLimitMs);
-
-  const resumeUnlessCancelled = (suspension: SkulptSuspension) => {
-    if (options.signal?.aborted) throw cancellationError;
-    return suspension.resume();
-  };
-
-  const yieldToBrowser = (suspension: SkulptSuspension) =>
-    new Promise<void>((resolve) => globalThis.setTimeout(resolve, 0)).then(() =>
-      resumeUnlessCancelled(suspension)
-    );
-
-  Sk.configure({
-    __future__: Sk.python3,
-    output: callbacks.output,
-    read: (file: string) => {
-      if (Sk.builtinFiles === undefined || Sk.builtinFiles.files[file] === undefined) {
-        throw new Error(`File not found: ${file}`);
-      }
-      return Sk.builtinFiles.files[file];
-    },
-    inputfun: (prompt: string) => {
-      if (interruptionReason !== undefined) return Promise.reject(interruptionReason);
-      return callbacks.input(prompt);
-    },
-    inputfunTakesPrompt: true,
-    execLimit: timeLimitMs,
-    // Let the browser paint the stop button and receive clicks during loops.
-    yieldLimit: EXECUTION_SLICE_MS
-  });
-
-  try {
-    await Sk.misceval.asyncToPromise(
-      () => Sk.importMainWithBody("<stdin>", false, code, true),
-      {
-        "Sk.promise": (suspension: SkulptSuspension) =>
-          Promise.race([suspension.data.promise, runInterruption]).then(
-            (value) => {
-              suspension.data.result = value;
-              return resumeUnlessCancelled(suspension);
-            },
-            (error) => {
-              // Cancellation must not resume Python, even inside try/except.
-              // TimeLimitError still resumes through Skulpt to retain its line number.
-              suspension.data.error = error;
-              return resumeUnlessCancelled(suspension);
-            }
-          ),
-        "Sk.yield": yieldToBrowser,
-        "Sk.delay": yieldToBrowser
-      }
-    );
-  } catch (error) {
-    const nativeError =
-      typeof error === "object" && error !== null && "nativeError" in error
-        ? (error as { nativeError?: unknown }).nativeError
-        : undefined;
-    if (error !== cancellationError && nativeError !== cancellationError) {
-      callbacks.error(formatPythonError(error));
-    }
-  } finally {
-    globalThis.clearTimeout(timeoutId);
-    options.signal?.removeEventListener("abort", abortRun);
+  if (typeof SharedArrayBuffer === "undefined") {
+    callbacks.error("Python 실행에 필요한 브라우저 격리 기능을 사용할 수 없습니다. 페이지를 새로고침하거나 최신 브라우저를 사용해 주세요.");
+    return;
   }
+  await new Promise<void>(resolve => {
+    const buffer = new SharedArrayBuffer(12 + 65536);
+    const control = new Int32Array(buffer, 0, 3);
+    const bytes = new Uint8Array(buffer, 12);
+    let worker: Worker;
+    let finished = false;
+    let pending: Uint8Array | null = null;
+    let offset = 0;
+    let outputLength = 0;
+    let timer: ReturnType<typeof setTimeout>;
+    const finish = (error?: string) => {
+      if (finished) return;
+      finished = true;
+      clearTimeout(timer);
+      options.signal?.removeEventListener("abort", abort);
+      worker?.terminate();
+      pending = null;
+      try { if (error) callbacks.error(error); } finally { resolve(); }
+    };
+    const abort = () => finish();
+    const writeInputChunk = () => {
+      if (finished || !pending) return;
+      const chunk = pending.subarray(offset, offset + bytes.length);
+      bytes.set(chunk);
+      offset += chunk.length;
+      Atomics.store(control, 1, chunk.length);
+      Atomics.store(control, 0, offset < pending.length ? 1 : 2);
+      Atomics.notify(control, 0);
+      if (offset === pending.length) pending = null;
+    };
+    options.signal?.addEventListener("abort", abort, { once: true });
+    timer = setTimeout(() => finish("Python 실행 환경을 불러오지 못했습니다. 네트워크 연결을 확인한 뒤 다시 실행해 주세요."), INITIALIZATION_LIMIT_MS);
+    try {
+      worker = new Worker("/python-worker.mjs", { type: "module" });
+      worker.onerror = event => { event.preventDefault(); finish(`Python 실행 환경 오류: ${event.message}`); };
+      worker.onmessage = event => {
+        if (finished) return;
+        const message = event.data;
+        switch (message.type) {
+          case "ready":
+            clearTimeout(timer);
+            timer = setTimeout(() => {
+              const line = Atomics.load(control, 2);
+              finish(formatPythonError(`TimeLimitError: execution timed out${line ? ` on line ${line}` : ""}`));
+            }, options.timeLimitMs ?? DEFAULT_TIME_LIMIT_MS);
+            break;
+          case "output":
+            outputLength += message.text.length;
+            if (outputLength > 65536) finish("출력 제한을 초과해 실행을 중단했습니다.");
+            else callbacks.output(message.text);
+            break;
+          case "input":
+            Promise.resolve().then(() => callbacks.input(message.prompt)).then(value => {
+              if (finished) return;
+              pending = new TextEncoder().encode(value);
+              offset = 0;
+              writeInputChunk();
+            }).catch(error => finish(formatPythonError(error)));
+            break;
+          case "input-next": writeInputChunk(); break;
+          case "case-end":
+            if (message.error) {
+              const { kind, detail, line } = message.error;
+              finish(formatPythonError(`${kind}: ${detail}${line ? ` on line ${line}` : ""}`));
+            }
+            break;
+          case "done": finish(); break;
+          case "fatal": finish(`Python 실행 환경 오류: ${message.text}`); break;
+        }
+      };
+      worker.postMessage({ code, inputBuffer: buffer });
+    } catch (error) { finish(`Python 실행 환경 오류: ${String(error)}`); }
+  });
 }
+

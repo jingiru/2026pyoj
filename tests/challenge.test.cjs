@@ -267,6 +267,23 @@ test("server judge runs real Python against every test and ignores client scorin
   assert.equal((await judgeChallenge(problem, "print(5)")).status, "wrong_answer");
   assert.equal((await judgeChallenge(problem, "print(1 / 0)")).status, "runtime_error");
 });
+
+test("server judge supports eval input and NumPy with the same CPython runtime", async () => {
+  assert.equal((await judgeChallenge(problem, "print(eval(input()) + eval(input()))")).status, "accepted");
+  assert.equal((await judgeChallenge(problem, "import numpy as np\nprint(int(np.sum([int(input()), int(input())])))")).status, "accepted");
+});
+
+test("judge cannot read host files, application environment or browser globals", async () => {
+  const isolated = { ...problem, testCases: [{ input: '', output: 'False False False' }] };
+  const code = "import os, js\nprint(os.path.exists('/etc/passwd'), 'SUPABASE_SERVICE_ROLE_KEY' in os.environ, hasattr(js, 'process'))";
+  assert.equal((await judgeChallenge(isolated, code)).status, 'accepted');
+});
+
+test("judge bounds NumPy/CPython WASM allocations as well as the JavaScript heap", async () => {
+  const bounded = { ...problem, testCases: [{ input: '', output: 'bounded' }] };
+  const code = "try:\n    value = bytearray(512 * 1024 * 1024)\nexcept MemoryError:\n    print('bounded')";
+  assert.equal((await judgeChallenge(bounded, code)).status, 'accepted');
+});
 test("server judge enforces code requirements and rejects empty test suites", async () => {
   const constrained = { ...problem, codeRequirements: [{ type: "for_range" }] };
   const result = await judgeChallenge(constrained, "a = int(input())\nb = int(input())\nprint(a + b)");

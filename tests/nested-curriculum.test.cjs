@@ -4,6 +4,7 @@ const { createRequire } = require('node:module');
 const path = require('node:path');
 const { test } = require('node:test');
 const ts = require('typescript');
+require('./python-worker-harness.cjs');
 const curriculum = require('../data/nested-curriculum.json');
 
 function load(relative) {
@@ -17,7 +18,7 @@ function load(relative) {
 }
 
 const { checkCodeRequirements, hasPotentialInfiniteLoop } = load('lib/code-requirements.ts');
-const { runPythonWithSkulpt } = load('lib/skulpt-runner.ts');
+const { runPython } = load('lib/python-runner.ts');
 
 test('nested curriculum has two groups of ten with the requested difficulty mix', () => {
   for (const prefix of ['11-1-', '11-2-']) {
@@ -40,7 +41,7 @@ test('all nested reference solutions satisfy requirements and expected outputs',
       let actual = '';
       const errors = [];
       const inputs = testCase.input.split('\n');
-      await runPythonWithSkulpt(problem.solution, {
+      await runPython(problem.solution, {
         output: (value) => actual += value,
         error: (value) => errors.push(value),
         input: async () => inputs.shift() ?? ''

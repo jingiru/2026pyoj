@@ -4,9 +4,10 @@ const { createRequire } = require("node:module");
 const path = require("node:path");
 const { test } = require("node:test");
 const ts = require("typescript");
+require('./python-worker-harness.cjs');
 
-// Exercise the real TypeScript runner and installed Skulpt without another test dependency.
-const runnerPath = path.resolve(__dirname, "../lib/skulpt-runner.ts");
+// Exercise the real TypeScript runner and installed Pyodide without a test double.
+const runnerPath = path.resolve(__dirname, "../lib/python-runner.ts");
 const compiled = ts.transpileModule(readFileSync(runnerPath, "utf8"), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
 }).outputText;
@@ -14,7 +15,7 @@ const runnerModule = { exports: {} };
 new Function("require", "module", "exports", compiled)(
   createRequire(runnerPath), runnerModule, runnerModule.exports
 );
-const { runPythonWithSkulpt } = runnerModule.exports;
+const { runPython } = runnerModule.exports;
 
 function createConsole(input = async () => "") {
   const output = [];
@@ -29,14 +30,14 @@ function createConsole(input = async () => "") {
 test("ordinary output and multiple inputs still work", async () => {
   const inputs = ["3", "7"];
   const console = createConsole(async () => inputs.shift());
-  await runPythonWithSkulpt("a = int(input())\nb = int(input())\nprint(a + b)", console.callbacks);
+  await runPython("a = int(input())\nb = int(input())\nprint(a + b)", console.callbacks);
   assert.equal(console.output.join(""), "10\n");
   assert.deepEqual(console.errors, []);
 });
 
-test("unanswered input reports a Korean time limit explanation", { timeout: 3000 }, async () => {
+test("unanswered input reports a Korean time limit explanation", { timeout: 15000 }, async () => {
   const console = createConsole(() => new Promise(() => {}));
-  await runPythonWithSkulpt("value = input()", console.callbacks, { timeLimitMs: 60 });
+  await runPython("value = input()", console.callbacks, { timeLimitMs: 60 });
   assert.equal(console.errors.length, 1);
   assert.match(console.errors[0], /^코드 1번째 줄을 확인해 주세요\./);
   assert.match(console.errors[0], /실행 시간이 너무 길어 중단되었습니다/);
@@ -49,7 +50,7 @@ test("stopping input never resumes cancelled code, even if Python catches errors
     provideInput = resolve;
     setTimeout(() => controller.abort(), 10);
   }));
-  await runPythonWithSkulpt(
+  await runPython(
     "try:\n    value = input()\nexcept:\n    print('caught')\nprint('old run')",
     console.callbacks,
     { signal: controller.signal, timeLimitMs: 1000 }
@@ -58,7 +59,7 @@ test("stopping input never resumes cancelled code, even if Python catches errors
   assert.deepEqual(console.output, []);
 
   const nextConsole = createConsole();
-  await runPythonWithSkulpt("print('new run')", nextConsole.callbacks);
+  await runPython("print('new run')", nextConsole.callbacks);
   provideInput("late input");
   await new Promise((resolve) => setTimeout(resolve, 20));
   assert.deepEqual(console.output, []);
@@ -66,27 +67,57 @@ test("stopping input never resumes cancelled code, even if Python catches errors
   assert.deepEqual(nextConsole.errors, []);
 });
 
-test("busy loops yield so the stop action can terminate them", { timeout: 3000 }, async () => {
+test("busy loops can be stopped after execution has started", { timeout: 15000 }, async () => {
   const controller = new AbortController();
   const console = createConsole();
-  const timer = setTimeout(() => controller.abort(), 10);
-  try {
-    await runPythonWithSkulpt(
-      "try:\n    while True:\n        pass\nexcept:\n    print('caught')\nprint('continued')",
+  console.callbacks.output = text => { console.output.push(text); controller.abort(); };
+    await runPython(
+      "print('started')\ntry:\n    while True:\n        pass\nexcept:\n    print('caught')\nprint('continued')",
       console.callbacks,
       { signal: controller.signal, timeLimitMs: 1500 }
     );
     assert.equal(controller.signal.aborted, true, "the stop callback must run before the time limit");
     assert.deepEqual(console.errors, []);
-    assert.deepEqual(console.output, []);
-  } finally {
-    clearTimeout(timer);
-  }
+    assert.equal(console.output.join(''), 'started');
+});
+
+test("eval supports Python locals, literals and interactive Unicode input", async () => {
+  const console = createConsole(async () => '[1, 2, 3]');
+  await runPython("items = eval(input('입력: '))\ndef f():\n    x = 7\n    return eval('x * 2')\nprint(sum(items), f(), eval('1 / 2'))", console.callbacks);
+  assert.deepEqual(console.errors, []);
+  assert.equal(console.output.join(''), '6 14 0.5\n');
+});
+
+test("NumPy is available without an external CDN at execution time", async () => {
+  const console = createConsole();
+  await runPython("import numpy as np\nprint(np.array([1, 2, 3]).sum())", console.callbacks);
+  assert.deepEqual(console.errors, []);
+  assert.equal(console.output.join(''), '6\n');
+});
+
+test("input preserves empty strings and Unicode spanning multiple transfer chunks", async () => {
+  const value = '가🙂'.repeat(20000);
+  const inputs = ['', value];
+  const prompts = [];
+  const console = createConsole(async prompt => { prompts.push(prompt); return inputs.shift(); });
+  await runPython("a = input('빈 값: ')\nb = input('긴 값: ')\nprint(repr(a), len(b), b[-2:])", console.callbacks);
+  assert.deepEqual(console.errors, []);
+  assert.deepEqual(prompts, ['빈 값: ', '긴 값: ']);
+  assert.equal(console.output.join(''), "'' 40000 가🙂\n");
+});
+
+test("executions do not retain variables or builtins from previous runs", async () => {
+  const first = createConsole();
+  await runPython("import builtins\nbuiltins.secret = 123\nx = 7", first.callbacks);
+  const second = createConsole();
+  await runPython("import builtins\nprint(hasattr(builtins, 'secret'), 'x' in globals())", second.callbacks);
+  assert.deepEqual(second.errors, []);
+  assert.equal(second.output.join(''), 'False False\n');
 });
 
 test("busy loops still report the time limit when not stopped", async () => {
   const console = createConsole();
-  await runPythonWithSkulpt("while True:\n    pass", console.callbacks, { timeLimitMs: 80 });
+  await runPython("while True:\n    pass", console.callbacks, { timeLimitMs: 80 });
   assert.equal(console.errors.length, 1);
   assert.match(console.errors[0], /^코드 \d+번째 줄을 확인해 주세요\./);
   assert.match(console.errors[0], /실행 시간이 너무 길어 중단되었습니다/);
@@ -105,7 +136,7 @@ test("Python errors show Korean guidance with the actual failing line", async ()
   ];
   for (const [code, line, explanation] of examples) {
     const console = createConsole();
-    await runPythonWithSkulpt(code, console.callbacks);
+    await runPython(code, console.callbacks);
     assert.equal(console.errors.length, 1, code);
     assert.ok(console.errors[0].startsWith(`코드 ${line}번째 줄을 확인해 주세요.\n`), console.errors[0]);
     assert.match(console.errors[0], explanation);
@@ -122,7 +153,7 @@ test("an already cancelled run does not start", async () => {
   const controller = new AbortController();
   controller.abort();
   const console = createConsole();
-  await runPythonWithSkulpt("print('should not run')", console.callbacks, { signal: controller.signal });
+  await runPython("print('should not run')", console.callbacks, { signal: controller.signal });
   assert.deepEqual(console.output, []);
   assert.deepEqual(console.errors, []);
 });

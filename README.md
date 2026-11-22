@@ -19,6 +19,14 @@ npm run dev
 
 브라우저에서 `http://127.0.0.1:3000`으로 접속합니다.
 
+### Python 실행 환경
+
+Node.js 22.13 이상이 필요하며, 배포 환경에는 Node.js 24 LTS를 권장합니다. 모든 IDE와 채점기는 고정된 Pyodide 314.0.8(CPython)과 NumPy를 사용합니다. `eval()`과 함수 내부 지역변수 참조도 표준 Python 의미로 동작합니다.
+
+`npm install`/`npm run build`에서 `scripts/prepare-python.cjs`가 런타임과 NumPy를 `public/pyodide`에 준비합니다. 최초 준비에는 npm 및 jsDelivr 접근이 필요하며 NumPy 파일의 SHA-256을 검증합니다. 생성 파일은 Git에 포함하지 않습니다. 실행 중에는 외부 CDN 없이 사이트 자체에서 불러옵니다. 추가 패키지는 별도 번들링이 필요합니다.
+
+브라우저는 Web Worker와 SharedArrayBuffer로 실행 중 `input()`을 기다립니다. 이를 위해 Next가 COOP `same-origin` 및 COEP `credentialless` 헤더를 설정합니다. 프록시/호스팅에서 이 헤더를 유지하고 HTTPS(로컬은 localhost)를 사용해야 합니다. Python 최초 로딩은 실행 시간 제한과 별개로 최대 60초 기다립니다. 입력 대기와 반복문은 Worker 종료로 취소되며 다음 실행에 영향을 주지 않습니다. 연습·문제 풀이·챌린지 모두 실행중지를 지원합니다.
+
 Supabase 환경변수가 없으면 브라우저 저장소를 사용해 데모 모드로 동작합니다.
 
 ## Supabase 설정
@@ -120,11 +128,13 @@ ID 제약조건을 제거한 뒤 문제집 ID를 `01 출력 함수 기초`와 �
 
 새 DB에는 `supabase/migrations/20260906004213_challenge_mode.sql`을 한 번 적용하세요. 기존 DB에는 이어지는 마이그레이션도 순서대로 적용합니다. 챌린지 테이블 3개와 제어 함수 2개는 RLS를 활성화하고 브라우저 역할의 접근을 차단했으며 서버 전용 키로만 사용합니다.
 
-챌린지 채점기는 설치된 Skulpt를 별도 Node worker에서 실행합니다. 초급 Python 문법을 지원하며 CPython 전체 표준 라이브러리를 제공하지 않습니다. 제출 코드 20,000자, 출력 64KB/테스트, 테스트 실행 1.5초, 제출 전체 12초 및 worker 메모리 제한을 적용합니다. 채점의 동시 실행은 참가자당 하나로 제한합니다. 대규모 대회에는 별도 채점 큐와 격리 실행 서비스가 필요합니다.
+챌린지 채점기는 같은 Pyodide와 NumPy를 제출별 별도 Node 프로세스에서 실행합니다. 애플리케이션 환경변수를 전달하지 않고 Node 권한 모드로 런타임 파일 읽기만 허용합니다. 제출 코드 20,000자, 출력 64KB/테스트, 테스트 실행 1.5초, 제출 전체 12초 및 JavaScript 힙 96MB 제한을 적용합니다. CPython/NumPy의 Emscripten 메모리 확장도 128MB로 제한합니다(프로세스 전체 RSS에 대한 운영체제 수준 제한은 아닙니다). 채점의 동시 실행은 참가자당 하나로 제한합니다. 대규모 대회에는 별도 채점 큐와 운영체제 수준 격리 실행 서비스가 필요합니다.
 
 ### 검증
 
 `npm test`는 기존 실행기 및 순위 테스트와 챌린지 시간 경계·정보 비공개·권한·서버 채점·동시 실행 테스트를 실행합니다. `supabase/tests/challenge_mode.sql`은 설치된 DB에서 시작/종료/연장/중복 제출/RLS를 확인한 뒤 검증 데이터를 전부 롤백합니다. `npm run build`로 배포용 빌드를 확인한 후 `npm run test:challenge-build`를 실행하면 실제 빌드된 Next 서버와 채점 worker를 검증합니다. 이 검증은 DB 통신만 로컬 모의 서버로 대체하므로 운영 학생 데이터에 영향을 주지 않습니다.
+
+빌드 후 `npm run test:python-browser`는 실제 Chrome/Edge(또는 설치된 Playwright Chromium)에서 콘솔 입력, 여러 줄 입력, 중지, 재실행, eval, NumPy와 오류 안내를 검증합니다. 필요하면 `PLAYWRIGHT_CHROMIUM_EXECUTABLE`로 브라우저 실행 파일을 지정합니다.
 
 ## 일반 문제 풀이 채점 설계
 

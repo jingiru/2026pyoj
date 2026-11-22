@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { ArrowDown, ArrowUp, Check, Clock3, Copy, Download, Expand, Minimize2, Play, Plus, Send, Square, Sun, Trash2, Trophy, X } from "lucide-react";
 import type { Problem, ProblemBook, Student } from "@/lib/types";
 import { DEFAULT_CHALLENGE_BRIGHTNESS, MIN_CHALLENGE_BRIGHTNESS, challengeBonusMax, challengePhase, challengeProblemMax, completedAllChallengeProblems, earnedProblemScore, elapsedLabel, firstSolvers, isChallengeBrightness, problemPoints, type BonusCriterion, type Challenge, type ChallengeBoard, type ChallengeBonusScore, type ChallengeParticipant, type ChallengeScoringGroup, type ChallengeSubmission } from "@/lib/challenge-types";
-import { runPythonWithSkulpt } from "@/lib/skulpt-runner";
+import { runPython } from "@/lib/python-runner";
 import { rankChallengeResults, sortChallengeResults, type ChallengeResultSortDirection, type ChallengeResultSortKey } from "@/lib/challenge-result-sorting";
 import ChallengeArcade from "./challenge-arcade";
 import Link from "next/link";
@@ -264,7 +264,7 @@ function ChallengeIDE({ problem, participant, canSubmit, showRequirement, colorM
   async function run() {
     if (controller.current || submittingRef.current) return; const abort = new AbortController(); controller.current = abort; setHasRun(true); setRunning(true); setOutput(""); setPrompt(null);
     setInputHistory([]); queuedInputs.current = [];
-    try { await runPythonWithSkulpt(code, { output: text => setOutput(old => (old + text).slice(-65536)), error: text => setOutput(old => old + "\n" + text), input: text => { const queued = queuedInputs.current.shift(); if (queued !== undefined) { setInputHistory(items => [...items, queued]); return Promise.resolve(queued); } return new Promise(resolve => { resolver.current = resolve; setPrompt(text); }); } }, { signal: abort.signal }); }
+    try { await runPython(code, { output: text => setOutput(old => (old + text).slice(-65536)), error: text => setOutput(old => old + "\n" + text), input: text => { const queued = queuedInputs.current.shift(); if (queued !== undefined) { setInputHistory(items => [...items, queued]); return Promise.resolve(queued); } return new Promise(resolve => { resolver.current = resolve; setPrompt(text); }); } }, { signal: abort.signal }); }
     finally { controller.current = null; resolver.current = null; if (mounted.current) { setRunning(false); setPrompt(null); } }
   }
   async function submit() {

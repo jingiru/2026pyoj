@@ -2,12 +2,18 @@
   "name": "pyoj",
   "version": "0.1.0",
   "private": true,
+  "engines": { "node": ">=22.13.0" },
   "scripts": {
+    "postinstall": "node scripts/prepare-python.cjs",
+    "predev": "node scripts/prepare-python.cjs",
+    "prebuild": "node scripts/prepare-python.cjs",
+    "pretest": "node scripts/prepare-python.cjs",
     "dev": "next dev --hostname 127.0.0.1",
     "build": "next build",
     "start": "next start",
     "test": "node --test tests/*.test.cjs",
     "test:challenge-build": "node tests/challenge-build-smoke.cjs",
+    "test:python-browser": "node tests/python-browser-smoke.cjs",
     "lint": "next lint"
   },
   "dependencies": {
@@ -23,14 +29,15 @@
     "exceljs": "^4.4.0",
     "lucide-react": "^0.468.0",
     "next": "^15.0.3",
+    "pyodide": "314.0.8",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "skulpt": "^1.2.0",
     "y-codemirror.next": "0.3.6",
     "y-protocols": "1.0.7",
     "yjs": "13.6.32"
   },
   "devDependencies": {
+    "@playwright/test": "1.65.1",
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.2",

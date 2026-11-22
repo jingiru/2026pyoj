@@ -3,6 +3,7 @@ const {readFileSync}=require('node:fs');
 const {createRequire}=require('node:module');
 const path=require('node:path');
 const ts=require('typescript');
+require('../tests/python-worker-harness.cjs');
 const {all}=require('./evaluation-second.cjs');
 function load(relative){
  const filename=path.resolve(__dirname,'..',relative);
@@ -10,7 +11,7 @@ function load(relative){
  const mod={exports:{}};new Function('require','module','exports',compiled)(createRequire(filename),mod,mod.exports);return mod.exports;
 }
 const {checkCodeRequirements}=load('lib/code-requirements.ts');
-const {runPythonWithSkulpt}=load('lib/skulpt-runner.ts');
+const {runPython}=load('lib/python-runner.ts');
 (async()=>{
  let count=0;
  for(const p of all){
@@ -18,7 +19,7 @@ const {runPythonWithSkulpt}=load('lib/skulpt-runner.ts');
   assert.equal(req.passed,true,`${p.id}: ${req.feedback}`);
   for(const t of p.cases){
    let output='';const errors=[];const input=t.input.split('\n');
-   await runPythonWithSkulpt(p.solution,{output:x=>output+=x,error:x=>errors.push(x),input:async()=>input.shift()??''},{timeLimitMs:2000});
+   await runPython(p.solution,{output:x=>output+=x,error:x=>errors.push(x),input:async()=>input.shift()??''},{timeLimitMs:2000});
    assert.deepEqual(errors,[],p.id);
    assert.equal(output.replace(/\n$/,''),t.output,p.id);
    count++;
