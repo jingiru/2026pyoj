@@ -52,7 +52,7 @@ async function main() {
     await editor.fill("print('시작', end='!')\na = eval(input('첫 값: '))\nb = int(input('둘째 값: '))\nprint(a + b)");
     await run();
     console.log('Started interactive Python');
-    assert.equal(await page.getByRole('combobox', { name: 'Python 실행 환경' }).isDisabled(), true);
+    assert.equal(await page.getByRole('combobox', { name: 'Python 실행 환경' }).count(), 0);
     await input.waitFor({ timeout: 30000 });
     assert.equal(await terminal.textContent(), '시작!');
     assert.match(await page.locator('.terminalInputRow').innerText(), /첫 값:/);
@@ -86,10 +86,9 @@ async function main() {
     await run(); await waitIdle();
     assert.match(await terminal.textContent(), /코드 2번째 줄/);
     assert.match(await terminal.textContent(), /0으로 나눌 수 없습니다/);
-    await page.getByRole('combobox', { name: 'Python 실행 환경' }).selectOption('pyodide');
-    await editor.fill("print('수동 선택')");
+    await editor.fill("# pyoj: engine=pyodide\nprint('명시적 선택')");
     await run(); await waitIdle();
-    assert.equal((await terminal.textContent()).trimEnd(), '수동 선택');
+    assert.equal((await terminal.textContent()).trimEnd(), '명시적 선택');
     assert.ok(requests.some(url => url.endsWith('/python-worker.mjs')));
     console.log('Production browser: isolated Worker, partial output, prompts, multiline queued input, input/loop cancellation, rerun, eval, NumPy and Korean errors passed.');
   } finally {

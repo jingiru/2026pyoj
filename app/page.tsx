@@ -79,7 +79,6 @@ import {
 import { getAccuracy, rankStudents } from "@/lib/dashboard-ranking";
 import { runPython } from "@/lib/python-runner";
 import { getProblemEngine, withProblemEngine, type PythonEnginePreference } from "@/lib/python-engine";
-import { PythonEngineControl, PythonEngineLabel } from "./python-engine-control";
 import { checkCodeRequirements, hasPotentialInfiniteLoop } from "@/lib/code-requirements";
 import {
   findOrCreateGuest,
@@ -262,7 +261,6 @@ export default function Home() {
   const [inputHistory, setInputHistory] = useState<string[]>([]);
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
   const [isPracticeRunning, setIsPracticeRunning] = useState(false);
-  const [practiceEngine, setPracticeEngine] = useState<PythonEnginePreference>("auto");
   const practiceRunAbortControllerRef = useRef<AbortController | null>(null);
   const inputResolverRef = useRef<((value: string) => void) | null>(null);
   const queuedConsoleInputsRef = useRef<string[]>([]);
@@ -937,7 +935,7 @@ export default function Home() {
           setConsoleLines((lines) => [...lines, text]);
         },
         input: requestConsoleInput
-      }, { signal: abort.signal, engine: practiceEngine });
+      }, { signal: abort.signal });
     } finally {
       practiceRunAbortControllerRef.current = null;
       inputResolverRef.current = null;
@@ -1449,7 +1447,6 @@ export default function Home() {
                   <strong>코드 에디터</strong>
                 </div>
                 <div className="ideActions">
-                  <PythonEngineControl code={practiceCode} value={practiceEngine} onChange={setPracticeEngine} disabled={isPracticeRunning} />
                   <FontSizeControl
                     label="코드 글자 크기"
                     value={practiceCodeFontSize}
@@ -1721,7 +1718,6 @@ export default function Home() {
                       내 기록 {personalSubmissions.length}
                     </button>
                   )}
-                  <PythonEngineLabel code={code} problemCode={selectedProblem.starterCode} />
                   <button className="ghostButton" onClick={() => setCode(selectedProblem.starterCode)}>
                     <Play size={17} />
                     초기 코드
