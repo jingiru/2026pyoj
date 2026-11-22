@@ -2,6 +2,7 @@ import { fork } from "node:child_process";
 import { join } from "node:path";
 import { checkCodeRequirements } from "./code-requirements";
 import type { Problem, SubmissionStatus } from "./types";
+import { selectPythonEngine } from "./python-engine";
 
 type Result = { status: SubmissionStatus; passed_count: number; total_count: number; feedback: string; requirement_passed?: boolean | null; requirement_feedback?: string };
 
@@ -10,10 +11,12 @@ export async function judgeChallenge(problem: Problem, code: string, checkRequir
   if (!problem.testCases.length) throw new Error("채점 테스트가 없는 문제입니다.");
   const result = await new Promise<Result>((resolve, reject) => {
     const root = process.cwd();
+    const engine = selectPythonEngine(code, { problemCode: problem.starterCode });
+    const workerPath = join(root, "public", engine === "skulpt" ? "skulpt-worker.js" : "python-worker.mjs");
     // Run untrusted Python in a disposable Node process with no application env
     // and filesystem permission only for the runtime assets (never .env/source).
-    const worker = fork(join(root, "public", "python-worker.mjs"), [], {
-      execArgv: ["--permission", `--allow-fs-read=${join(root, "node_modules")}`, `--allow-fs-read=${join(root, "public", "pyodide")}`, `--allow-fs-read=${join(root, "public", "python-worker.mjs")}`, `--allow-fs-read=${join(root, "package.json")}`, "--max-old-space-size=96"],
+    const worker = fork(workerPath, [], {
+      execArgv: ["--permission", `--allow-fs-read=${join(root, "node_modules")}`, `--allow-fs-read=${join(root, "public", "pyodide")}`, `--allow-fs-read=${workerPath}`, `--allow-fs-read=${join(root, "package.json")}`, "--max-old-space-size=96"],
       env: { NODE_ENV: "production", ...(process.platform === "win32" ? { SystemRoot: process.env.SystemRoot } : {}), TZ: "UTC" },
       stdio: ["ignore", "ignore", "pipe", "ipc"]
     });

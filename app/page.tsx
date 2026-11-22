@@ -78,6 +78,8 @@ import {
 } from "@/lib/student-class";
 import { getAccuracy, rankStudents } from "@/lib/dashboard-ranking";
 import { runPython } from "@/lib/python-runner";
+import { getProblemEngine, withProblemEngine, type PythonEnginePreference } from "@/lib/python-engine";
+import { PythonEngineControl, PythonEngineLabel } from "./python-engine-control";
 import { checkCodeRequirements, hasPotentialInfiniteLoop } from "@/lib/code-requirements";
 import {
   findOrCreateGuest,
@@ -260,6 +262,7 @@ export default function Home() {
   const [inputHistory, setInputHistory] = useState<string[]>([]);
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
   const [isPracticeRunning, setIsPracticeRunning] = useState(false);
+  const [practiceEngine, setPracticeEngine] = useState<PythonEnginePreference>("auto");
   const practiceRunAbortControllerRef = useRef<AbortController | null>(null);
   const inputResolverRef = useRef<((value: string) => void) | null>(null);
   const queuedConsoleInputsRef = useRef<string[]>([]);
@@ -934,7 +937,7 @@ export default function Home() {
           setConsoleLines((lines) => [...lines, text]);
         },
         input: requestConsoleInput
-      }, { signal: abort.signal });
+      }, { signal: abort.signal, engine: practiceEngine });
     } finally {
       practiceRunAbortControllerRef.current = null;
       inputResolverRef.current = null;
@@ -1076,7 +1079,7 @@ export default function Home() {
           setSolveConsoleLines((lines) => [...lines, text]);
         },
         input: (prompt) => requestSolveConsoleInput(prompt, runId)
-      }, { signal: abortController.signal });
+      }, { signal: abortController.signal, problemCode: selectedProblem.starterCode });
     } finally {
       const isCurrentRun = solveRunIdRef.current === runId;
       if (isCurrentRun) {
@@ -1446,6 +1449,7 @@ export default function Home() {
                   <strong>코드 에디터</strong>
                 </div>
                 <div className="ideActions">
+                  <PythonEngineControl code={practiceCode} value={practiceEngine} onChange={setPracticeEngine} disabled={isPracticeRunning} />
                   <FontSizeControl
                     label="코드 글자 크기"
                     value={practiceCodeFontSize}
@@ -1717,6 +1721,7 @@ export default function Home() {
                       내 기록 {personalSubmissions.length}
                     </button>
                   )}
+                  <PythonEngineLabel code={code} problemCode={selectedProblem.starterCode} />
                   <button className="ghostButton" onClick={() => setCode(selectedProblem.starterCode)}>
                     <Play size={17} />
                     초기 코드
@@ -2702,7 +2707,7 @@ async function judgeProblemSubmission(problem: Problem, code: string): Promise<J
       output: (text) => output.push(text),
       error: (text) => errors.push(text),
       input: async () => inputQueue.shift() ?? ""
-    }, { timeLimitMs: problem.id.startsWith("11-2-") ? 2000 : undefined });
+    }, { timeLimitMs: problem.id.startsWith("11-2-") ? 2000 : undefined, problemCode: problem.starterCode });
 
     const actual = errors.length > 0 ? errors.join("\n") : output.join("");
     const passed = errors.length === 0 && normalizeJudgeOutput(actual) === normalizeJudgeOutput(testCase.output);
@@ -4479,6 +4484,15 @@ function TeacherProblemManager({
                   />
                 </label>
               </div>
+              <label>
+                Python 실행 환경
+                <select aria-label="문제 Python 실행 환경" value={getProblemEngine(editingProblem.starterCode)}
+                  onChange={event => updateProblem("starterCode", withProblemEngine(editingProblem.starterCode, event.target.value as PythonEnginePreference))}>
+                  <option value="auto">코드에 따라 자동 선택</option>
+                  <option value="skulpt">기본 Python · 빠른 실행</option>
+                  <option value="pyodide">확장 Python · eval / NumPy</option>
+                </select>
+              </label>
               <label>
                 스켈레톤 코드
                 <textarea

@@ -273,6 +273,15 @@ test("server judge supports eval input and NumPy with the same CPython runtime",
   assert.equal((await judgeChallenge(problem, "import numpy as np\nprint(int(np.sum([int(input()), int(input())])))")).status, "accepted");
 });
 
+test("server respects the problem engine even when student code removes or changes its directive", async () => {
+  const fixed = { ...problem, starterCode: '# pyoj: engine=pyodide', testCases: [{ input: '', output: '3' }] };
+  // CPython-only expression, with no identifiers which normally trigger routing.
+  const code = '# pyoj: engine=skulpt\nprint((x := 3))';
+  assert.equal((await judgeChallenge(fixed, code)).status, 'accepted');
+  const fast = { ...problem, starterCode: '# pyoj: engine=skulpt', testCases: [{ input: '', output: '3' }] };
+  assert.equal((await judgeChallenge(fast, 'print(eval("1+2"))')).status, 'runtime_error');
+});
+
 test("judge cannot read host files, application environment or browser globals", async () => {
   const isolated = { ...problem, testCases: [{ input: '', output: 'False False False' }] };
   const code = "import os, js\nprint(os.path.exists('/etc/passwd'), 'SUPABASE_SERVICE_ROLE_KEY' in os.environ, hasattr(js, 'process'))";

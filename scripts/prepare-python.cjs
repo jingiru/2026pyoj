@@ -10,6 +10,10 @@ const lock = require(path.join(source, 'pyodide-lock.json'));
 
 async function main() {
   mkdirSync(target, { recursive: true });
+  const skulptTarget = path.resolve(__dirname, '../public/skulpt');
+  mkdirSync(skulptTarget, { recursive: true });
+  const skulpt = path.dirname(require.resolve('skulpt/package.json'));
+  for (const name of ['skulpt.min.js', 'skulpt-stdlib.js']) cpSync(path.join(skulpt, 'dist', name), path.join(skulptTarget, name));
   for (const name of ['pyodide.mjs', 'pyodide.asm.mjs', 'pyodide.asm.wasm', 'python_stdlib.zip', 'pyodide-lock.json']) {
     cpSync(path.join(source, name), path.join(target, name));
   }
@@ -28,6 +32,6 @@ async function main() {
     await writeFile(file, bytes);
   }
   await download('numpy');
-  console.log(`Prepared Pyodide ${version} and NumPy`);
+  console.log(`Prepared Skulpt and Pyodide ${version} with NumPy`);
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

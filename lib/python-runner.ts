@@ -1,10 +1,12 @@
+import { selectPythonEngine, type EngineOptions } from "./python-engine";
+
 type PythonCallbacks = {
   output: (text: string) => void;
   error: (text: string) => void;
   input: (prompt: string) => Promise<string>;
 };
 
-type PythonRunOptions = {
+type PythonRunOptions = EngineOptions & {
   signal?: AbortSignal;
   timeLimitMs?: number;
 };
@@ -81,26 +83,28 @@ export function formatPythonError(error: unknown): string {
   return location + explanation;
 }
 
-/** Each run owns its worker and input buffer, including while an input is pending. */
+/** Select once before execution; never retry after side effects or input. */
 export async function runPython(
   code: string,
   callbacks: PythonCallbacks,
   options: PythonRunOptions = {}
 ): Promise<void> {
   if (options.signal?.aborted) return;
-  if (typeof SharedArrayBuffer === "undefined") {
+  const engine = selectPythonEngine(code, options);
+  if (engine === "pyodide" && typeof SharedArrayBuffer === "undefined") {
     callbacks.error("Python 실행에 필요한 브라우저 격리 기능을 사용할 수 없습니다. 페이지를 새로고침하거나 최신 브라우저를 사용해 주세요.");
     return;
   }
   await new Promise<void>(resolve => {
-    const buffer = new SharedArrayBuffer(12 + 65536);
-    const control = new Int32Array(buffer, 0, 3);
-    const bytes = new Uint8Array(buffer, 12);
+    const buffer = engine === "pyodide" ? new SharedArrayBuffer(12 + 65536) : undefined;
+    const control = buffer ? new Int32Array(buffer, 0, 3) : undefined;
+    const bytes = buffer ? new Uint8Array(buffer, 12) : undefined;
     let worker: Worker;
     let finished = false;
     let pending: Uint8Array | null = null;
     let offset = 0;
     let outputLength = 0;
+    let currentLine = 0;
     let timer: ReturnType<typeof setTimeout>;
     const finish = (error?: string) => {
       if (finished) return;
@@ -113,7 +117,7 @@ export async function runPython(
     };
     const abort = () => finish();
     const writeInputChunk = () => {
-      if (finished || !pending) return;
+      if (finished || !pending || !bytes || !control) return;
       const chunk = pending.subarray(offset, offset + bytes.length);
       bytes.set(chunk);
       offset += chunk.length;
@@ -125,7 +129,9 @@ export async function runPython(
     options.signal?.addEventListener("abort", abort, { once: true });
     timer = setTimeout(() => finish("Python 실행 환경을 불러오지 못했습니다. 네트워크 연결을 확인한 뒤 다시 실행해 주세요."), INITIALIZATION_LIMIT_MS);
     try {
-      worker = new Worker("/python-worker.mjs", { type: "module" });
+      worker = engine === "skulpt"
+        ? new Worker("/skulpt-worker.js")
+        : new Worker("/python-worker.mjs", { type: "module" });
       worker.onerror = event => { event.preventDefault(); finish(`Python 실행 환경 오류: ${event.message}`); };
       worker.onmessage = event => {
         if (finished) return;
@@ -134,10 +140,11 @@ export async function runPython(
           case "ready":
             clearTimeout(timer);
             timer = setTimeout(() => {
-              const line = Atomics.load(control, 2);
+              const line = control ? Atomics.load(control, 2) : currentLine;
               finish(formatPythonError(`TimeLimitError: execution timed out${line ? ` on line ${line}` : ""}`));
             }, options.timeLimitMs ?? DEFAULT_TIME_LIMIT_MS);
             break;
+          case "line": currentLine = message.line ?? currentLine; break;
           case "output":
             outputLength += message.text.length;
             if (outputLength > 65536) finish("출력 제한을 초과해 실행을 중단했습니다.");
@@ -146,6 +153,10 @@ export async function runPython(
           case "input":
             Promise.resolve().then(() => callbacks.input(message.prompt)).then(value => {
               if (finished) return;
+              if (engine === "skulpt") {
+                worker.postMessage({ type: "input-result", id: message.id, value });
+                return;
+              }
               pending = new TextEncoder().encode(value);
               offset = 0;
               writeInputChunk();
@@ -154,6 +165,11 @@ export async function runPython(
           case "input-next": writeInputChunk(); break;
           case "case-end":
             if (message.error) {
+              if (typeof message.error === "string") {
+                const hint = message.error.startsWith("NotImplementedError:") ? "\n이 기능은 확장 Python 실행 환경이 필요합니다." : "";
+                finish(formatPythonError(message.error) + hint);
+                break;
+              }
               const { kind, detail, line } = message.error;
               finish(formatPythonError(`${kind}: ${detail}${line ? ` on line ${line}` : ""}`));
             }
@@ -162,7 +178,7 @@ export async function runPython(
           case "fatal": finish(`Python 실행 환경 오류: ${message.text}`); break;
         }
       };
-      worker.postMessage({ code, inputBuffer: buffer });
+      worker.postMessage({ code, inputBuffer: buffer, timeLimitMs: options.timeLimitMs });
     } catch (error) { finish(`Python 실행 환경 오류: ${String(error)}`); }
   });
 }

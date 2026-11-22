@@ -3975,3 +3975,8 @@ kbd {
 .practiceLiveStudentButton:hover { border-color: var(--primary); box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 16%, transparent); }
 .practiceLiveStudentButton strong { color: var(--primary); }
 .practiceLiveStudentList .emptyState { grid-column: 1 / -1; }
+
+.pythonEngineControl { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+.pythonEngineControl select { max-width: 190px; min-height: 34px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); font: inherit; }
+.pythonEngineLabel { font-size: 12px; color: var(--muted); white-space: nowrap; }
+@media (max-width: 700px) { .pythonEngineControl { flex-wrap: wrap; gap: 4px; } .pythonEngineControl > span { display: none; } }

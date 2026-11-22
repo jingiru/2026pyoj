@@ -1,21 +1,9 @@
 const assert = require('node:assert/strict');
-const { readFileSync } = require('node:fs');
-const { createRequire } = require('node:module');
-const path = require('node:path');
 const { test } = require('node:test');
-const ts = require('typescript');
 require('./python-worker-harness.cjs');
 const curriculum = require('../data/nested-curriculum.json');
 
-function load(relative) {
-  const filename = path.resolve(__dirname, '..', relative);
-  const compiled = ts.transpileModule(readFileSync(filename, 'utf8'), {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
-  }).outputText;
-  const mod = { exports: {} };
-  new Function('require', 'module', 'exports', compiled)(createRequire(filename), mod, mod.exports);
-  return mod.exports;
-}
+const load = require('./load-typescript.cjs');
 
 const { checkCodeRequirements, hasPotentialInfiniteLoop } = load('lib/code-requirements.ts');
 const { runPython } = load('lib/python-runner.ts');

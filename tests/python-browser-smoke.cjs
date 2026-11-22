@@ -20,6 +20,8 @@ async function main() {
     ].find(existsSync);
     browser = await chromium.launch({ headless: true, ...(executablePath ? { executablePath } : {}) });
     const page = await browser.newPage();
+    const requests = [];
+    page.on('request', request => requests.push(request.url()));
     page.setDefaultTimeout(30000);
     page.on('pageerror', error => console.error('Browser page error:', error.message));
     // Prove the runtime/NumPy do not require a third-party host during execution.
@@ -36,9 +38,21 @@ async function main() {
     async function waitIdle() {
       await page.getByRole('button', { name: /^실행\s/ }).waitFor({ timeout: 30000 });
     }
+    const basicTimes = [];
+    for (let index = 0; index < 3; index++) {
+      await editor.fill("print('빠른 실행')");
+      const started = Date.now();
+      await run(); await waitIdle();
+      basicTimes.push(Date.now() - started);
+      assert.equal((await terminal.textContent()).trimEnd(), '빠른 실행');
+    }
+    assert.ok(requests.some(url => url.endsWith('/skulpt-worker.js')));
+    assert.ok(!requests.some(url => /\/pyodide\/|\/python-worker\.mjs/.test(url)), 'basic code must not load CPython/NumPy');
+    console.log(`Basic browser execution (ms): ${basicTimes.join(', ')}`);
     await editor.fill("print('시작', end='!')\na = eval(input('첫 값: '))\nb = int(input('둘째 값: '))\nprint(a + b)");
     await run();
     console.log('Started interactive Python');
+    assert.equal(await page.getByRole('combobox', { name: 'Python 실행 환경' }).isDisabled(), true);
     await input.waitFor({ timeout: 30000 });
     assert.equal(await terminal.textContent(), '시작!');
     assert.match(await page.locator('.terminalInputRow').innerText(), /첫 값:/);
@@ -72,6 +86,11 @@ async function main() {
     await run(); await waitIdle();
     assert.match(await terminal.textContent(), /코드 2번째 줄/);
     assert.match(await terminal.textContent(), /0으로 나눌 수 없습니다/);
+    await page.getByRole('combobox', { name: 'Python 실행 환경' }).selectOption('pyodide');
+    await editor.fill("print('수동 선택')");
+    await run(); await waitIdle();
+    assert.equal((await terminal.textContent()).trimEnd(), '수동 선택');
+    assert.ok(requests.some(url => url.endsWith('/python-worker.mjs')));
     console.log('Production browser: isolated Worker, partial output, prompts, multiline queued input, input/loop cancellation, rerun, eval, NumPy and Korean errors passed.');
   } finally {
     await browser?.close();

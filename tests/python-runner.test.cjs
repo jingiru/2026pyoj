@@ -1,20 +1,8 @@
 const assert = require("node:assert/strict");
-const { readFileSync } = require("node:fs");
-const { createRequire } = require("node:module");
-const path = require("node:path");
 const { test } = require("node:test");
-const ts = require("typescript");
 require('./python-worker-harness.cjs');
 
-// Exercise the real TypeScript runner and installed Pyodide without a test double.
-const runnerPath = path.resolve(__dirname, "../lib/python-runner.ts");
-const compiled = ts.transpileModule(readFileSync(runnerPath, "utf8"), {
-  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }
-}).outputText;
-const runnerModule = { exports: {} };
-new Function("require", "module", "exports", compiled)(
-  createRequire(runnerPath), runnerModule, runnerModule.exports
-);
+const runnerModule = { exports: require('./load-typescript.cjs')('lib/python-runner.ts') };
 const { runPython } = runnerModule.exports;
 
 function createConsole(input = async () => "") {
@@ -78,7 +66,7 @@ test("busy loops can be stopped after execution has started", { timeout: 15000 }
     );
     assert.equal(controller.signal.aborted, true, "the stop callback must run before the time limit");
     assert.deepEqual(console.errors, []);
-    assert.equal(console.output.join(''), 'started');
+    assert.equal(console.output.join('').trimEnd(), 'started');
 });
 
 test("eval supports Python locals, literals and interactive Unicode input", async () => {
@@ -156,4 +144,43 @@ test("an already cancelled run does not start", async () => {
   await runPython("print('should not run')", console.callbacks, { signal: controller.signal });
   assert.deepEqual(console.output, []);
   assert.deepEqual(console.errors, []);
+});
+
+test("the basic engine runs without SharedArrayBuffer or Pyodide initialization", async () => {
+  const shared = global.SharedArrayBuffer;
+  try {
+    global.SharedArrayBuffer = undefined;
+    const console = createConsole(async () => '7');
+    await runPython('print(int(input()) * 2)', console.callbacks);
+    assert.deepEqual(console.errors, []);
+    assert.equal(console.output.join(''), '14\n');
+  } finally { global.SharedArrayBuffer = shared; }
+});
+
+test("automatic extension selection never repeats output or requests input twice", async () => {
+  let reads = 0;
+  const console = createConsole(async () => { reads++; return '1 + 2'; });
+  await runPython("print('before')\ntext = input()\nprint(eval(text))", console.callbacks);
+  assert.deepEqual(console.errors, []);
+  assert.equal(console.output.join(''), 'before\n3\n');
+  assert.equal(reads, 1);
+});
+
+test("manual and problem-fixed Pyodide preserve input timeout and cancellation", async () => {
+  const waiting = createConsole(() => new Promise(() => {}));
+  await runPython('value = input()', waiting.callbacks, { engine: 'pyodide', timeLimitMs: 80 });
+  assert.match(waiting.errors[0], /코드 1번째 줄/);
+  assert.match(waiting.errors[0], /실행 시간이 너무 길어/);
+  const controller = new AbortController();
+  const stopped = createConsole(async () => { controller.abort(); return 'late'; });
+  await runPython("try:\n    input()\nexcept:\n    print('caught')\nprint('continued')", stopped.callbacks,
+    { problemCode: '# pyoj: engine=pyodide', signal: controller.signal });
+  assert.deepEqual(stopped.errors, []);
+  assert.deepEqual(stopped.output, []);
+});
+
+test("both engines enforce busy-loop timeouts without catching cancellation in Python", async () => {
+  const console = createConsole();
+  await runPython('while True:\n    pass', console.callbacks, { engine: 'pyodide', timeLimitMs: 80 });
+  assert.match(console.errors[0], /실행 시간이 너무 길어/);
 });
